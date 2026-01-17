@@ -13,7 +13,7 @@ Build rslph from foundation to polished CLI/TUI in 8 phases. Start with configur
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Config loading, CLI skeleton, progress file format
-- [ ] **Phase 2: Subprocess Management** - Claude CLI spawning, streaming output, process control
+- [x] **Phase 2: Subprocess Management** - Claude CLI spawning, streaming output, process control
 - [ ] **Phase 3: Planning Command** - `rslph plan` with basic and adaptive modes
 - [ ] **Phase 4: Core Build Loop** - Iteration logic, completion detection, fresh context
 - [ ] **Phase 5: VCS Integration** - Git and Sapling auto-commit per iteration
@@ -53,8 +53,8 @@ Plans:
 **Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 02-01-PLAN.md — Subprocess spawning and streaming (ClaudeRunner struct, piped I/O, concurrent stream reading) [Wave 1]
-- [ ] 02-02-PLAN.md — Signal handling and timeout management (CancellationToken, graceful shutdown, timeout) [Wave 2, depends on 02-01]
+- [x] 02-01-PLAN.md - Subprocess spawning and streaming (ClaudeRunner struct, piped I/O, concurrent stream reading) [Wave 1]
+- [x] 02-02-PLAN.md - Signal handling and timeout management (CancellationToken, graceful shutdown, timeout) [Wave 2, depends on 02-01]
 
 ### Phase 3: Planning Command
 **Goal**: `rslph plan` transforms ideas into structured progress files, with optional adaptive mode for vague inputs
@@ -162,7 +162,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | Complete | 2026-01-17 |
-| 2. Subprocess Management | 0/2 | Planned | - |
+| 2. Subprocess Management | 2/2 | Complete | 2026-01-17 |
 | 3. Planning Command | 0/2 | Not started | - |
 | 4. Core Build Loop | 0/3 | Not started | - |
 | 5. VCS Integration | 0/1 | Not started | - |

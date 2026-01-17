@@ -323,6 +323,148 @@ impl ProgressFile {
             _ => {}
         }
     }
+
+    /// Generate markdown representation
+    pub fn to_markdown(&self) -> String {
+        let mut md = String::new();
+
+        // Title
+        md.push_str(&format!("# Progress: {}\n\n", self.name));
+
+        // Status (PROG-01)
+        md.push_str("## Status\n\n");
+        md.push_str(&self.status);
+        md.push_str("\n\n");
+
+        // Analysis (PROG-02)
+        md.push_str("## Analysis\n\n");
+        md.push_str(&self.analysis);
+        md.push_str("\n\n");
+
+        // Tasks (PROG-03)
+        md.push_str("## Tasks\n\n");
+        for phase in &self.tasks {
+            md.push_str(&format!("### {}\n\n", phase.name));
+            for task in &phase.tasks {
+                let checkbox = if task.completed { "[x]" } else { "[ ]" };
+                md.push_str(&format!("- {} {}\n", checkbox, task.description));
+            }
+            md.push_str("\n");
+        }
+
+        // Testing Strategy (PROG-04)
+        md.push_str("## Testing Strategy\n\n");
+        md.push_str(&self.testing_strategy);
+        md.push_str("\n\n");
+
+        // Completed This Iteration (PROG-05)
+        md.push_str("## Completed This Iteration\n\n");
+        for item in &self.completed_this_iteration {
+            md.push_str(&format!("- [x] {}\n", item));
+        }
+        md.push_str("\n");
+
+        // Recent Attempts (PROG-06)
+        md.push_str("## Recent Attempts\n\n");
+        for attempt in &self.recent_attempts {
+            md.push_str(&format!("### Iteration {}\n\n", attempt.iteration));
+            md.push_str(&format!("- Tried: {}\n", attempt.tried));
+            md.push_str(&format!("- Result: {}\n", attempt.result));
+            if let Some(next) = &attempt.next {
+                md.push_str(&format!("- Next: {}\n", next));
+            }
+            md.push_str("\n");
+        }
+
+        // Iteration Log (PROG-07)
+        md.push_str("## Iteration Log\n\n");
+        md.push_str("| Iteration | Started | Duration | Tasks Completed | Notes |\n");
+        md.push_str("|-----------|---------|----------|-----------------|-------|\n");
+        for entry in &self.iteration_log {
+            md.push_str(&format!(
+                "| {} | {} | {} | {} | {} |\n",
+                entry.iteration, entry.started, entry.duration, entry.tasks_completed, entry.notes
+            ));
+        }
+
+        md
+    }
+
+    /// Write progress file atomically (crash-safe)
+    /// Uses temp file + rename pattern for durability
+    pub fn write(&self, path: &std::path::Path) -> Result<(), RslphError> {
+        use atomicwrites::{AllowOverwrite, AtomicFile};
+        use std::io::Write;
+
+        let content = self.to_markdown();
+        let af = AtomicFile::new(path, AllowOverwrite);
+
+        af.write(|f| f.write_all(content.as_bytes()))
+            .map_err(|e| RslphError::Io(e.into()))?;
+
+        Ok(())
+    }
+
+    /// Load progress file from disk
+    pub fn load(path: &std::path::Path) -> Result<Self, RslphError> {
+        let content = std::fs::read_to_string(path)?;
+        Self::parse(&content)
+    }
+
+    /// Mark a task as completed
+    pub fn complete_task(&mut self, phase_name: &str, task_description: &str) -> bool {
+        for phase in &mut self.tasks {
+            if phase.name == phase_name {
+                for task in &mut phase.tasks {
+                    if task.description == task_description && !task.completed {
+                        task.completed = true;
+                        self.completed_this_iteration
+                            .push(task_description.to_string());
+                        return true;
+                    }
+                }
+            }
+        }
+        false
+    }
+
+    /// Add an attempt record
+    pub fn add_attempt(&mut self, iteration: u32, tried: &str, result: &str, next: Option<&str>) {
+        self.recent_attempts.push(Attempt {
+            iteration,
+            tried: tried.to_string(),
+            result: result.to_string(),
+            next: next.map(String::from),
+        });
+    }
+
+    /// Add iteration log entry
+    pub fn log_iteration(
+        &mut self,
+        iteration: u32,
+        started: &str,
+        duration: &str,
+        tasks_completed: u32,
+        notes: &str,
+    ) {
+        self.iteration_log.push(IterationEntry {
+            iteration,
+            started: started.to_string(),
+            duration: duration.to_string(),
+            tasks_completed,
+            notes: notes.to_string(),
+        });
+    }
+
+    /// Clear completed this iteration (for next iteration)
+    pub fn clear_iteration_completed(&mut self) {
+        self.completed_this_iteration.clear();
+    }
+
+    /// Mark as done
+    pub fn mark_done(&mut self, message: &str) {
+        self.status = format!("RALPH_DONE - {}", message);
+    }
 }
 
 #[cfg(test)]
@@ -466,5 +608,85 @@ Some analysis notes here.
         assert_eq!(pf.iteration_log.len(), 1);
         assert_eq!(pf.iteration_log[0].iteration, 1);
         assert_eq!(pf.iteration_log[0].tasks_completed, 1);
+    }
+
+    #[test]
+    fn test_roundtrip() {
+        let original = ProgressFile::parse(SAMPLE_PROGRESS).expect("Should parse");
+        let markdown = original.to_markdown();
+        let reparsed = ProgressFile::parse(&markdown).expect("Should reparse");
+
+        assert_eq!(original.name, reparsed.name);
+        assert_eq!(original.status, reparsed.status);
+        assert_eq!(original.tasks.len(), reparsed.tasks.len());
+    }
+
+    #[test]
+    fn test_atomic_write() {
+        let dir = tempfile::tempdir().expect("Should create temp dir");
+        let path = dir.path().join("progress.md");
+
+        let mut pf = ProgressFile {
+            name: "Test".to_string(),
+            status: "In Progress".to_string(),
+            tasks: vec![TaskPhase {
+                name: "Phase 1".to_string(),
+                tasks: vec![Task {
+                    description: "Task 1".to_string(),
+                    completed: false,
+                }],
+            }],
+            ..Default::default()
+        };
+
+        // Write
+        pf.write(&path).expect("Should write");
+
+        // Read back
+        let loaded = ProgressFile::load(&path).expect("Should load");
+        assert_eq!(loaded.name, "Test");
+        assert_eq!(loaded.tasks.len(), 1);
+
+        // Modify and write again
+        pf.complete_task("Phase 1", "Task 1");
+        pf.write(&path).expect("Should write again");
+
+        let reloaded = ProgressFile::load(&path).expect("Should reload");
+        assert!(reloaded.tasks[0].tasks[0].completed);
+    }
+
+    #[test]
+    fn test_complete_task() {
+        let mut pf = ProgressFile {
+            tasks: vec![TaskPhase {
+                name: "Phase 1".to_string(),
+                tasks: vec![
+                    Task {
+                        description: "Task A".to_string(),
+                        completed: false,
+                    },
+                    Task {
+                        description: "Task B".to_string(),
+                        completed: false,
+                    },
+                ],
+            }],
+            ..Default::default()
+        };
+
+        assert!(pf.complete_task("Phase 1", "Task A"));
+        assert!(pf.tasks[0].tasks[0].completed);
+        assert!(!pf.tasks[0].tasks[1].completed);
+        assert_eq!(pf.completed_this_iteration.len(), 1);
+    }
+
+    #[test]
+    fn test_mark_done() {
+        let mut pf = ProgressFile::default();
+        assert!(!pf.is_done());
+
+        pf.mark_done("All tasks complete");
+        assert!(pf.is_done());
+        assert!(pf.status.contains("RALPH_DONE"));
     }
 }

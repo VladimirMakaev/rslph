@@ -1,4 +1,4 @@
-# Ralph (rslph)
+# rslph
 
 ## What This Is
 
@@ -17,8 +17,8 @@ Autonomous task execution with fresh context per iteration and accumulated learn
 ### Active
 
 #### Commands
-- [ ] `ralph plan <plan>` — Transform idea/plan into structured progress file with tasks
-- [ ] `ralph build <plan>` — Execute tasks iteratively, piloting Claude CLI headlessly
+- [ ] `rslph plan <plan>` — Transform idea/plan into structured progress file with tasks
+- [ ] `rslph build <plan>` — Execute tasks iteratively, piloting Claude CLI headlessly
 
 #### Planning Phase
 - [ ] Adaptive vagueness detection — ask clarifying questions only when input is vague
@@ -47,7 +47,7 @@ Autonomous task execution with fresh context per iteration and accumulated learn
 - [ ] Configurable number of recent threads to display
 
 #### Configuration
-- [ ] TOML config file support (`~/.config/ralph/config.toml`)
+- [ ] TOML config file support (`~/.config/rslph/config.toml`)
 - [ ] CLI argument overrides for all config options
 - [ ] Override Claude command path
 - [ ] Override system prompts (plan + build) via file paths
@@ -59,7 +59,7 @@ Autonomous task execution with fresh context per iteration and accumulated learn
 - [ ] Baked-in default prompts compiled into binary
 - [ ] PROMPT_plan — instructions for task decomposition and clarification
 - [ ] PROMPT_build — instructions for task execution and progress updates
-- [ ] User-overridable via `~/.config/ralph/` with paths in config
+- [ ] User-overridable via `~/.config/rslph/` with paths in config
 
 #### Notifications
 - [ ] Notify script execution on completion/failure
@@ -91,6 +91,8 @@ Autonomous task execution with fresh context per iteration and accumulated learn
 
 **Key insight:** The progress file IS the memory. Each iteration Claude reads accumulated learnings, sees what was tried, and avoids repeating failures. Fresh context + persistent file = best of both worlds.
 
+**Async TUI patterns:** Reference `/Users/vmakaev/fbsource/fbcode/linttool/crates/command` for async subprocess handling in TUI contexts. Prefer streams over channels for subprocess output.
+
 **Research sources:**
 - [kylemclaren/ralph](https://github.com/kylemclaren/ralph) — CLI with maxIterations, progress.txt, prd.json pattern
 - [PJFP Guide](https://pjfp.com/what-is-the-ralph-wiggum-loop-in-programming-ultimate-guide-to-ai-powered-iterative-coding/) — Comprehensive overview of the pattern
@@ -112,6 +114,7 @@ Autonomous task execution with fresh context per iteration and accumulated learn
 | Adaptive planning over always-ask | Better UX for detailed plans, only interrupt when value-add | — Pending |
 | Progress file as memory | Proven pattern from reference implementations, survives context resets | — Pending |
 | Two-phase prompts (plan/build) | Separation of concerns, different personas for different tasks | — Pending |
+| Streams over channels for async TUI | Cleaner async pattern, reference linttool/crates/command implementation | — Pending |
 
 ---
 *Last updated: 2026-01-17 after initialization*

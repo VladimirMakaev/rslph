@@ -96,3 +96,136 @@ impl ClaudeRunner {
         self.child.wait().await
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[tokio::test]
+    async fn test_spawn_echo_command() {
+        let mut runner = ClaudeRunner::spawn(
+            "/bin/echo",
+            &["hello".to_string(), "world".to_string()],
+            &PathBuf::from("/tmp"),
+        )
+        .await
+        .expect("spawn should succeed");
+
+        let mut output = Vec::new();
+        while let Some(line) = runner.next_output().await {
+            output.push(line);
+        }
+
+        assert_eq!(output.len(), 1);
+        assert_eq!(output[0], OutputLine::Stdout("hello world".to_string()));
+
+        let status = runner.wait().await.expect("wait should succeed");
+        assert!(status.success());
+    }
+
+    #[tokio::test]
+    async fn test_spawn_stderr_output() {
+        let mut runner = ClaudeRunner::spawn(
+            "/bin/sh",
+            &["-c".to_string(), "echo error >&2".to_string()],
+            &PathBuf::from("/tmp"),
+        )
+        .await
+        .expect("spawn should succeed");
+
+        let mut output = Vec::new();
+        while let Some(line) = runner.next_output().await {
+            output.push(line);
+        }
+
+        assert_eq!(output.len(), 1);
+        assert_eq!(output[0], OutputLine::Stderr("error".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_stdout_stderr() {
+        let mut runner = ClaudeRunner::spawn(
+            "/bin/sh",
+            &[
+                "-c".to_string(),
+                "echo out; echo err >&2; echo out2".to_string(),
+            ],
+            &PathBuf::from("/tmp"),
+        )
+        .await
+        .expect("spawn should succeed");
+
+        let mut output = Vec::new();
+        while let Some(line) = runner.next_output().await {
+            output.push(line);
+        }
+
+        // Should receive all 3 lines (order may vary due to concurrency)
+        assert_eq!(output.len(), 3);
+
+        // Check we got both stdout and stderr lines
+        let stdout_count = output
+            .iter()
+            .filter(|l| matches!(l, OutputLine::Stdout(_)))
+            .count();
+        let stderr_count = output
+            .iter()
+            .filter(|l| matches!(l, OutputLine::Stderr(_)))
+            .count();
+
+        assert_eq!(stdout_count, 2, "Should have 2 stdout lines");
+        assert_eq!(stderr_count, 1, "Should have 1 stderr line");
+
+        // Verify content (order-independent)
+        let stdout_lines: Vec<_> = output
+            .iter()
+            .filter_map(|l| match l {
+                OutputLine::Stdout(s) => Some(s.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(stdout_lines.contains(&"out"));
+        assert!(stdout_lines.contains(&"out2"));
+
+        let stderr_lines: Vec<_> = output
+            .iter()
+            .filter_map(|l| match l {
+                OutputLine::Stderr(s) => Some(s.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert!(stderr_lines.contains(&"err"));
+    }
+
+    #[tokio::test]
+    async fn test_process_id_available() {
+        let mut runner = ClaudeRunner::spawn(
+            "/bin/sleep",
+            &["0.1".to_string()],
+            &PathBuf::from("/tmp"),
+        )
+        .await
+        .expect("spawn should succeed");
+
+        // Process ID should be available
+        assert!(runner.id().is_some());
+
+        // Drain output and wait
+        while runner.next_output().await.is_some() {}
+        let status = runner.wait().await.expect("wait should succeed");
+        assert!(status.success());
+    }
+
+    #[tokio::test]
+    async fn test_nonexistent_command_fails() {
+        let result = ClaudeRunner::spawn(
+            "/nonexistent/command",
+            &[],
+            &PathBuf::from("/tmp"),
+        )
+        .await;
+
+        assert!(result.is_err());
+    }
+}

@@ -10,27 +10,28 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 ## Current Position
 
 Phase: 2 of 8 (Subprocess Management)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-01-17 — Phase 1 verified and complete
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-01-17 — Completed 02-01-PLAN.md
 
-Progress: [█░░░░░░░░░] 13%
+Progress: [██░░░░░░░░] 17%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 3
-- Average duration: 8m
-- Total execution time: 0.37 hours
+- Total plans completed: 4
+- Average duration: 7m
+- Total execution time: 0.43 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 3/3 | 22m 5s | 7m 22s |
+| 02-subprocess-management | 1/2 | 3m 38s | 3m 38s |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (7m), 01-03 (12m), 01-02 (3m)
+- Last 5 plans: 01-01 (7m), 01-03 (12m), 01-02 (3m), 02-01 (4m)
 - Trend: Improving
 
 *Updated after each plan completion*
@@ -46,6 +47,8 @@ Recent decisions affecting current work:
 - **TABLE-HEAD-CLEAR**: Must clear table_row on End(TableHead) to avoid mixing header and data cells
 - **TASK-MARKER-PRIORITY**: Check current_task_checked before in_list_item in text handler
 - **CLI-VALUE-SOURCE**: Use clap value_source() to distinguish explicit CLI values from defaults
+- **TOKIO-UTIL-NO-SYNC**: tokio-util does not have a sync feature, CancellationToken is in base crate
+- **EOF-STATE-STRUCT**: Track stdout_done/stderr_done in struct, not local to next_output()
 
 ### Pending Todos
 
@@ -57,6 +60,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-17 22:00 UTC
-Stopped at: Phase 1 complete, verified 5/5 must-haves
+Last session: 2026-01-17 22:57 UTC
+Stopped at: Completed 02-01-PLAN.md (subprocess spawning and streaming)
 Resume file: None

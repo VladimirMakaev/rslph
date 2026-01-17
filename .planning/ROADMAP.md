@@ -50,11 +50,11 @@ Plans:
   3. Ctrl+C gracefully terminates Claude and saves current state
   4. Stuck Claude invocations timeout after configurable duration
   5. No zombie processes accumulate across iterations
-**Plans**: TBD
+**Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 02-01: Subprocess spawning and streaming
-- [ ] 02-02: Signal handling and timeout management
+- [ ] 02-01-PLAN.md — Subprocess spawning and streaming (ClaudeRunner struct, piped I/O, concurrent stream reading) [Wave 1]
+- [ ] 02-02-PLAN.md — Signal handling and timeout management (CancellationToken, graceful shutdown, timeout) [Wave 2, depends on 02-01]
 
 ### Phase 3: Planning Command
 **Goal**: `rslph plan` transforms ideas into structured progress files, with optional adaptive mode for vague inputs
@@ -161,8 +161,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 3/3 | Complete ✓ | 2026-01-17 |
-| 2. Subprocess Management | 0/2 | Not started | - |
+| 1. Foundation | 3/3 | Complete | 2026-01-17 |
+| 2. Subprocess Management | 0/2 | Planned | - |
 | 3. Planning Command | 0/2 | Not started | - |
 | 4. Core Build Loop | 0/3 | Not started | - |
 | 5. VCS Integration | 0/1 | Not started | - |

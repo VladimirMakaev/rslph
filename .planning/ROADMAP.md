@@ -66,11 +66,11 @@ Plans:
   3. Adaptive mode (`--adaptive`) detects vagueness and asks clarifying questions
   4. Project stack is auto-detected and testing strategy included in output
   5. PROMPT_plan is baked into binary but can be overridden via config
-**Plans**: TBD
+**Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 03-01: Basic planning mode (prompt + progress file generation)
-- [ ] 03-02: Adaptive mode (vagueness detection, personas, stack detection)
+- [ ] 03-01-PLAN.md — Basic planning mode (prompt system, stack detection, Claude execution) [Wave 1]
+- [ ] 03-02-PLAN.md — Adaptive mode (vagueness detection, personas, multi-turn conversation) [Wave 2, depends on 03-01]
 
 ### Phase 4: Core Build Loop
 **Goal**: `rslph build` executes tasks iteratively with fresh context, completion detection, and configurable limits
@@ -163,7 +163,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | Complete | 2026-01-17 |
 | 2. Subprocess Management | 2/2 | Complete | 2026-01-17 |
-| 3. Planning Command | 0/2 | Not started | - |
+| 3. Planning Command | 0/2 | Planned | - |
 | 4. Core Build Loop | 0/3 | Not started | - |
 | 5. VCS Integration | 0/1 | Not started | - |
 | 6. TUI Interface | 0/4 | Not started | - |

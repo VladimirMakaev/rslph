@@ -1,9 +1,13 @@
 use std::path::Path;
 use std::process::Stdio;
+use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, BufReader, Lines};
 use tokio::process::{Child, ChildStderr, ChildStdout, Command};
+use tokio::time::{sleep, timeout};
+use tokio_util::sync::CancellationToken;
 
 use super::OutputLine;
+use crate::error::RslphError;
 
 pub struct ClaudeRunner {
     child: Child,
@@ -94,6 +98,102 @@ impl ClaudeRunner {
     /// Wait for the process to complete.
     pub async fn wait(&mut self) -> std::io::Result<std::process::ExitStatus> {
         self.child.wait().await
+    }
+
+    /// Gracefully terminate the process with SIGTERM, then SIGKILL after grace period.
+    ///
+    /// Sends SIGTERM to the process group (to catch any children), waits for the
+    /// grace period, then sends SIGKILL if still running. Always reaps the child
+    /// to prevent zombie processes.
+    pub async fn terminate_gracefully(&mut self, grace_period: Duration) -> std::io::Result<()> {
+        #[cfg(unix)]
+        if let Some(id) = self.child.id() {
+            use nix::sys::signal::{kill, Signal};
+            use nix::unistd::Pid;
+
+            // Send SIGTERM to process group (negative PID)
+            let _ = kill(Pid::from_raw(-(id as i32)), Signal::SIGTERM);
+
+            // Wait for graceful exit or timeout
+            tokio::select! {
+                result = self.child.wait() => {
+                    return result.map(|_| ());
+                }
+                _ = sleep(grace_period) => {
+                    // Grace period expired, force kill
+                }
+            }
+        }
+
+        // Force kill if still running
+        self.child.kill().await?;
+        // Reap to prevent zombie
+        let _ = self.child.wait().await;
+        Ok(())
+    }
+
+    /// Immediately kill the process and reap it.
+    pub async fn kill(&mut self) -> std::io::Result<()> {
+        self.child.kill().await?;
+        // Reap to prevent zombie
+        let _ = self.child.wait().await;
+        Ok(())
+    }
+
+    /// Run to completion, respecting the cancellation token.
+    ///
+    /// Collects all output until the process finishes or cancellation is requested.
+    /// On cancellation, gracefully terminates the process and returns Cancelled error.
+    pub async fn run_to_completion(
+        &mut self,
+        cancel_token: CancellationToken,
+    ) -> Result<Vec<OutputLine>, RslphError> {
+        let mut output = Vec::new();
+
+        loop {
+            tokio::select! {
+                biased;
+
+                _ = cancel_token.cancelled() => {
+                    // User requested cancellation (Ctrl+C)
+                    self.terminate_gracefully(Duration::from_secs(5)).await
+                        .map_err(|e| RslphError::Subprocess(e.to_string()))?;
+                    return Err(RslphError::Cancelled);
+                }
+
+                line = self.next_output() => {
+                    match line {
+                        Some(l) => output.push(l),
+                        None => break, // Process finished
+                    }
+                }
+            }
+        }
+
+        // Reap child to prevent zombie
+        let _ = self.child.wait().await;
+        Ok(output)
+    }
+
+    /// Run with a maximum duration, terminating if the timeout is exceeded.
+    ///
+    /// Wraps `run_to_completion` with a timeout. If the process takes longer than
+    /// `max_duration`, it is gracefully terminated and a Timeout error is returned.
+    pub async fn run_with_timeout(
+        &mut self,
+        max_duration: Duration,
+        cancel_token: CancellationToken,
+    ) -> Result<Vec<OutputLine>, RslphError> {
+        match timeout(max_duration, self.run_to_completion(cancel_token)).await {
+            Ok(result) => result,
+            Err(_elapsed) => {
+                // Timeout - terminate the process
+                self.terminate_gracefully(Duration::from_secs(5))
+                    .await
+                    .map_err(|e| RslphError::Subprocess(e.to_string()))?;
+                Err(RslphError::Timeout(max_duration.as_secs()))
+            }
+        }
     }
 }
 

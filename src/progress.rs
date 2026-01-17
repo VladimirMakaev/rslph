@@ -114,8 +114,9 @@ impl ProgressFile {
         let mut section_text = String::new();
         let mut current_task_checked: Option<bool> = None;
         let mut current_phase_tasks: Vec<Task> = Vec::new();
-        let mut in_table = false;
+        let mut in_table_cell = false;
         let mut table_row: Vec<String> = Vec::new();
+        let mut cell_text = String::new();
         let mut in_list_item = false;
         let mut list_item_text = String::new();
 
@@ -182,8 +183,8 @@ impl ProgressFile {
                         }
                     } else if in_list_item {
                         list_item_text.push_str(&text);
-                    } else if in_table {
-                        table_row.push(text.trim().to_string());
+                    } else if in_table_cell {
+                        cell_text.push_str(&text);
                     } else {
                         section_text.push_str(&text);
                         section_text.push('\n');
@@ -243,11 +244,20 @@ impl ProgressFile {
                     }
                     list_item_text.clear();
                 }
-                Event::Start(Tag::Table(_)) => {
-                    in_table = true;
+                Event::Start(Tag::Table(_)) | Event::End(TagEnd::Table) => {
+                    // Table boundaries handled via cell/row events
                 }
-                Event::End(TagEnd::Table) => {
-                    in_table = false;
+                Event::End(TagEnd::TableHead) => {
+                    // Clear header row, we don't need it
+                    table_row.clear();
+                }
+                Event::Start(Tag::TableCell) => {
+                    in_table_cell = true;
+                    cell_text.clear();
+                }
+                Event::End(TagEnd::TableCell) => {
+                    in_table_cell = false;
+                    table_row.push(cell_text.trim().to_string());
                 }
                 Event::End(TagEnd::TableRow) => {
                     // Parse iteration log row
@@ -429,7 +439,6 @@ Some analysis notes here.
     }
 
     #[test]
-    #[ignore = "Parser bug: Testing Strategy section not parsed - fix in progress module plan"]
     fn test_parse_basic_sections() {
         let pf = ProgressFile::parse(SAMPLE_PROGRESS).expect("Should parse");
 
@@ -451,7 +460,6 @@ Some analysis notes here.
     }
 
     #[test]
-    #[ignore = "Parser bug: Iteration Log table not parsed - fix in progress module plan"]
     fn test_parse_iteration_log() {
         let pf = ProgressFile::parse(SAMPLE_PROGRESS).expect("Should parse");
 

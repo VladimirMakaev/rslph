@@ -209,10 +209,10 @@
 | PROG-05 | Phase 1 | Complete |
 | PROG-06 | Phase 1 | Complete |
 | PROG-07 | Phase 1 | Complete |
-| PROC-01 | Phase 2 | Pending |
-| PROC-02 | Phase 2 | Pending |
-| PROC-03 | Phase 2 | Pending |
-| PROC-04 | Phase 2 | Pending |
+| PROC-01 | Phase 2 | Complete |
+| PROC-02 | Phase 2 | Complete |
+| PROC-03 | Phase 2 | Complete |
+| PROC-04 | Phase 2 | Complete |
 
 **Coverage:**
 - v1 requirements: 54 total

@@ -12,7 +12,7 @@ Build rslph from foundation to polished CLI/TUI in 8 phases. Start with configur
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Foundation** - Config loading, CLI skeleton, progress file format
+- [x] **Phase 1: Foundation** - Config loading, CLI skeleton, progress file format
 - [ ] **Phase 2: Subprocess Management** - Claude CLI spawning, streaming output, process control
 - [ ] **Phase 3: Planning Command** - `rslph plan` with basic and adaptive modes
 - [ ] **Phase 4: Core Build Loop** - Iteration logic, completion detection, fresh context
@@ -36,9 +36,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 3 plans in 2 waves
 
 Plans:
-- [ ] 01-01-PLAN.md — Config system (TOML loading, defaults, validation) [Wave 1]
-- [ ] 01-02-PLAN.md — CLI parser (clap, subcommands, argument merging) [Wave 2, depends on 01-01]
-- [ ] 01-03-PLAN.md — Progress file parser/writer (markdown format, atomic writes) [Wave 1]
+- [x] 01-01-PLAN.md — Config system (TOML loading, defaults, validation) [Wave 1]
+- [x] 01-02-PLAN.md — CLI parser (clap, subcommands, argument merging) [Wave 2, depends on 01-01]
+- [x] 01-03-PLAN.md — Progress file parser/writer (markdown format, atomic writes) [Wave 1]
 
 ### Phase 2: Subprocess Management
 **Goal**: Claude CLI can be spawned, output streamed in real-time, and process lifecycle managed safely
@@ -161,7 +161,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/3 | Planned | - |
+| 1. Foundation | 3/3 | Complete ✓ | 2026-01-17 |
 | 2. Subprocess Management | 0/2 | Not started | - |
 | 3. Planning Command | 0/2 | Not started | - |
 | 4. Core Build Loop | 0/3 | Not started | - |

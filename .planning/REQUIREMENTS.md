@@ -150,8 +150,8 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CMD-01 | Phase 1 | Pending |
-| CMD-02 | Phase 1 | Pending |
+| CMD-01 | Phase 1 | Complete |
+| CMD-02 | Phase 1 | Complete |
 | CMD-03 | Phase 3 | Pending |
 | CMD-04 | Phase 3 | Pending |
 | LOOP-01 | Phase 4 | Pending |
@@ -176,14 +176,14 @@
 | TUI-08 | Phase 6 | Pending |
 | TUI-09 | Phase 6 | Pending |
 | TUI-10 | Phase 6 | Pending |
-| CFG-01 | Phase 1 | Pending |
-| CFG-02 | Phase 1 | Pending |
-| CFG-03 | Phase 1 | Pending |
-| CFG-04 | Phase 1 | Pending |
-| CFG-05 | Phase 1 | Pending |
-| CFG-06 | Phase 1 | Pending |
-| CFG-07 | Phase 1 | Pending |
-| CFG-08 | Phase 1 | Pending |
+| CFG-01 | Phase 1 | Complete |
+| CFG-02 | Phase 1 | Complete |
+| CFG-03 | Phase 1 | Complete |
+| CFG-04 | Phase 1 | Complete |
+| CFG-05 | Phase 1 | Complete |
+| CFG-06 | Phase 1 | Complete |
+| CFG-07 | Phase 1 | Complete |
+| CFG-08 | Phase 1 | Complete |
 | PROMPT-01 | Phase 3 | Pending |
 | PROMPT-02 | Phase 3 | Pending |
 | PROMPT-03 | Phase 4 | Pending |
@@ -202,13 +202,13 @@
 | VERIF-01 | Phase 7 | Pending |
 | VERIF-02 | Phase 7 | Pending |
 | VERIF-03 | Phase 7 | Pending |
-| PROG-01 | Phase 1 | Pending |
-| PROG-02 | Phase 1 | Pending |
-| PROG-03 | Phase 1 | Pending |
-| PROG-04 | Phase 1 | Pending |
-| PROG-05 | Phase 1 | Pending |
-| PROG-06 | Phase 1 | Pending |
-| PROG-07 | Phase 1 | Pending |
+| PROG-01 | Phase 1 | Complete |
+| PROG-02 | Phase 1 | Complete |
+| PROG-03 | Phase 1 | Complete |
+| PROG-04 | Phase 1 | Complete |
+| PROG-05 | Phase 1 | Complete |
+| PROG-06 | Phase 1 | Complete |
+| PROG-07 | Phase 1 | Complete |
 | PROC-01 | Phase 2 | Pending |
 | PROC-02 | Phase 2 | Pending |
 | PROC-03 | Phase 2 | Pending |

@@ -150,75 +150,75 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CMD-01 | Phase ? | Pending |
-| CMD-02 | Phase ? | Pending |
-| CMD-03 | Phase ? | Pending |
-| CMD-04 | Phase ? | Pending |
-| LOOP-01 | Phase ? | Pending |
-| LOOP-02 | Phase ? | Pending |
-| LOOP-03 | Phase ? | Pending |
-| LOOP-04 | Phase ? | Pending |
-| LOOP-05 | Phase ? | Pending |
-| LOOP-06 | Phase ? | Pending |
-| LOOP-07 | Phase ? | Pending |
-| LOOP-08 | Phase ? | Pending |
-| LOOP-09 | Phase ? | Pending |
-| VCS-01 | Phase ? | Pending |
-| VCS-02 | Phase ? | Pending |
-| VCS-03 | Phase ? | Pending |
-| TUI-01 | Phase ? | Pending |
-| TUI-02 | Phase ? | Pending |
-| TUI-03 | Phase ? | Pending |
-| TUI-04 | Phase ? | Pending |
-| TUI-05 | Phase ? | Pending |
-| TUI-06 | Phase ? | Pending |
-| TUI-07 | Phase ? | Pending |
-| TUI-08 | Phase ? | Pending |
-| TUI-09 | Phase ? | Pending |
-| TUI-10 | Phase ? | Pending |
-| CFG-01 | Phase ? | Pending |
-| CFG-02 | Phase ? | Pending |
-| CFG-03 | Phase ? | Pending |
-| CFG-04 | Phase ? | Pending |
-| CFG-05 | Phase ? | Pending |
-| CFG-06 | Phase ? | Pending |
-| CFG-07 | Phase ? | Pending |
-| CFG-08 | Phase ? | Pending |
-| PROMPT-01 | Phase ? | Pending |
-| PROMPT-02 | Phase ? | Pending |
-| PROMPT-03 | Phase ? | Pending |
-| PROMPT-04 | Phase ? | Pending |
-| NOTIF-01 | Phase ? | Pending |
-| NOTIF-02 | Phase ? | Pending |
-| NOTIF-03 | Phase ? | Pending |
-| NOTIF-04 | Phase ? | Pending |
-| NOTIF-05 | Phase ? | Pending |
-| PLAN-01 | Phase ? | Pending |
-| PLAN-02 | Phase ? | Pending |
-| PLAN-03 | Phase ? | Pending |
-| PLAN-04 | Phase ? | Pending |
-| PLAN-05 | Phase ? | Pending |
-| PLAN-06 | Phase ? | Pending |
-| VERIF-01 | Phase ? | Pending |
-| VERIF-02 | Phase ? | Pending |
-| VERIF-03 | Phase ? | Pending |
-| PROG-01 | Phase ? | Pending |
-| PROG-02 | Phase ? | Pending |
-| PROG-03 | Phase ? | Pending |
-| PROG-04 | Phase ? | Pending |
-| PROG-05 | Phase ? | Pending |
-| PROG-06 | Phase ? | Pending |
-| PROG-07 | Phase ? | Pending |
-| PROC-01 | Phase ? | Pending |
-| PROC-02 | Phase ? | Pending |
-| PROC-03 | Phase ? | Pending |
-| PROC-04 | Phase ? | Pending |
+| CMD-01 | Phase 1 | Pending |
+| CMD-02 | Phase 1 | Pending |
+| CMD-03 | Phase 3 | Pending |
+| CMD-04 | Phase 3 | Pending |
+| LOOP-01 | Phase 4 | Pending |
+| LOOP-02 | Phase 4 | Pending |
+| LOOP-03 | Phase 4 | Pending |
+| LOOP-04 | Phase 4 | Pending |
+| LOOP-05 | Phase 4 | Pending |
+| LOOP-06 | Phase 4 | Pending |
+| LOOP-07 | Phase 4 | Pending |
+| LOOP-08 | Phase 4 | Pending |
+| LOOP-09 | Phase 4 | Pending |
+| VCS-01 | Phase 5 | Pending |
+| VCS-02 | Phase 5 | Pending |
+| VCS-03 | Phase 5 | Pending |
+| TUI-01 | Phase 6 | Pending |
+| TUI-02 | Phase 6 | Pending |
+| TUI-03 | Phase 6 | Pending |
+| TUI-04 | Phase 6 | Pending |
+| TUI-05 | Phase 6 | Pending |
+| TUI-06 | Phase 6 | Pending |
+| TUI-07 | Phase 6 | Pending |
+| TUI-08 | Phase 6 | Pending |
+| TUI-09 | Phase 6 | Pending |
+| TUI-10 | Phase 6 | Pending |
+| CFG-01 | Phase 1 | Pending |
+| CFG-02 | Phase 1 | Pending |
+| CFG-03 | Phase 1 | Pending |
+| CFG-04 | Phase 1 | Pending |
+| CFG-05 | Phase 1 | Pending |
+| CFG-06 | Phase 1 | Pending |
+| CFG-07 | Phase 1 | Pending |
+| CFG-08 | Phase 1 | Pending |
+| PROMPT-01 | Phase 3 | Pending |
+| PROMPT-02 | Phase 3 | Pending |
+| PROMPT-03 | Phase 4 | Pending |
+| PROMPT-04 | Phase 8 | Pending |
+| NOTIF-01 | Phase 8 | Pending |
+| NOTIF-02 | Phase 8 | Pending |
+| NOTIF-03 | Phase 8 | Pending |
+| NOTIF-04 | Phase 8 | Pending |
+| NOTIF-05 | Phase 8 | Pending |
+| PLAN-01 | Phase 3 | Pending |
+| PLAN-02 | Phase 3 | Pending |
+| PLAN-03 | Phase 3 | Pending |
+| PLAN-04 | Phase 3 | Pending |
+| PLAN-05 | Phase 3 | Pending |
+| PLAN-06 | Phase 3 | Pending |
+| VERIF-01 | Phase 7 | Pending |
+| VERIF-02 | Phase 7 | Pending |
+| VERIF-03 | Phase 7 | Pending |
+| PROG-01 | Phase 1 | Pending |
+| PROG-02 | Phase 1 | Pending |
+| PROG-03 | Phase 1 | Pending |
+| PROG-04 | Phase 1 | Pending |
+| PROG-05 | Phase 1 | Pending |
+| PROG-06 | Phase 1 | Pending |
+| PROG-07 | Phase 1 | Pending |
+| PROC-01 | Phase 2 | Pending |
+| PROC-02 | Phase 2 | Pending |
+| PROC-03 | Phase 2 | Pending |
+| PROC-04 | Phase 2 | Pending |
 
 **Coverage:**
 - v1 requirements: 54 total
-- Mapped to phases: 0
-- Unmapped: 54 ⚠️
+- Mapped to phases: 54
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-17*
-*Last updated: 2026-01-17 after initial definition*
+*Last updated: 2026-01-17 after roadmap creation*

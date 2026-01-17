@@ -33,12 +33,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. CLI arguments override config file values (precedence works correctly)
   4. Progress file with all sections (status, analysis, tasks, testing, attempts, log) can be parsed and written
   5. Progress file writes are atomic (crash-safe via temp file + rename)
-**Plans**: TBD
+**Plans**: 3 plans in 2 waves
 
 Plans:
-- [ ] 01-01: Config system (TOML loading, defaults, validation)
-- [ ] 01-02: CLI parser (clap, subcommands, argument merging)
-- [ ] 01-03: Progress file parser/writer (markdown format, atomic writes)
+- [ ] 01-01-PLAN.md — Config system (TOML loading, defaults, validation) [Wave 1]
+- [ ] 01-02-PLAN.md — CLI parser (clap, subcommands, argument merging) [Wave 2, depends on 01-01]
+- [ ] 01-03-PLAN.md — Progress file parser/writer (markdown format, atomic writes) [Wave 1]
 
 ### Phase 2: Subprocess Management
 **Goal**: Claude CLI can be spawned, output streamed in real-time, and process lifecycle managed safely
@@ -161,7 +161,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/3 | Not started | - |
+| 1. Foundation | 0/3 | Planned | - |
 | 2. Subprocess Management | 0/2 | Not started | - |
 | 3. Planning Command | 0/2 | Not started | - |
 | 4. Core Build Loop | 0/3 | Not started | - |

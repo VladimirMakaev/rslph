@@ -1,5 +1,10 @@
+use directories::ProjectDirs;
+use figment::{
+    providers::{Env, Format, Serialized, Toml},
+    Figment,
+};
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields)]
@@ -40,9 +45,87 @@ impl Default for Config {
     }
 }
 
+impl Config {
+    /// Get the default config file path (XDG-compliant)
+    pub fn default_path() -> Option<PathBuf> {
+        ProjectDirs::from("", "", "rslph").map(|dirs| dirs.config_dir().join("config.toml"))
+    }
+
+    /// Load config from file and environment (CFG-01)
+    /// Precedence: defaults < config file < environment
+    /// CLI args are merged by the caller (Plan 01-02)
+    pub fn load(config_path: Option<&Path>) -> color_eyre::Result<Self> {
+        let path = config_path.map(PathBuf::from).or_else(Self::default_path);
+
+        let mut figment = Figment::new().merge(Serialized::defaults(Config::default()));
+
+        // Only merge file if it exists (handle first-run gracefully)
+        if let Some(ref p) = path {
+            if p.exists() {
+                figment = figment.merge(Toml::file(p));
+            }
+        }
+
+        // Environment variables with RSLPH_ prefix (lowercase, no split for flat config)
+        figment = figment.merge(Env::prefixed("RSLPH_").lowercase(true));
+
+        let config: Config = figment.extract()?;
+        Ok(config)
+    }
+
+    /// Load config with explicit CLI overrides merged last
+    /// This is the main entry point used by the CLI
+    pub fn load_with_overrides(
+        config_path: Option<&Path>,
+        overrides: PartialConfig,
+    ) -> color_eyre::Result<Self> {
+        let path = config_path.map(PathBuf::from).or_else(Self::default_path);
+
+        let mut figment = Figment::new().merge(Serialized::defaults(Config::default()));
+
+        if let Some(ref p) = path {
+            if p.exists() {
+                figment = figment.merge(Toml::file(p));
+            }
+        }
+
+        // Environment variables with RSLPH_ prefix (lowercase, no split for flat config)
+        figment = figment.merge(Env::prefixed("RSLPH_").lowercase(true));
+
+        // CLI overrides are highest precedence
+        figment = figment.merge(Serialized::defaults(overrides));
+
+        let config: Config = figment.extract()?;
+        Ok(config)
+    }
+}
+
+/// Partial config for CLI overrides (only set fields are merged)
+#[derive(Debug, Default, Serialize)]
+pub struct PartialConfig {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub claude_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_iterations: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recent_threads: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notify_interval: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plan_prompt: Option<PathBuf>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub build_prompt: Option<PathBuf>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub notify_shell: Option<String>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Mutex;
+
+    // Mutex to serialize tests that use environment variables
+    static ENV_MUTEX: Mutex<()> = Mutex::new(());
 
     #[test]
     fn test_default_config() {
@@ -54,5 +137,46 @@ mod tests {
         assert!(config.plan_prompt.is_none());
         assert!(config.build_prompt.is_none());
         assert_eq!(config.notify_shell, "/bin/sh");
+    }
+
+    #[test]
+    fn test_load_missing_file_uses_defaults() {
+        let _guard = ENV_MUTEX.lock().unwrap();
+        // Ensure env var is not set
+        std::env::remove_var("RSLPH_MAX_ITERATIONS");
+        let config = Config::load(Some(Path::new("/nonexistent/config.toml")))
+            .expect("Should use defaults when file missing");
+        assert_eq!(config.max_iterations, 20);
+    }
+
+    #[test]
+    fn test_env_override() {
+        let _guard = ENV_MUTEX.lock().unwrap();
+        std::env::set_var("RSLPH_MAX_ITERATIONS", "50");
+        let config = Config::load(None).expect("Should load");
+        assert_eq!(config.max_iterations, 50);
+        std::env::remove_var("RSLPH_MAX_ITERATIONS");
+    }
+
+    #[test]
+    fn test_default_path_is_xdg_compliant() {
+        let path = Config::default_path();
+        assert!(path.is_some());
+        let path = path.unwrap();
+        // Should end with rslph/config.toml
+        assert!(path.ends_with("rslph/config.toml"));
+    }
+
+    #[test]
+    fn test_cli_overrides_highest() {
+        let _guard = ENV_MUTEX.lock().unwrap();
+        std::env::set_var("RSLPH_MAX_ITERATIONS", "50");
+        let overrides = PartialConfig {
+            max_iterations: Some(100),
+            ..Default::default()
+        };
+        let config = Config::load_with_overrides(None, overrides).expect("Should load");
+        assert_eq!(config.max_iterations, 100); // CLI wins over env
+        std::env::remove_var("RSLPH_MAX_ITERATIONS");
     }
 }

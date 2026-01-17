@@ -328,4 +328,179 @@ mod tests {
 
         assert!(result.is_err());
     }
+
+    #[tokio::test]
+    async fn test_terminate_gracefully_on_sleeping_process() {
+        let mut runner = ClaudeRunner::spawn(
+            "/bin/sleep",
+            &["60".to_string()],
+            &PathBuf::from("/tmp"),
+        )
+        .await
+        .expect("spawn should succeed");
+
+        let pid = runner.id().expect("should have PID");
+
+        // Terminate with 1 second grace period - should complete quickly
+        let start = std::time::Instant::now();
+        runner
+            .terminate_gracefully(Duration::from_secs(1))
+            .await
+            .expect("terminate should succeed");
+        let elapsed = start.elapsed();
+
+        // Should complete within 2 seconds (grace period + some buffer)
+        assert!(
+            elapsed < Duration::from_secs(2),
+            "Should terminate within 2 seconds, took {:?}",
+            elapsed
+        );
+
+        // Verify process is no longer running by checking if we can signal it
+        #[cfg(unix)]
+        {
+            use nix::sys::signal::{kill, Signal};
+            use nix::unistd::Pid;
+
+            let result = kill(Pid::from_raw(pid as i32), Signal::SIGCONT);
+            assert!(
+                result.is_err(),
+                "Process should no longer be running after termination"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_run_with_timeout_expires() {
+        let mut runner = ClaudeRunner::spawn(
+            "/bin/sleep",
+            &["60".to_string()],
+            &PathBuf::from("/tmp"),
+        )
+        .await
+        .expect("spawn should succeed");
+
+        let token = CancellationToken::new();
+        let result = runner
+            .run_with_timeout(Duration::from_millis(100), token)
+            .await;
+
+        assert!(matches!(result, Err(RslphError::Timeout(_))));
+    }
+
+    #[tokio::test]
+    async fn test_run_with_timeout_completes_before_timeout() {
+        let mut runner = ClaudeRunner::spawn(
+            "/bin/echo",
+            &["test".to_string()],
+            &PathBuf::from("/tmp"),
+        )
+        .await
+        .expect("spawn should succeed");
+
+        let token = CancellationToken::new();
+        let result = runner
+            .run_with_timeout(Duration::from_secs(10), token)
+            .await;
+
+        assert!(result.is_ok());
+        let output = result.unwrap();
+        assert_eq!(output.len(), 1);
+        assert_eq!(output[0], OutputLine::Stdout("test".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_cancellation_token_stops_execution() {
+        let mut runner = ClaudeRunner::spawn(
+            "/bin/sleep",
+            &["60".to_string()],
+            &PathBuf::from("/tmp"),
+        )
+        .await
+        .expect("spawn should succeed");
+
+        let token = CancellationToken::new();
+        let token_clone = token.clone();
+
+        // Cancel after 100ms
+        tokio::spawn(async move {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            token_clone.cancel();
+        });
+
+        let result = runner.run_to_completion(token).await;
+        assert!(matches!(result, Err(RslphError::Cancelled)));
+    }
+
+    #[tokio::test]
+    async fn test_no_zombie_after_termination() {
+        let mut runner = ClaudeRunner::spawn(
+            "/bin/sh",
+            &["-c".to_string(), "sleep 60".to_string()],
+            &PathBuf::from("/tmp"),
+        )
+        .await
+        .expect("spawn should succeed");
+
+        let pid = runner.id().expect("should have PID");
+
+        // Terminate the process
+        runner
+            .terminate_gracefully(Duration::from_secs(1))
+            .await
+            .expect("terminate should succeed");
+
+        // Give system a moment to clean up
+        tokio::time::sleep(Duration::from_millis(100)).await;
+
+        // Verify no zombie - process should not exist at all
+        #[cfg(unix)]
+        {
+            use nix::sys::signal::{kill, Signal};
+            use nix::unistd::Pid;
+
+            // SIGCONT (0 on some systems) is used to check process existence without affecting it
+            let result = kill(Pid::from_raw(pid as i32), Signal::SIGCONT);
+            assert!(
+                result.is_err(),
+                "Process {} should not exist after termination (was properly reaped)",
+                pid
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_kill_immediately_terminates() {
+        let mut runner = ClaudeRunner::spawn(
+            "/bin/sleep",
+            &["60".to_string()],
+            &PathBuf::from("/tmp"),
+        )
+        .await
+        .expect("spawn should succeed");
+
+        let pid = runner.id().expect("should have PID");
+
+        // Kill immediately
+        let start = std::time::Instant::now();
+        runner.kill().await.expect("kill should succeed");
+        let elapsed = start.elapsed();
+
+        // Should be very fast (no grace period)
+        assert!(
+            elapsed < Duration::from_millis(500),
+            "Kill should be immediate, took {:?}",
+            elapsed
+        );
+
+        // Verify process is gone
+        #[cfg(unix)]
+        {
+            use nix::sys::signal::{kill, Signal};
+            use nix::unistd::Pid;
+
+            let result = kill(Pid::from_raw(pid as i32), Signal::SIGCONT);
+            assert!(result.is_err(), "Process should not exist after kill");
+        }
+    }
 }

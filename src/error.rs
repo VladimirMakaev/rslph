@@ -10,4 +10,13 @@ pub enum RslphError {
 
     #[error("Progress file parse error: {0}")]
     ProgressParse(String),
+
+    #[error("Subprocess error: {0}")]
+    Subprocess(String),
+
+    #[error("Process timeout after {0} seconds")]
+    Timeout(u64),
+
+    #[error("Process cancelled by user")]
+    Cancelled,
 }

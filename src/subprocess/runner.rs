@@ -9,6 +9,8 @@ pub struct ClaudeRunner {
     child: Child,
     stdout: Lines<BufReader<ChildStdout>>,
     stderr: Lines<BufReader<ChildStderr>>,
+    stdout_done: bool,
+    stderr_done: bool,
 }
 
 impl ClaudeRunner {
@@ -38,6 +40,8 @@ impl ClaudeRunner {
             child,
             stdout: BufReader::new(stdout).lines(),
             stderr: BufReader::new(stderr).lines(),
+            stdout_done: false,
+            stderr_done: false,
         })
     }
 
@@ -46,38 +50,34 @@ impl ClaudeRunner {
     /// Returns `Some(OutputLine)` for each line, or `None` when both streams
     /// are exhausted (process has finished and closed both streams).
     pub async fn next_output(&mut self) -> Option<OutputLine> {
-        // Track which streams have reached EOF
-        let mut stdout_done = false;
-        let mut stderr_done = false;
-
         loop {
-            if stdout_done && stderr_done {
+            if self.stdout_done && self.stderr_done {
                 return None;
             }
 
             tokio::select! {
-                result = self.stdout.next_line(), if !stdout_done => {
+                result = self.stdout.next_line(), if !self.stdout_done => {
                     match result {
                         Ok(Some(line)) => return Some(OutputLine::Stdout(line)),
                         Ok(None) => {
-                            stdout_done = true;
+                            self.stdout_done = true;
                             // Continue to try stderr
                         }
                         Err(_) => {
-                            stdout_done = true;
+                            self.stdout_done = true;
                             // Continue to try stderr
                         }
                     }
                 }
-                result = self.stderr.next_line(), if !stderr_done => {
+                result = self.stderr.next_line(), if !self.stderr_done => {
                     match result {
                         Ok(Some(line)) => return Some(OutputLine::Stderr(line)),
                         Ok(None) => {
-                            stderr_done = true;
+                            self.stderr_done = true;
                             // Continue to try stdout
                         }
                         Err(_) => {
-                            stderr_done = true;
+                            self.stderr_done = true;
                             // Continue to try stdout
                         }
                     }

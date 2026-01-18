@@ -5,4 +5,5 @@
 mod defaults;
 mod loader;
 
+pub use loader::get_build_prompt;
 pub use loader::get_plan_prompt;

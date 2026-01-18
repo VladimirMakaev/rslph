@@ -5,6 +5,27 @@ use figment::{
 };
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::process::Command;
+
+/// Resolve a command name to absolute path using `which`.
+/// Returns original path if resolution fails (graceful fallback).
+fn resolve_command_path(command: &str) -> String {
+    // Already absolute - no resolution needed
+    if Path::new(command).is_absolute() {
+        return command.to_string();
+    }
+
+    // Try which to find absolute path
+    Command::new("which")
+        .arg(command)
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| command.to_string())
+}
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields)]
@@ -69,7 +90,8 @@ impl Config {
         // Environment variables with RSLPH_ prefix (lowercase, no split for flat config)
         figment = figment.merge(Env::prefixed("RSLPH_").lowercase(true));
 
-        let config: Config = figment.extract()?;
+        let mut config: Config = figment.extract()?;
+        config.claude_path = resolve_command_path(&config.claude_path);
         Ok(config)
     }
 
@@ -95,7 +117,8 @@ impl Config {
         // CLI overrides are highest precedence
         figment = figment.merge(Serialized::defaults(overrides));
 
-        let config: Config = figment.extract()?;
+        let mut config: Config = figment.extract()?;
+        config.claude_path = resolve_command_path(&config.claude_path);
         Ok(config)
     }
 }
@@ -178,5 +201,28 @@ mod tests {
         let config = Config::load_with_overrides(None, overrides).expect("Should load");
         assert_eq!(config.max_iterations, 100); // CLI wins over env
         std::env::remove_var("RSLPH_MAX_ITERATIONS");
+    }
+
+    #[test]
+    fn test_resolve_command_path_absolute_unchanged() {
+        // Absolute paths should be returned unchanged
+        let result = resolve_command_path("/bin/echo");
+        assert_eq!(result, "/bin/echo");
+    }
+
+    #[test]
+    fn test_resolve_command_path_relative_resolved() {
+        // Relative command names should be resolved to absolute path
+        let result = resolve_command_path("echo");
+        // Should resolve to an absolute path containing "echo"
+        assert!(result.starts_with('/'), "Expected absolute path, got: {}", result);
+        assert!(result.ends_with("echo"), "Expected path ending in echo, got: {}", result);
+    }
+
+    #[test]
+    fn test_resolve_command_path_nonexistent_fallback() {
+        // Non-existent commands should fall back to original value
+        let result = resolve_command_path("nonexistent_command_xyz_12345");
+        assert_eq!(result, "nonexistent_command_xyz_12345");
     }
 }

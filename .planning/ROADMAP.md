@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Foundation** - Config loading, CLI skeleton, progress file format
 - [x] **Phase 2: Subprocess Management** - Claude CLI spawning, streaming output, process control
 - [x] **Phase 3: Planning Command** - `rslph plan` with basic and adaptive modes
-- [x] **Phase 4: Core Build Loop** - Iteration logic, completion detection, fresh context
+- [ ] **Phase 4: Core Build Loop** - Iteration logic, completion detection, fresh context
 - [ ] **Phase 5: VCS Integration** - Git and Sapling auto-commit per iteration
 - [ ] **Phase 6: TUI Interface** - Status bar, live output, collapsible threads
 - [ ] **Phase 7: Verification** - Test agent and independent verification
@@ -84,12 +84,13 @@ Plans:
   5. Loop stops at max iterations (configurable, sensible default)
   6. `--once` runs single iteration, `--dry-run` previews without executing
   7. Recent attempts section accumulates failure memory across iterations
-**Plans**: 3 plans in 2 waves
+**Plans**: 4 plans in 2 waves
 
 Plans:
 - [x] 04-01-PLAN.md — Build module foundation (state machine, PROMPT_build, iteration logic) [Wave 1]
 - [x] 04-02-PLAN.md — Completion detection and loop termination (RALPH_DONE, max iterations, attempts) [Wave 2, depends on 04-01]
 - [x] 04-03-PLAN.md — Single iteration and dry-run modes (--once, --dry-run) [Wave 2, depends on 04-01]
+- [ ] 04-04-PLAN.md — Fix claude_path resolution for subprocess spawn (gap closure) [Wave 1]
 
 ### Phase 5: VCS Integration
 **Goal**: Each iteration auto-commits for rollback safety, supporting both Git and Sapling
@@ -164,7 +165,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 1. Foundation | 3/3 | Complete | 2026-01-17 |
 | 2. Subprocess Management | 2/2 | Complete | 2026-01-17 |
 | 3. Planning Command | 2/2 | Complete | 2026-01-18 |
-| 4. Core Build Loop | 3/3 | Complete | 2026-01-18 |
+| 4. Core Build Loop | 3/4 | Gap closure | - |
 | 5. VCS Integration | 0/1 | Not started | - |
 | 6. TUI Interface | 0/4 | Not started | - |
 | 7. Verification | 0/1 | Not started | - |

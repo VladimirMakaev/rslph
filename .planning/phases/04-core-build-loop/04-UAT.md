@@ -1,9 +1,9 @@
 ---
-status: complete
+status: diagnosed
 phase: 04-core-build-loop
 source: [04-01-SUMMARY.md, 04-02-SUMMARY.md, 04-03-SUMMARY.md]
 started: 2026-01-18T04:50:00Z
-updated: 2026-01-18T05:00:00Z
+updated: 2026-01-18T05:05:00Z
 ---
 
 ## Current Test
@@ -61,5 +61,13 @@ skipped: 0
   reason: "User reported: Failed to spawn claude: No such file or directory (os error 2) - even though claude is in PATH"
   severity: blocker
   test: 5
-  artifacts: []
-  missing: []
+  root_cause: "Command::new(\"claude\") relies on PATH resolution, but cargo run doesn't inherit shell PATH configuration. User has claude in shell PATH but subprocess can't resolve it."
+  artifacts:
+    - path: "src/subprocess/runner.rs"
+      issue: "Line 30: Command::new(command_path) fails PATH lookup"
+    - path: "src/config.rs"
+      issue: "Line 37: Default claude_path is \"claude\" (relies on PATH)"
+  missing:
+    - "Resolve relative command names to absolute paths during config loading"
+    - "Better error message showing actual PATH and suggesting absolute path"
+  debug_session: ".planning/debug/claude-spawn-not-found.md"

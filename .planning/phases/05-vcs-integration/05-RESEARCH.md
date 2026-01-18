@@ -6,11 +6,12 @@
 
 ## Summary
 
-Phase 5 implements automatic VCS commits after each build iteration to enable rollback safety. This requires:
+Phase 5 implements automatic VCS commits after each completed task to enable rollback safety. This requires:
 
 1. **VCS Detection**: Check if `sl` is available and functional (via `sl root`), otherwise fall back to Git (`.git` directory)
-2. **Auto-Commit**: After each iteration, stage changed files and commit with a descriptive message
-3. **Error Handling**: Gracefully handle "nothing to commit" scenarios and VCS failures
+2. **Auto-Commit per Task**: After each task completion with file changes, stage and commit with descriptive message
+3. **Commit Message Format**: `[project-name][task#/total] Task description`
+4. **Error Handling**: Gracefully handle "nothing to commit" scenarios and VCS failures
 
 **Key Decision: Shell out to `git` and `sl` commands rather than using the git2 crate.** This approach is:
 - Simpler (no C library dependency via libgit2)
@@ -348,84 +349,101 @@ impl Vcs for SaplingVcs {
 
 ### Pattern 5: Commit Message Formatting
 
-**What:** Consistent, informative auto-commit messages
-**When to use:** Every iteration commit
+**What:** Consistent, informative auto-commit messages showing task progress
+**When to use:** After each task completion (not iteration - one task per commit)
 
 ```rust
-// Source: Git commit best practices
+// Source: User requirement - task-centric commits
 
-/// Format commit message for iteration checkpoint
-pub fn format_iteration_commit(
-    iteration: u32,
-    tasks_completed: u32,
+/// Format commit message for completed task
+/// Format: [project-name][task#/total] Task description
+pub fn format_task_commit(
     project_name: &str,
+    task_number: usize,
+    total_tasks: usize,
+    task_description: &str,
 ) -> String {
-    if tasks_completed == 0 {
-        format!(
-            "rslph({}): iteration {} checkpoint (no tasks completed)",
-            project_name,
-            iteration
-        )
-    } else {
-        format!(
-            "rslph({}): iteration {} - {} task(s) completed",
-            project_name,
-            iteration,
-            tasks_completed
-        )
-    }
+    format!(
+        "[{}][{}/{}] {}",
+        project_name,
+        task_number,
+        total_tasks,
+        task_description
+    )
 }
 
 // Example messages:
-// "rslph(my-project): iteration 1 - 2 task(s) completed"
-// "rslph(my-project): iteration 5 checkpoint (no tasks completed)"
+// "[todo-app][1/12] Set up project structure"
+// "[todo-app][3/12] Fix authentication bug"
+// "[my-api][7/15] Add user validation endpoint"
 ```
+
+**Commit rules:**
+1. Only commit when a task is marked as completed
+2. Only commit if there are actual file changes (`has_changes()` returns true)
+3. If task completed but no file changes, skip the commit silently
+4. Each commit corresponds to exactly one completed task
 
 ### Pattern 6: Integration with Build Loop
 
-**What:** Hook VCS commit after successful iteration
-**When to use:** In build/command.rs after log_iteration
+**What:** Hook VCS commit after task completion (not iteration)
+**When to use:** When a task is marked complete in the build loop
 
 ```rust
-// Source: Existing build loop structure
+// Source: User requirement - commit per task, not per iteration
 
-// In run_build_command():
-BuildState::IterationComplete { iteration, tasks_completed } => {
-    // ... existing logging ...
+// In build loop, after detecting task completion:
+fn commit_completed_task(
+    ctx: &BuildContext,
+    task_description: &str,
+) -> Result<(), VcsError> {
+    let Some(vcs) = &ctx.vcs else {
+        return Ok(()); // No VCS available, skip silently
+    };
 
-    log_iteration(&mut ctx, iteration, tasks_completed)?;
-
-    // NEW: VCS auto-commit for rollback safety
-    if let Some(vcs) = &ctx.vcs {
-        let message = format_iteration_commit(
-            iteration,
-            tasks_completed,
-            &ctx.progress.name,
-        );
-
-        match vcs.commit_all(&message) {
-            Ok(Some(hash)) => {
-                eprintln!("[VCS] Committed: {} ({})", hash, vcs.vcs_type());
-            }
-            Ok(None) => {
-                eprintln!("[VCS] No changes to commit");
-            }
-            Err(e) => {
-                // Log but don't fail the build for VCS errors
-                eprintln!("[VCS] Warning: {}", e);
-            }
-        }
+    // Only commit if there are actual changes
+    if !vcs.has_changes()? {
+        // Task completed but no file changes - skip commit
+        return Ok(());
     }
 
-    // ... rest of state machine ...
+    // Calculate task number (completed count including this one)
+    let task_number = ctx.progress.completed_tasks();
+    let total_tasks = ctx.progress.total_tasks();
+
+    let message = format_task_commit(
+        &ctx.progress.name,
+        task_number,
+        total_tasks,
+        task_description,
+    );
+
+    vcs.stage_all()?;
+    let hash = vcs.commit(&message)?;
+    eprintln!("[VCS] Committed: {} ({})", hash, vcs.vcs_type());
+
+    Ok(())
 }
+
+// Called from state machine when task completes:
+// 1. Mark task complete in progress file
+// 2. Write progress file
+// 3. Commit changes (if any)
+// 4. Exit iteration for fresh context
 ```
+
+**Key behavior:**
+- Commit happens once per completed task, not per iteration
+- No commit if no file changes (even if task marked complete)
+- Each iteration should complete at most one task, then exit for fresh context
+- VCS errors are logged but don't fail the build
 
 ### Anti-Patterns to Avoid
 
 - **Failing build on VCS errors:** VCS operations are rollback convenience, not core functionality. Log warnings, don't fail.
 - **Using git2 crate for simple operations:** Adds C dependency, SSH issues, version lock-in. Shell out instead.
-- **Skipping "nothing to commit" check:** Always check `has_changes()` before committing to avoid unnecessary errors.
+- **Committing without task completion:** Only commit when a task is actually marked complete, not on iteration boundaries.
+- **Committing without file changes:** Always check `has_changes()` before committing. Skip silently if no changes.
 - **Using interactive git/sl commands:** Never use `-i` flag (add -i, commit -i) as they require terminal.
 - **Assuming VCS is available:** Gracefully handle non-repository directories (no .git or .sl).
 - **Committing during iteration:** Only commit AFTER iteration completes to ensure atomic checkpoints.
@@ -439,7 +457,7 @@ Problems that look simple but have existing solutions:
 | Git operations | Custom libgit2 wrapper | Shell out to `git` CLI | Simpler, uses user's config, no C dependency |
 | Sapling operations | Nothing exists | Shell out to `sl` CLI | Only option, Sapling has no Rust bindings |
 | VCS detection | Recursive path search | Walk up checking `.git`/`.sl` | Standard pattern, same as git2::discover |
-| Commit message format | Freeform text | Consistent `rslph(project): iteration N` | Enables grep/filtering of auto-commits |
+| Commit message format | Freeform text | Consistent `[project][n/total] task` | Enables grep/filtering, shows progress |
 | Empty commit handling | Silent skip | Explicit check + return None | Prevents confusing error messages |
 
 **Key insight:** For local-only VCS operations (add, commit, status), shelling out to the CLI is simpler and more compatible than library bindings.
@@ -466,15 +484,15 @@ Problems that look simple but have existing solutions:
 - Use `commit_all()` which encapsulates this check
 **Warning signs:** Exit code 1 from commit, stderr contains "nothing to commit"
 
-### Pitfall 3: Commit During Active Iteration
+### Pitfall 3: Commit Before Task Actually Complete
 
-**What goes wrong:** Partial state committed, unusable checkpoint
-**Why it happens:** Triggering commit too early in iteration lifecycle
+**What goes wrong:** Partial state committed, task marked complete but work not done
+**Why it happens:** Triggering commit before task completion is verified
 **How to avoid:**
-- Only commit AFTER `log_iteration()` succeeds
-- Only commit when state transitions to `IterationComplete`
-- Never commit in `Running` state
-**Warning signs:** Checkpoints with incomplete progress files
+- Only commit AFTER task is marked complete in progress file
+- Only commit AFTER progress file is written to disk
+- Verify task completion before calling commit function
+**Warning signs:** Commits with incomplete implementations
 
 ### Pitfall 4: Pre-commit Hooks Fail
 

@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use clap::Parser;
+use rslph::build::run_build_command;
 use rslph::cli::{Cli, Commands};
 use rslph::planning::run_plan_command;
 use rslph::subprocess::setup_ctrl_c_handler;
@@ -39,12 +40,26 @@ async fn main() -> color_eyre::Result<()> {
             }
         }
         Commands::Build { plan, once, dry_run } => {
+            // Set up Ctrl+C handling
+            let cancel_token = setup_ctrl_c_handler();
+
             println!("Building: {}", plan.display());
-            println!("Once mode: {}", once);
-            println!("Dry run: {}", dry_run);
-            println!("Using config: {:?}", config);
-            // Actual implementation in Phase 4
-            println!("Build command not yet implemented (Phase 4)");
+            if once {
+                println!("Mode: single iteration (--once)");
+            }
+            if dry_run {
+                println!("Mode: dry run (--dry-run)");
+            }
+
+            match run_build_command(plan, once, dry_run, &config, cancel_token).await {
+                Ok(()) => {
+                    println!("Build completed successfully.");
+                }
+                Err(e) => {
+                    eprintln!("Build failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
         }
     }
 

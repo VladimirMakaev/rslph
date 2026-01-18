@@ -12,16 +12,16 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 Phase: 5 of 8 (VCS Integration)
 Plan: 0 of 1 in current phase
 Status: Ready to plan
-Last activity: 2026-01-18 — Phase 4 verified and complete
+Last activity: 2026-01-18 — Completed 04-04 gap closure plan
 
-Progress: [██████░░░░] 60%
+Progress: [██████░░░░] 62%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: 7m
-- Total execution time: 1.08 hours
+- Total plans completed: 11
+- Average duration: 6m 36s
+- Total execution time: 1.12 hours
 
 **By Phase:**
 
@@ -30,10 +30,10 @@ Progress: [██████░░░░] 60%
 | 01-foundation | 3/3 | 22m 5s | 7m 22s |
 | 02-subprocess-management | 2/2 | 6m 29s | 3m 15s |
 | 03-planning-command | 2/2 | 16m | 8m |
-| 04-core-build-loop | 3/3 | 20m 26s | 6m 49s |
+| 04-core-build-loop | 4/4 | 22m 41s | 5m 40s |
 
 **Recent Trend:**
-- Last 5 plans: 03-02 (6m), 04-01 (5m 26s), 04-02 (8m), 04-03 (7m)
+- Last 5 plans: 04-01 (5m 26s), 04-02 (8m), 04-03 (7m), 04-04 (2m 15s)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -63,6 +63,7 @@ Recent decisions affecting current work:
 - **CHRONO-TIMESTAMP**: Use chrono for iteration timestamps in log
 - **STDERR-BUILD-LOGS**: Use eprintln with [BUILD] prefix for iteration status logs
 - **DRY-RUN-VALIDATE-PROMPT**: Validate prompt loading in dry-run to catch config errors early
+- **WHICH-FALLBACK**: Use `which` to resolve relative command names to absolute paths at config load time
 
 ### Pending Todos
 
@@ -75,6 +76,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-18 04:45 UTC
-Stopped at: Completed Phase 4 verification and execution
+Last session: 2026-01-18 05:02 UTC
+Stopped at: Completed 04-04-PLAN.md (gap closure for claude path resolution)
 Resume file: None

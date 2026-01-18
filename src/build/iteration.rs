@@ -97,7 +97,11 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
             );
             ctx.progress.trim_attempts(ctx.config.recent_threads as usize);
             ctx.progress.write(&ctx.progress_path)?;
-            return Err(RslphError::Subprocess(format!("Failed to spawn claude: {}", e)));
+            let path_env = std::env::var("PATH").unwrap_or_else(|_| "(not set)".to_string());
+            return Err(RslphError::Subprocess(format!(
+                "Failed to spawn '{}': {}. Ensure claude is in PATH or set claude_path to absolute path in config. PATH: {}",
+                ctx.config.claude_path, e, path_env
+            )));
         }
     };
 

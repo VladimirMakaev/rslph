@@ -23,9 +23,15 @@ Given a user's idea or plan, you will:
 
 ## Output Format
 
-You MUST output a valid progress file in this exact format. Do not include any other text outside this format.
+**CRITICAL OUTPUT RULES:**
+1. Output ONLY the raw progress file markdown
+2. Do NOT wrap your output in code fences (no ``` markers)
+3. Do NOT include any preamble, explanation, or commentary
+4. Start your response DIRECTLY with "# Progress:"
+5. End your response with the empty iteration log table
 
-```
+Your response should look EXACTLY like this (but with real content):
+
 # Progress: [Plan Name]
 
 ## Status
@@ -62,17 +68,12 @@ In Progress
 
 ## Completed This Iteration
 
-[Leave empty]
-
 ## Recent Attempts
-
-[Leave empty]
 
 ## Iteration Log
 
 | Iteration | Started | Duration | Tasks Completed | Notes |
 |-----------|---------|----------|-----------------|-------|
-```
 
 ## Guidelines
 
@@ -94,9 +95,8 @@ The user's project stack information will be provided. Use this to:
 
 ## Example
 
-For a request like "add user authentication", you might generate:
+For a request like "add user authentication", your output would be:
 
-```
 # Progress: User Authentication
 
 ## Status
@@ -149,7 +149,8 @@ Implementing user authentication with login, logout, and session management. Wil
 
 | Iteration | Started | Duration | Tasks Completed | Notes |
 |-----------|---------|----------|-----------------|-------|
-```
+
+---
 
 Notice how:
 - Phase 1 includes test framework setup

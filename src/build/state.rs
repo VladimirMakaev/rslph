@@ -101,6 +101,8 @@ pub struct BuildContext {
     pub iteration_start: Option<std::time::Instant>,
     /// VCS for auto-commit after iterations (None if not in a repository).
     pub vcs: Option<Box<dyn Vcs>>,
+    /// Project name captured at construction for commit messages.
+    pub project_name: String,
 }
 
 impl BuildContext {
@@ -126,6 +128,9 @@ impl BuildContext {
             eprintln!("[VCS] Detected {} repository", v.vcs_type());
         }
 
+        // Capture project name at construction for commit messages
+        let project_name = progress.name.clone();
+
         Self {
             progress_path,
             progress,
@@ -137,6 +142,7 @@ impl BuildContext {
             dry_run,
             iteration_start: None,
             vcs,
+            project_name,
         }
     }
 }

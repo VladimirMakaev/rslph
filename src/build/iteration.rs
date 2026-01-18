@@ -197,7 +197,7 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
     if tasks_completed > 0 {
         if let Some(ref vcs) = ctx.vcs {
             let commit_msg =
-                format_iteration_commit(&updated_progress.name, ctx.current_iteration, tasks_completed);
+                format_iteration_commit(&ctx.project_name, ctx.current_iteration, tasks_completed);
             match vcs.commit_all(&commit_msg) {
                 Ok(Some(hash)) => {
                     eprintln!("[VCS] Committed: {} ({})", hash, vcs.vcs_type());

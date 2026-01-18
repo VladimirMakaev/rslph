@@ -72,16 +72,17 @@ impl Vcs for SaplingVcs {
             return Err(VcsError::CommitFailed(stderr.to_string()));
         }
 
-        // Parse commit hash from output
-        // Sapling outputs the commit hash on stdout
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let hash = stdout
-            .lines()
-            .next()
-            .and_then(|line| line.split_whitespace().last())
-            .unwrap_or("unknown")
-            .to_string();
+        // sl commit produces no stdout on success - get hash from sl log
+        let log_output = self.run_sl(&["log", "-l", "1", "--template", "{node|short}"])?;
+        if log_output.status.success() {
+            let hash = String::from_utf8_lossy(&log_output.stdout)
+                .trim()
+                .to_string();
+            if !hash.is_empty() {
+                return Ok(hash);
+            }
+        }
 
-        Ok(hash)
+        Ok("unknown".to_string())
     }
 }

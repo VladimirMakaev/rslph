@@ -61,7 +61,7 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None.
+- **CLAUDE-INTERNET-FLAG**: Remove `--internet` workaround flag from Claude CLI invocations once the underlying issue causing Claude CLI to hang without it is resolved. See `src/planning/command.rs`.
 
 ### Blockers/Concerns
 

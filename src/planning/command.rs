@@ -72,7 +72,9 @@ async fn run_basic_planning(
     );
 
     // Step 4: Build Claude CLI args for headless mode
+    // TODO: Remove --internet flag once we fix the underlying issue with Claude CLI hanging without it
     let args = vec![
+        "--internet".to_string(),      // WORKAROUND: Required to prevent Claude CLI from hanging
         "-p".to_string(),              // Print mode (headless)
         "--output-format".to_string(), // Output format
         "text".to_string(),            // Plain text
@@ -81,13 +83,17 @@ async fn run_basic_planning(
         full_input, // User input as positional arg
     ];
 
+    eprintln!("[TRACE] Spawning: {} {:?}", config.claude_path, args.iter().take(4).collect::<Vec<_>>());
+
     // Step 5: Spawn Claude
     let mut runner = ClaudeRunner::spawn(&config.claude_path, &args, working_dir)
         .await
         .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
 
-    // Step 6: Run with timeout and collect output
-    let output = runner.run_with_timeout(timeout, cancel_token).await?;
+    eprintln!("[TRACE] Spawned subprocess with PID: {:?}", runner.id());
+
+    // Step 6: Run with timeout and collect output, tracing each line
+    let output = run_with_tracing(&mut runner, timeout, cancel_token).await?;
 
     // Step 7: Collect stdout lines into response text
     let response_text: String = output
@@ -99,6 +105,8 @@ async fn run_basic_planning(
         .collect::<Vec<_>>()
         .join("\n");
 
+    eprintln!("[TRACE] Claude output length: {} chars", response_text.len());
+
     // Step 8: Parse response into ProgressFile
     let progress_file = ProgressFile::parse(&response_text)?;
 
@@ -106,7 +114,63 @@ async fn run_basic_planning(
     let output_path = working_dir.join("progress.md");
     progress_file.write(&output_path)?;
 
+    eprintln!("[TRACE] Wrote progress file to: {}", output_path.display());
+
     Ok(output_path)
+}
+
+/// Run subprocess with tracing to stderr for each line of output.
+async fn run_with_tracing(
+    runner: &mut ClaudeRunner,
+    max_duration: Duration,
+    cancel_token: CancellationToken,
+) -> Result<Vec<OutputLine>, RslphError> {
+    use tokio::time::timeout;
+
+    let collect_with_trace = async {
+        let mut output = Vec::new();
+        loop {
+            tokio::select! {
+                biased;
+
+                _ = cancel_token.cancelled() => {
+                    eprintln!("[TRACE] Cancellation requested");
+                    runner.terminate_gracefully(Duration::from_secs(5)).await
+                        .map_err(|e| RslphError::Subprocess(e.to_string()))?;
+                    return Err(RslphError::Cancelled);
+                }
+
+                line = runner.next_output() => {
+                    match line {
+                        Some(OutputLine::Stdout(s)) => {
+                            eprintln!("[STDOUT] {}", s);
+                            output.push(OutputLine::Stdout(s));
+                        }
+                        Some(OutputLine::Stderr(s)) => {
+                            eprintln!("[STDERR] {}", s);
+                            output.push(OutputLine::Stderr(s));
+                        }
+                        None => {
+                            eprintln!("[TRACE] Subprocess streams closed");
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        Ok(output)
+    };
+
+    match timeout(max_duration, collect_with_trace).await {
+        Ok(result) => result,
+        Err(_elapsed) => {
+            eprintln!("[TRACE] Timeout after {:?}", max_duration);
+            runner.terminate_gracefully(Duration::from_secs(5))
+                .await
+                .map_err(|e| RslphError::Subprocess(e.to_string()))?;
+            Err(RslphError::Timeout(max_duration.as_secs()))
+        }
+    }
 }
 
 /// Run adaptive planning mode with clarifying questions.
@@ -216,7 +280,9 @@ pub async fn run_adaptive_planning(
     );
 
     // Build Claude CLI args for headless mode
+    // TODO: Remove --internet flag once we fix the underlying issue with Claude CLI hanging without it
     let args = vec![
+        "--internet".to_string(),      // WORKAROUND: Required to prevent Claude CLI from hanging
         "-p".to_string(),
         "--output-format".to_string(),
         "text".to_string(),
@@ -262,7 +328,9 @@ async fn run_claude_headless(
     cancel_token: CancellationToken,
     timeout: Duration,
 ) -> color_eyre::Result<String> {
+    // TODO: Remove --internet flag once we fix the underlying issue with Claude CLI hanging without it
     let args = vec![
+        "--internet".to_string(),      // WORKAROUND: Required to prevent Claude CLI from hanging
         "-p".to_string(),
         "--output-format".to_string(),
         "text".to_string(),

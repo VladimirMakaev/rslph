@@ -73,9 +73,11 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
     ];
 
     // Step 5: Spawn fresh Claude subprocess
+    // Handle both None parent and empty parent (when path is just filename)
     let working_dir = ctx
         .progress_path
         .parent()
+        .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or(Path::new("."));
 
     eprintln!(

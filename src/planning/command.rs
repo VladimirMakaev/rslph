@@ -14,7 +14,7 @@ use crate::planning::{
 };
 use crate::progress::ProgressFile;
 use crate::prompts::get_plan_prompt;
-use crate::subprocess::{ClaudeRunner, OutputLine};
+use crate::subprocess::{ClaudeRunner, OutputLine, StreamResponse};
 
 /// Run the planning command.
 ///
@@ -77,7 +77,7 @@ async fn run_basic_planning(
         "--internet".to_string(),      // WORKAROUND: Required to prevent Claude CLI from hanging
         "-p".to_string(),              // Print mode (headless)
         "--output-format".to_string(), // Output format
-        "text".to_string(),            // Plain text
+        "stream-json".to_string(),     // JSONL for structured parsing
         "--system-prompt".to_string(), // Custom system prompt
         system_prompt,
         full_input, // User input as positional arg
@@ -95,17 +95,23 @@ async fn run_basic_planning(
     // Step 6: Run with timeout and collect output, tracing each line
     let output = run_with_tracing(&mut runner, timeout, cancel_token).await?;
 
-    // Step 7: Collect stdout lines into response text
-    let response_text: String = output
-        .iter()
-        .filter_map(|line| match line {
-            OutputLine::Stdout(s) => Some(s.as_str()),
-            OutputLine::Stderr(_) => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
+    // Step 7: Parse JSONL output using StreamResponse
+    let mut stream_response = StreamResponse::new();
+    for line in &output {
+        if let OutputLine::Stdout(s) = line {
+            stream_response.process_line(s);
+        }
+    }
+    let response_text = stream_response.text;
 
     eprintln!("[TRACE] Claude output length: {} chars", response_text.len());
+    if let Some(model) = &stream_response.model {
+        eprintln!("[TRACE] Model: {}", model);
+    }
+    eprintln!(
+        "[TRACE] Tokens: {} in / {} out",
+        stream_response.input_tokens, stream_response.output_tokens
+    );
 
     // Step 8: Parse response into ProgressFile
     let progress_file = ProgressFile::parse(&response_text)?;
@@ -285,7 +291,7 @@ pub async fn run_adaptive_planning(
         "--internet".to_string(),      // WORKAROUND: Required to prevent Claude CLI from hanging
         "-p".to_string(),
         "--output-format".to_string(),
-        "text".to_string(),
+        "stream-json".to_string(),     // JSONL for structured parsing
         "--system-prompt".to_string(),
         plan_prompt,
         final_input,
@@ -299,15 +305,14 @@ pub async fn run_adaptive_planning(
     // Run with timeout and collect output
     let output = runner.run_with_timeout(timeout, cancel_token).await?;
 
-    // Collect stdout lines into response text
-    let response_text: String = output
-        .iter()
-        .filter_map(|line| match line {
-            OutputLine::Stdout(s) => Some(s.as_str()),
-            OutputLine::Stderr(_) => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
+    // Parse JSONL output using StreamResponse
+    let mut stream_response = StreamResponse::new();
+    for line in &output {
+        if let OutputLine::Stdout(s) = line {
+            stream_response.process_line(s);
+        }
+    }
+    let response_text = stream_response.text;
 
     // Parse response into ProgressFile
     let progress_file = ProgressFile::parse(&response_text)?;
@@ -333,7 +338,7 @@ async fn run_claude_headless(
         "--internet".to_string(),      // WORKAROUND: Required to prevent Claude CLI from hanging
         "-p".to_string(),
         "--output-format".to_string(),
-        "text".to_string(),
+        "stream-json".to_string(),     // JSONL for structured parsing
         "--system-prompt".to_string(),
         system_prompt.to_string(),
         user_input.to_string(),
@@ -345,16 +350,15 @@ async fn run_claude_headless(
 
     let output = runner.run_with_timeout(timeout, cancel_token).await?;
 
-    let response_text: String = output
-        .iter()
-        .filter_map(|line| match line {
-            OutputLine::Stdout(s) => Some(s.as_str()),
-            OutputLine::Stderr(_) => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
+    // Parse JSONL output using StreamResponse
+    let mut stream_response = StreamResponse::new();
+    for line in &output {
+        if let OutputLine::Stdout(s) = line {
+            stream_response.process_line(s);
+        }
+    }
 
-    Ok(response_text)
+    Ok(stream_response.text)
 }
 
 /// Read multi-line input from stdin.

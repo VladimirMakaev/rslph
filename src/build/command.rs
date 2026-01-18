@@ -164,41 +164,91 @@ pub async fn run_build_command(
     }
 }
 
-/// Run dry-run mode: preview what would be executed.
+/// Preview what the build would do without executing (LOOP-07).
+///
+/// Shows comprehensive information about:
+/// - Progress file status and task counts
+/// - Next task that would be executed
+/// - Configuration settings (max iterations, once mode)
+/// - Build prompt source and validation
+/// - Recent attempts summary
 fn run_dry_run(ctx: &BuildContext) -> color_eyre::Result<()> {
+    use crate::prompts::get_build_prompt;
+
     println!("\n=== DRY RUN MODE ===\n");
+
+    // Progress file info
     println!("Progress file: {}", ctx.progress_path.display());
-    println!("Max iterations: {}", ctx.max_iterations);
-    println!("Once mode: {}", ctx.once_mode);
+    println!("Project: {}", ctx.progress.name);
     println!();
 
-    println!("Current status: {}", ctx.progress.status);
+    // Current status
+    println!("Status: {}", ctx.progress.status);
+    if ctx.progress.is_done() {
+        println!("  -> RALPH_DONE detected, build would exit immediately");
+    }
+    println!();
+
+    // Task summary
+    let total = ctx.progress.total_tasks();
+    let completed = ctx.progress.completed_tasks();
+    let remaining = total - completed;
     println!(
-        "Tasks: {}/{} complete",
-        ctx.progress.completed_tasks(),
-        ctx.progress.total_tasks()
+        "Tasks: {}/{} complete ({} remaining)",
+        completed, total, remaining
     );
+
+    if remaining == 0 && total > 0 {
+        println!("  -> All tasks complete, build would exit immediately");
+    }
     println!();
 
+    // Next task to execute
     if let Some((phase, task)) = ctx.progress.next_task() {
         println!("Next task to execute:");
         println!("  Phase: {}", phase);
-        println!("  Task: {}", task.description);
+        println!("  Task:  {}", task.description);
     } else {
         println!("No pending tasks found.");
     }
-
     println!();
-    println!(
-        "Would use prompt: {}",
-        if ctx.config.build_prompt.is_some() {
-            "custom (from config)"
-        } else {
-            "default (embedded)"
+
+    // Configuration
+    println!("Configuration:");
+    println!("  Max iterations: {}", ctx.max_iterations);
+    println!("  Once mode: {}", ctx.once_mode);
+    println!("  Recent attempts depth: {}", ctx.config.recent_threads);
+    println!();
+
+    // Prompt info
+    let prompt_source = if let Some(ref path) = ctx.config.build_prompt {
+        format!("custom ({})", path.display())
+    } else {
+        "default (embedded)".to_string()
+    };
+    println!("Build prompt: {}", prompt_source);
+
+    // Validate prompt is loadable
+    match get_build_prompt(&ctx.config) {
+        Ok(prompt) => println!("  Prompt length: {} chars", prompt.len()),
+        Err(e) => println!("  WARNING: Failed to load prompt: {}", e),
+    }
+    println!();
+
+    // Recent attempts summary
+    if !ctx.progress.recent_attempts.is_empty() {
+        println!("Recent attempts ({}):", ctx.progress.recent_attempts.len());
+        for attempt in ctx.progress.recent_attempts.iter().rev().take(3) {
+            println!(
+                "  Iteration {}: {} -> {}",
+                attempt.iteration, attempt.tried, attempt.result
+            );
         }
-    );
+    }
 
     println!("\n=== END DRY RUN ===");
+    println!("\nTo execute, run without --dry-run flag.");
+
     Ok(())
 }
 
@@ -446,5 +496,144 @@ mod tests {
         .await;
 
         assert!(result.is_err(), "Should fail on missing file");
+    }
+
+    #[tokio::test]
+    async fn test_dry_run_does_not_modify_progress() {
+        use crate::progress::{Task, TaskPhase};
+
+        let dir = TempDir::new().expect("temp dir");
+        let progress_path = dir.path().join("progress.md");
+
+        let progress = ProgressFile {
+            name: "Test".to_string(),
+            status: "In Progress".to_string(),
+            tasks: vec![TaskPhase {
+                name: "Phase 1".to_string(),
+                tasks: vec![
+                    Task {
+                        description: "Task 1".to_string(),
+                        completed: false,
+                    },
+                    Task {
+                        description: "Task 2".to_string(),
+                        completed: false,
+                    },
+                ],
+            }],
+            ..Default::default()
+        };
+        progress.write(&progress_path).expect("write");
+
+        // Read original content
+        let original_content = std::fs::read_to_string(&progress_path).expect("read original");
+
+        let config = Config::default();
+        let token = CancellationToken::new();
+
+        // Run dry-run
+        let result = run_build_command(
+            progress_path.clone(),
+            false,
+            true, // dry_run
+            &config,
+            token,
+        )
+        .await;
+
+        assert!(result.is_ok(), "Dry run should succeed");
+
+        // Verify file unchanged
+        let final_content = std::fs::read_to_string(&progress_path).expect("read final");
+        assert_eq!(
+            original_content, final_content,
+            "Progress file should not be modified in dry-run mode"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_dry_run_shows_once_mode_true() {
+        use crate::progress::{Task, TaskPhase};
+
+        let dir = TempDir::new().expect("temp dir");
+        let progress_path = dir.path().join("progress.md");
+
+        let progress = ProgressFile {
+            name: "Test".to_string(),
+            status: "In Progress".to_string(),
+            tasks: vec![TaskPhase {
+                name: "Phase 1".to_string(),
+                tasks: vec![Task {
+                    description: "Task 1".to_string(),
+                    completed: false,
+                }],
+            }],
+            ..Default::default()
+        };
+        progress.write(&progress_path).expect("write");
+
+        let config = Config::default();
+        let token = CancellationToken::new();
+
+        // When both once and dry_run are true, dry_run takes precedence
+        let result = run_build_command(
+            progress_path,
+            true,  // once mode
+            true,  // dry_run
+            &config,
+            token,
+        )
+        .await;
+
+        assert!(result.is_ok(), "Dry run with once mode should succeed");
+    }
+
+    #[test]
+    fn test_dry_run_function_directly() {
+        use crate::progress::{Attempt, Task, TaskPhase};
+
+        let dir = TempDir::new().expect("temp dir");
+        let progress_path = dir.path().join("progress.md");
+
+        let progress = ProgressFile {
+            name: "Test Plan".to_string(),
+            status: "In Progress".to_string(),
+            tasks: vec![TaskPhase {
+                name: "Phase 1".to_string(),
+                tasks: vec![
+                    Task {
+                        description: "Completed task".to_string(),
+                        completed: true,
+                    },
+                    Task {
+                        description: "Pending task".to_string(),
+                        completed: false,
+                    },
+                ],
+            }],
+            recent_attempts: vec![Attempt {
+                iteration: 1,
+                tried: "First try".to_string(),
+                result: "Success".to_string(),
+                next: None,
+            }],
+            ..Default::default()
+        };
+
+        let config = Config::default();
+        let token = CancellationToken::new();
+
+        let ctx = BuildContext::new(
+            progress_path,
+            progress,
+            config,
+            token,
+            true,  // once_mode
+            true,  // dry_run
+        );
+
+        // Verify dry run function succeeds
+        let result = run_dry_run(&ctx);
+        assert!(result.is_ok(), "Dry run function should succeed");
     }
 }

@@ -58,7 +58,7 @@ Recent decisions affecting current work:
 - **BOX-FIGMENT-ERROR**: Box figment::Error in RslphError to reduce enum size
 - **VAGUENESS-THRESHOLD-055**: Use +0.55 for very short inputs to ensure score > 0.5 triggers clarification
 - **DOUBLE-ENTER-STDIN**: Use two consecutive empty lines to terminate multi-line input
-- **STREAM-JSON-FORMAT**: Use `--output-format stream-json` for Claude CLI to get structured JSONL output
+- **STREAM-JSON-FORMAT**: Use `--output-format stream-json` with `--verbose` for Claude CLI (required when using -p mode)
 
 ### Pending Todos
 

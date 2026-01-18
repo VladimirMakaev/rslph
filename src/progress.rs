@@ -349,7 +349,7 @@ impl ProgressFile {
                 let checkbox = if task.completed { "[x]" } else { "[ ]" };
                 md.push_str(&format!("- {} {}\n", checkbox, task.description));
             }
-            md.push_str("\n");
+            md.push('\n');
         }
 
         // Testing Strategy (PROG-04)
@@ -362,7 +362,7 @@ impl ProgressFile {
         for item in &self.completed_this_iteration {
             md.push_str(&format!("- [x] {}\n", item));
         }
-        md.push_str("\n");
+        md.push('\n');
 
         // Recent Attempts (PROG-06)
         md.push_str("## Recent Attempts\n\n");
@@ -373,7 +373,7 @@ impl ProgressFile {
             if let Some(next) = &attempt.next {
                 md.push_str(&format!("- Next: {}\n", next));
             }
-            md.push_str("\n");
+            md.push('\n');
         }
 
         // Iteration Log (PROG-07)

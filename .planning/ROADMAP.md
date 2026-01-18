@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Subprocess Management** - Claude CLI spawning, streaming output, process control
 - [x] **Phase 3: Planning Command** - `rslph plan` with basic and adaptive modes
 - [x] **Phase 4: Core Build Loop** - Iteration logic, completion detection, fresh context
-- [ ] **Phase 5: VCS Integration** - Git and Sapling auto-commit per iteration
+- [x] **Phase 5: VCS Integration** - Git and Sapling auto-commit per iteration
 - [ ] **Phase 6: TUI Interface** - Status bar, live output, collapsible threads
 - [ ] **Phase 7: Verification** - Test agent and independent verification
 - [ ] **Phase 8: Notifications and Polish** - Notify scripts, prompt overrides, error refinement
@@ -105,7 +105,7 @@ Plans:
 
 Plans:
 - [x] 05-01-PLAN.md — VCS module with Git/Sapling implementations, auto-detection, build loop integration [Wave 1]
-- [ ] 05-02-PLAN.md — Fix commit message project name and Sapling hash retrieval (gap closure) [Wave 1]
+- [x] 05-02-PLAN.md — Fix commit message project name and Sapling hash retrieval (gap closure) [Wave 1]
 
 ### Phase 6: TUI Interface
 **Goal**: Rich terminal UI displays status, live output, and collapsible conversation threads
@@ -167,7 +167,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 2. Subprocess Management | 2/2 | Complete | 2026-01-17 |
 | 3. Planning Command | 2/2 | Complete | 2026-01-18 |
 | 4. Core Build Loop | 4/4 | Complete | 2026-01-18 |
-| 5. VCS Integration | 1/2 | In Progress | - |
+| 5. VCS Integration | 2/2 | Complete | 2026-01-18 |
 | 6. TUI Interface | 0/4 | Not started | - |
 | 7. Verification | 0/1 | Not started | - |
 | 8. Notifications and Polish | 0/2 | Not started | - |

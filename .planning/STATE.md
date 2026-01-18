@@ -71,6 +71,8 @@ Recent decisions affecting current work:
 - **VCS-SAPLING-FIRST**: Detect Sapling via sl root before Git via .git directory
 - **VCS-WARN-NOT-FAIL**: VCS errors are logged as warnings, do not fail the build
 - **VCS-ITER-COMMIT**: Commit after iteration completion, not per-task
+- **CONTEXT-CAPTURED-NAME**: Store project_name in BuildContext at construction, not rely on Claude response parsing
+- **SL-LOG-HASH**: Use `sl log -l 1 --template '{node|short}'` to get commit hash after sl commit (sl commit produces no stdout)
 
 ### Pending Todos
 
@@ -83,6 +85,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-18 22:15 UTC
-Stopped at: Completed Phase 5 (VCS Integration)
+Last session: 2026-01-18 22:35 UTC
+Stopped at: Completed Phase 5 gap closure (VCS fixes)
 Resume file: None

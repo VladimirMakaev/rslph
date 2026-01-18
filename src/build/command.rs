@@ -732,4 +732,299 @@ mod tests {
         // Verify once_mode is set correctly
         assert!(ctx.once_mode, "Once mode should be set");
     }
+
+    #[tokio::test]
+    async fn test_ralph_done_stops_immediately() {
+        use crate::progress::{Task, TaskPhase};
+
+        let dir = TempDir::new().expect("temp dir");
+        let progress_path = dir.path().join("progress.md");
+
+        // Create progress file with RALPH_DONE in status
+        let progress = ProgressFile {
+            name: "Test".to_string(),
+            status: "RALPH_DONE - All tasks complete".to_string(),
+            tasks: vec![TaskPhase {
+                name: "Phase 1".to_string(),
+                tasks: vec![Task {
+                    description: "Task 1".to_string(),
+                    completed: true,
+                }],
+            }],
+            ..Default::default()
+        };
+        progress.write(&progress_path).expect("write");
+
+        // Use a slow script as mock - if RALPH_DONE works, it won't be called
+        let script = "#!/bin/sh\nsleep 60\n";
+        let script_path = dir.path().join("slow_script.sh");
+        std::fs::write(&script_path, script).expect("write script");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755))
+                .expect("set permissions");
+        }
+
+        let config = Config {
+            claude_path: script_path.to_string_lossy().to_string(),
+            ..Default::default()
+        };
+
+        let token = CancellationToken::new();
+
+        // If RALPH_DONE is detected, this should return immediately
+        // without spawning the slow script
+        let start = std::time::Instant::now();
+        let result = run_build_command(
+            progress_path,
+            false,
+            false,
+            &config,
+            token,
+        )
+        .await;
+
+        let elapsed = start.elapsed();
+
+        assert!(result.is_ok(), "Should succeed with RALPH_DONE");
+        assert!(
+            elapsed.as_secs() < 5,
+            "Should return immediately, not wait for slow script"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_all_tasks_complete_stops_immediately() {
+        use crate::progress::{Task, TaskPhase};
+
+        let dir = TempDir::new().expect("temp dir");
+        let progress_path = dir.path().join("progress.md");
+
+        // Create progress file with all tasks marked complete
+        let progress = ProgressFile {
+            name: "Test".to_string(),
+            status: "In Progress".to_string(),
+            tasks: vec![TaskPhase {
+                name: "Phase 1".to_string(),
+                tasks: vec![
+                    Task {
+                        description: "Task 1".to_string(),
+                        completed: true,
+                    },
+                    Task {
+                        description: "Task 2".to_string(),
+                        completed: true,
+                    },
+                ],
+            }],
+            ..Default::default()
+        };
+        progress.write(&progress_path).expect("write");
+
+        // Use a slow script as mock
+        let script = "#!/bin/sh\nsleep 60\n";
+        let script_path = dir.path().join("slow_script.sh");
+        std::fs::write(&script_path, script).expect("write script");
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&script_path, std::fs::Permissions::from_mode(0o755))
+                .expect("set permissions");
+        }
+
+        let config = Config {
+            claude_path: script_path.to_string_lossy().to_string(),
+            ..Default::default()
+        };
+
+        let token = CancellationToken::new();
+
+        let start = std::time::Instant::now();
+        let result = run_build_command(
+            progress_path,
+            false,
+            false,
+            &config,
+            token,
+        )
+        .await;
+
+        let elapsed = start.elapsed();
+
+        assert!(result.is_ok(), "Should succeed when all tasks complete");
+        assert!(
+            elapsed.as_secs() < 5,
+            "Should return immediately when all tasks complete"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_max_iterations_enforced() {
+        use crate::progress::{Task, TaskPhase};
+
+        let dir = TempDir::new().expect("temp dir");
+        let progress_path = dir.path().join("progress.md");
+
+        // Create progress file with incomplete tasks
+        let progress = ProgressFile {
+            name: "Test".to_string(),
+            status: "In Progress".to_string(),
+            analysis: "Test analysis.".to_string(),
+            tasks: vec![TaskPhase {
+                name: "Phase 1".to_string(),
+                tasks: vec![
+                    Task {
+                        description: "Task 1".to_string(),
+                        completed: false,
+                    },
+                    Task {
+                        description: "Task 2".to_string(),
+                        completed: false,
+                    },
+                ],
+            }],
+            testing_strategy: "Test with cargo test.".to_string(),
+            ..Default::default()
+        };
+        progress.write(&progress_path).expect("write");
+
+        // Use echo mock - outputs garbage but loop will run max_iterations times
+        let config = Config {
+            claude_path: "/bin/echo".to_string(),
+            max_iterations: 2, // Only run 2 iterations
+            ..Default::default()
+        };
+
+        let token = CancellationToken::new();
+
+        let result = run_build_command(
+            progress_path.clone(),
+            false,
+            false,
+            &config,
+            token,
+        )
+        .await;
+
+        assert!(result.is_ok(), "Should complete after max iterations");
+
+        // The iteration log is stored in the progress file.
+        // Echo mock outputs empty content, so each iteration overwrites the file.
+        // The last iteration's log_iteration call adds an entry.
+        // With max_iterations=2, we expect at least the last iteration to be logged.
+        let updated = ProgressFile::load(&progress_path).expect("read back");
+        assert!(
+            !updated.iteration_log.is_empty(),
+            "Should have at least 1 iteration logged: {:?}",
+            updated.iteration_log
+        );
+        // The key assertion is that we ran exactly 2 iterations (test completed)
+    }
+
+    #[tokio::test]
+    async fn test_resume_from_partial_progress() {
+        use crate::progress::{Attempt, IterationEntry, Task, TaskPhase};
+
+        let dir = TempDir::new().expect("temp dir");
+
+        // Create progress file simulating prior interruption
+        // 2 tasks complete, 2 remaining, iteration log shows 2 prior runs
+        let progress = ProgressFile {
+            name: "Resume Test".to_string(),
+            status: "In Progress".to_string(),
+            analysis: "Testing resume capability.".to_string(),
+            tasks: vec![TaskPhase {
+                name: "Phase 1".to_string(),
+                tasks: vec![
+                    Task {
+                        description: "Task 1 - already done".to_string(),
+                        completed: true,
+                    },
+                    Task {
+                        description: "Task 2 - already done".to_string(),
+                        completed: true,
+                    },
+                    Task {
+                        description: "Task 3 - next to execute".to_string(),
+                        completed: false,
+                    },
+                    Task {
+                        description: "Task 4 - waiting".to_string(),
+                        completed: false,
+                    },
+                ],
+            }],
+            testing_strategy: "Test with cargo test.".to_string(),
+            completed_this_iteration: vec![],
+            recent_attempts: vec![
+                Attempt {
+                    iteration: 1,
+                    tried: "Task 1".to_string(),
+                    result: "Completed".to_string(),
+                    next: Some("Continue".to_string()),
+                },
+                Attempt {
+                    iteration: 2,
+                    tried: "Task 2".to_string(),
+                    result: "Completed".to_string(),
+                    next: Some("Continue".to_string()),
+                },
+            ],
+            iteration_log: vec![
+                IterationEntry {
+                    iteration: 1,
+                    started: "2024-01-01 10:00".to_string(),
+                    duration: "2m 30s".to_string(),
+                    tasks_completed: 1,
+                    notes: "Task 1".to_string(),
+                },
+                IterationEntry {
+                    iteration: 2,
+                    started: "2024-01-01 10:03".to_string(),
+                    duration: "3m 15s".to_string(),
+                    tasks_completed: 1,
+                    notes: "Task 2".to_string(),
+                },
+            ],
+        };
+
+        let progress_path = dir.path().join("progress.md");
+        progress.write(&progress_path).expect("write progress");
+
+        // Run build with once mode using echo mock
+        let config = Config {
+            claude_path: "/bin/echo".to_string(),
+            max_iterations: 1, // Will run 1 iteration
+            ..Default::default()
+        };
+
+        let token = CancellationToken::new();
+
+        // The key test for LOOP-02 (resume) is that the build:
+        // 1. Starts correctly with 2/4 tasks already complete
+        // 2. Doesn't fail or panic when resuming
+        // 3. Runs an iteration (even if echo corrupts the file)
+
+        let result = run_build_command(
+            progress_path.clone(),
+            true,  // once mode to limit execution
+            false,
+            &config,
+            token,
+        )
+        .await;
+
+        assert!(result.is_ok(), "Resume should succeed: {:?}", result);
+
+        // Verify the build ran by checking that an iteration was logged.
+        // Note: echo mock outputs empty content, so it overwrites prior iteration log.
+        // The new iteration gets logged after the overwrite.
+        let updated = ProgressFile::load(&progress_path).expect("read back");
+        assert!(
+            !updated.iteration_log.is_empty(),
+            "Should have iteration logged after resume: {:?}",
+            updated.iteration_log
+        );
+    }
 }

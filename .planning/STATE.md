@@ -63,6 +63,7 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 - **CLAUDE-INTERNET-FLAG**: Remove `--internet` workaround flag from Claude CLI invocations once the underlying issue causing Claude CLI to hang without it is resolved. See `src/planning/command.rs`.
+- **CLAUDE-CLI-OUTPUT-FLAGS**: Research Claude CLI `--output-format stream-json` and `--json-schema` flags for correct usage. See `.planning/todos/pending/2026-01-18-research-claude-cli-stream-json-and-json-schema.md`.
 
 ### Blockers/Concerns
 

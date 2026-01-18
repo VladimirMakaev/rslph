@@ -1,9 +1,6 @@
-#![allow(dead_code)] // TODO: Progress parsing will be used in a future plan
-
 use pulldown_cmark::{Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 use serde::{Deserialize, Serialize};
 
-#[allow(unused_imports)]
 use crate::error::RslphError;
 
 /// Complete progress file structure (PROG-01 through PROG-07)

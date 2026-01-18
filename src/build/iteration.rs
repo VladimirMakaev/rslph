@@ -1,0 +1,256 @@
+//! Single iteration execution logic.
+//!
+//! Handles spawning Claude, parsing response, and updating progress file.
+
+use std::path::Path;
+use std::time::Duration;
+
+use crate::error::RslphError;
+use crate::progress::ProgressFile;
+use crate::prompts::get_build_prompt;
+use crate::subprocess::{ClaudeRunner, OutputLine, StreamResponse};
+
+use super::state::{BuildContext, DoneReason, IterationResult};
+
+/// Run a single iteration of the build loop.
+///
+/// This function:
+/// 1. Re-reads the progress file (handles external edits)
+/// 2. Checks for early exit conditions (RALPH_DONE, all tasks complete)
+/// 3. Spawns a fresh Claude subprocess with the build prompt
+/// 4. Parses the response and updates the progress file atomically
+///
+/// # Arguments
+///
+/// * `ctx` - Mutable build context with progress state
+///
+/// # Returns
+///
+/// * `Ok(IterationResult::Continue { tasks_completed })` - Iteration succeeded, continue
+/// * `Ok(IterationResult::Done(reason))` - Build should stop
+/// * `Err(RslphError)` - Iteration failed with error
+pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationResult, RslphError> {
+    // Step 1: Re-read progress file (may have been updated externally)
+    ctx.progress = ProgressFile::load(&ctx.progress_path)?;
+
+    // Track tasks before iteration for diff
+    let tasks_before = ctx.progress.completed_tasks();
+
+    // Step 2: Check for early exit conditions
+    if ctx.progress.is_done() {
+        return Ok(IterationResult::Done(DoneReason::RalphDoneMarker));
+    }
+
+    if ctx.progress.completed_tasks() == ctx.progress.total_tasks() && ctx.progress.total_tasks() > 0
+    {
+        return Ok(IterationResult::Done(DoneReason::AllTasksComplete));
+    }
+
+    // Step 3: Build prompt with current progress context
+    let system_prompt = get_build_prompt(&ctx.config).map_err(|e| {
+        RslphError::Subprocess(format!("Failed to load build prompt: {}", e))
+    })?;
+
+    // Clear completed this iteration from previous iteration
+    ctx.progress.clear_iteration_completed();
+
+    let user_input = format!(
+        "## Current Progress\n\n{}\n\n## Instructions\n\nExecute the next incomplete task. Output the complete updated progress file.",
+        ctx.progress.to_markdown()
+    );
+
+    // Step 4: Build Claude CLI args for headless mode
+    // TODO: Remove --internet flag once we fix the underlying issue with Claude CLI hanging without it
+    let args = vec![
+        "--internet".to_string(), // WORKAROUND: Required to prevent Claude CLI from hanging
+        "-p".to_string(),         // Print mode (headless)
+        "--verbose".to_string(),  // Required for stream-json with -p
+        "--output-format".to_string(),
+        "stream-json".to_string(), // JSONL for structured parsing
+        "--system-prompt".to_string(),
+        system_prompt,
+        user_input,
+    ];
+
+    // Step 5: Spawn fresh Claude subprocess
+    let working_dir = ctx
+        .progress_path
+        .parent()
+        .unwrap_or(Path::new("."));
+
+    eprintln!(
+        "[TRACE] Iteration {}: Spawning Claude subprocess",
+        ctx.current_iteration
+    );
+
+    let mut runner = ClaudeRunner::spawn(&ctx.config.claude_path, &args, working_dir)
+        .await
+        .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
+
+    eprintln!(
+        "[TRACE] Spawned subprocess with PID: {:?}",
+        runner.id()
+    );
+
+    // Step 6: Run with timeout (10 minutes per iteration)
+    let timeout = Duration::from_secs(600);
+    let output = runner
+        .run_with_timeout(timeout, ctx.cancel_token.clone())
+        .await?;
+
+    // Step 7: Parse JSONL response using StreamResponse
+    let mut stream_response = StreamResponse::new();
+    for line in &output {
+        if let OutputLine::Stdout(s) = line {
+            stream_response.process_line(s);
+        }
+    }
+    let response_text = stream_response.text;
+
+    eprintln!(
+        "[TRACE] Claude output length: {} chars",
+        response_text.len()
+    );
+    if let Some(model) = &stream_response.model {
+        eprintln!("[TRACE] Model: {}", model);
+    }
+    eprintln!(
+        "[TRACE] Tokens: {} in / {} out",
+        stream_response.input_tokens, stream_response.output_tokens
+    );
+
+    // Step 8: Parse response into ProgressFile
+    let updated_progress = ProgressFile::parse(&response_text)?;
+
+    // Step 9: Write updated progress file atomically
+    updated_progress.write(&ctx.progress_path)?;
+
+    eprintln!(
+        "[TRACE] Updated progress file: {}",
+        ctx.progress_path.display()
+    );
+
+    // Step 10: Calculate tasks completed this iteration
+    let tasks_after = updated_progress.completed_tasks();
+    let tasks_completed = tasks_after.saturating_sub(tasks_before) as u32;
+
+    // Update context with new progress
+    ctx.progress = updated_progress;
+
+    // Check if done after update
+    if ctx.progress.is_done() {
+        return Ok(IterationResult::Done(DoneReason::RalphDoneMarker));
+    }
+
+    if ctx.progress.completed_tasks() == ctx.progress.total_tasks() && ctx.progress.total_tasks() > 0
+    {
+        return Ok(IterationResult::Done(DoneReason::AllTasksComplete));
+    }
+
+    Ok(IterationResult::Continue { tasks_completed })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+    use tokio_util::sync::CancellationToken;
+
+    fn create_test_progress() -> ProgressFile {
+        use crate::progress::{Task, TaskPhase};
+
+        ProgressFile {
+            name: "Test Plan".to_string(),
+            status: "In Progress".to_string(),
+            analysis: "Test analysis".to_string(),
+            tasks: vec![TaskPhase {
+                name: "Phase 1".to_string(),
+                tasks: vec![
+                    Task {
+                        description: "Task 1".to_string(),
+                        completed: false,
+                    },
+                    Task {
+                        description: "Task 2".to_string(),
+                        completed: false,
+                    },
+                ],
+            }],
+            testing_strategy: "Unit tests".to_string(),
+            completed_this_iteration: vec![],
+            recent_attempts: vec![],
+            iteration_log: vec![],
+        }
+    }
+
+    #[tokio::test]
+    async fn test_iteration_detects_ralph_done() {
+        let dir = TempDir::new().expect("temp dir");
+        let progress_path = dir.path().join("progress.md");
+
+        let mut progress = create_test_progress();
+        progress.status = "RALPH_DONE - All complete".to_string();
+        progress.write(&progress_path).expect("write");
+
+        let config = crate::config::Config::default();
+        let token = CancellationToken::new();
+
+        let mut ctx = BuildContext::new(
+            progress_path,
+            progress,
+            config,
+            token,
+            false,
+            false,
+        );
+        ctx.current_iteration = 1;
+
+        let result = run_single_iteration(&mut ctx).await;
+        assert!(result.is_ok());
+        assert!(matches!(
+            result.unwrap(),
+            IterationResult::Done(DoneReason::RalphDoneMarker)
+        ));
+    }
+
+    #[tokio::test]
+    async fn test_iteration_detects_all_tasks_complete() {
+        let dir = TempDir::new().expect("temp dir");
+        let progress_path = dir.path().join("progress.md");
+
+        use crate::progress::{Task, TaskPhase};
+        let progress = ProgressFile {
+            name: "Test".to_string(),
+            status: "In Progress".to_string(),
+            tasks: vec![TaskPhase {
+                name: "Phase 1".to_string(),
+                tasks: vec![Task {
+                    description: "Task 1".to_string(),
+                    completed: true,
+                }],
+            }],
+            ..Default::default()
+        };
+        progress.write(&progress_path).expect("write");
+
+        let config = crate::config::Config::default();
+        let token = CancellationToken::new();
+
+        let mut ctx = BuildContext::new(
+            progress_path,
+            progress,
+            config,
+            token,
+            false,
+            false,
+        );
+        ctx.current_iteration = 1;
+
+        let result = run_single_iteration(&mut ctx).await;
+        assert!(result.is_ok());
+        assert!(matches!(
+            result.unwrap(),
+            IterationResult::Done(DoneReason::AllTasksComplete)
+        ));
+    }
+}

@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 05-vcs-integration
 source: 05-01-SUMMARY.md
 started: 2026-01-18T22:20:00Z
@@ -58,13 +58,23 @@ skipped: 3
   reason: "User reported: No it doesn't  [][iter 1] Completed 1 task(s)"
   severity: major
   test: 2
-  artifacts: []
-  missing: []
+  root_cause: "format_iteration_commit uses updated_progress.name (from Claude response) instead of ctx.progress.name (original file)"
+  artifacts:
+    - path: src/build/iteration.rs
+      issue: "Line 200 uses updated_progress.name instead of ctx.progress.name"
+  missing:
+    - "Change format_iteration_commit call to use ctx.progress.name"
+  debug_session: .planning/debug/empty-project-name-commit.md
 
 - truth: "Commit hash is logged after auto-commit"
   status: failed
   reason: "User reported: No this shows [VCS] Committed: unknown (Sapling)"
   severity: major
   test: 3
-  artifacts: []
-  missing: []
+  root_cause: "Sapling sl commit produces no stdout on success; code assumes hash is in stdout and falls back to 'unknown'"
+  artifacts:
+    - path: src/vcs/sapling.rs
+      issue: "commit() method parses stdout for hash but sl commit produces no output"
+  missing:
+    - "After successful sl commit, run sl log -l 1 --template '{node|short}' to get hash"
+  debug_session: .planning/debug/sapling-commit-hash-unknown.md

@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Foundation** - Config loading, CLI skeleton, progress file format
 - [x] **Phase 2: Subprocess Management** - Claude CLI spawning, streaming output, process control
-- [ ] **Phase 3: Planning Command** - `rslph plan` with basic and adaptive modes
+- [x] **Phase 3: Planning Command** - `rslph plan` with basic and adaptive modes
 - [ ] **Phase 4: Core Build Loop** - Iteration logic, completion detection, fresh context
 - [ ] **Phase 5: VCS Integration** - Git and Sapling auto-commit per iteration
 - [ ] **Phase 6: TUI Interface** - Status bar, live output, collapsible threads
@@ -69,8 +69,8 @@ Plans:
 **Plans**: 2 plans in 2 waves
 
 Plans:
-- [ ] 03-01-PLAN.md — Basic planning mode (prompt system, stack detection, Claude execution) [Wave 1]
-- [ ] 03-02-PLAN.md — Adaptive mode (vagueness detection, personas, multi-turn conversation) [Wave 2, depends on 03-01]
+- [x] 03-01-PLAN.md — Basic planning mode (prompt system, stack detection, Claude execution) [Wave 1]
+- [x] 03-02-PLAN.md — Adaptive mode (vagueness detection, personas, multi-turn conversation) [Wave 2, depends on 03-01]
 
 ### Phase 4: Core Build Loop
 **Goal**: `rslph build` executes tasks iteratively with fresh context, completion detection, and configurable limits
@@ -163,7 +163,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 |-------|----------------|--------|-----------|
 | 1. Foundation | 3/3 | Complete | 2026-01-17 |
 | 2. Subprocess Management | 2/2 | Complete | 2026-01-17 |
-| 3. Planning Command | 0/2 | Planned | - |
+| 3. Planning Command | 2/2 | Complete | 2026-01-18 |
 | 4. Core Build Loop | 0/3 | Not started | - |
 | 5. VCS Integration | 0/1 | Not started | - |
 | 6. TUI Interface | 0/4 | Not started | - |

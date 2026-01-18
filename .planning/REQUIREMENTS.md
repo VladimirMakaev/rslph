@@ -152,8 +152,8 @@
 |-------------|-------|--------|
 | CMD-01 | Phase 1 | Complete |
 | CMD-02 | Phase 1 | Complete |
-| CMD-03 | Phase 3 | Pending |
-| CMD-04 | Phase 3 | Pending |
+| CMD-03 | Phase 3 | Complete |
+| CMD-04 | Phase 3 | Complete |
 | LOOP-01 | Phase 4 | Pending |
 | LOOP-02 | Phase 4 | Pending |
 | LOOP-03 | Phase 4 | Pending |
@@ -184,8 +184,8 @@
 | CFG-06 | Phase 1 | Complete |
 | CFG-07 | Phase 1 | Complete |
 | CFG-08 | Phase 1 | Complete |
-| PROMPT-01 | Phase 3 | Pending |
-| PROMPT-02 | Phase 3 | Pending |
+| PROMPT-01 | Phase 3 | Complete |
+| PROMPT-02 | Phase 3 | Complete |
 | PROMPT-03 | Phase 4 | Pending |
 | PROMPT-04 | Phase 8 | Pending |
 | NOTIF-01 | Phase 8 | Pending |
@@ -193,12 +193,12 @@
 | NOTIF-03 | Phase 8 | Pending |
 | NOTIF-04 | Phase 8 | Pending |
 | NOTIF-05 | Phase 8 | Pending |
-| PLAN-01 | Phase 3 | Pending |
-| PLAN-02 | Phase 3 | Pending |
-| PLAN-03 | Phase 3 | Pending |
-| PLAN-04 | Phase 3 | Pending |
-| PLAN-05 | Phase 3 | Pending |
-| PLAN-06 | Phase 3 | Pending |
+| PLAN-01 | Phase 3 | Complete |
+| PLAN-02 | Phase 3 | Complete |
+| PLAN-03 | Phase 3 | Complete |
+| PLAN-04 | Phase 3 | Complete |
+| PLAN-05 | Phase 3 | Complete |
+| PLAN-06 | Phase 3 | Complete |
 | VERIF-01 | Phase 7 | Pending |
 | VERIF-02 | Phase 7 | Pending |
 | VERIF-03 | Phase 7 | Pending |

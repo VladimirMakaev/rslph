@@ -73,7 +73,7 @@ pub async fn run_build_command(
             BuildState::Starting => {
                 ctx.current_iteration = 1;
                 ctx.iteration_start = Some(std::time::Instant::now());
-                println!("\n--- Iteration 1 ---");
+                eprintln!("\n--- Iteration 1 ---");
                 BuildState::Running { iteration: 1 }
             }
 
@@ -104,14 +104,14 @@ pub async fn run_build_command(
                     .iteration_start
                     .map(|s| s.elapsed())
                     .unwrap_or_default();
-                println!(
-                    "Iteration {} complete: {} task(s) completed in {:.1}s",
+                eprintln!(
+                    "[BUILD] Iteration {} complete: {} task(s) completed in {:.1}s",
                     iteration,
                     tasks_completed,
                     duration.as_secs_f64()
                 );
-                println!(
-                    "Progress: {}/{} tasks",
+                eprintln!(
+                    "[BUILD] Progress: {}/{} tasks",
                     ctx.progress.completed_tasks(),
                     ctx.progress.total_tasks()
                 );
@@ -119,12 +119,13 @@ pub async fn run_build_command(
                 // Log to progress file
                 log_iteration(&mut ctx, iteration, tasks_completed)?;
 
-                // Check termination conditions
+                // Check termination conditions in priority order
                 if ctx.once_mode {
                     BuildState::Done {
                         reason: DoneReason::SingleIterationComplete,
                     }
                 } else if iteration >= ctx.max_iterations {
+                    eprintln!("[BUILD] Max iterations ({}) reached", ctx.max_iterations);
                     BuildState::Done {
                         reason: DoneReason::MaxIterationsReached,
                     }
@@ -137,7 +138,7 @@ pub async fn run_build_command(
                     } else {
                         ctx.current_iteration = iteration + 1;
                         ctx.iteration_start = Some(std::time::Instant::now());
-                        println!("\n--- Iteration {} ---", iteration + 1);
+                        eprintln!("\n--- Iteration {} ---", iteration + 1);
                         BuildState::Running {
                             iteration: iteration + 1,
                         }

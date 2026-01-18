@@ -64,6 +64,7 @@ Recent decisions affecting current work:
 - **STDERR-BUILD-LOGS**: Use eprintln with [BUILD] prefix for iteration status logs
 - **DRY-RUN-VALIDATE-PROMPT**: Validate prompt loading in dry-run to catch config errors early
 - **WHICH-FALLBACK**: Use `which` to resolve relative command names to absolute paths at config load time
+- **EMPTY-PARENT-PATH**: Filter empty parent paths when getting working_dir from progress_path (Path::parent returns Some("") for bare filenames)
 
 ### Pending Todos
 

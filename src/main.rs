@@ -14,12 +14,6 @@ async fn main() -> color_eyre::Result<()> {
 
     match cli.command {
         Commands::Plan { plan, adaptive } => {
-            if adaptive {
-                // Adaptive mode not yet implemented
-                eprintln!("Adaptive mode not yet implemented (Phase 3, Plan 02)");
-                std::process::exit(1);
-            }
-
             let working_dir = std::env::current_dir()?;
 
             // Set up Ctrl+C handling
@@ -30,8 +24,11 @@ async fn main() -> color_eyre::Result<()> {
 
             println!("Planning: {}", plan);
             println!("Working directory: {}", working_dir.display());
+            if adaptive {
+                println!("Mode: adaptive (with clarifying questions)");
+            }
 
-            match run_plan_command(&plan, &config, &working_dir, cancel_token, timeout).await {
+            match run_plan_command(&plan, adaptive, &config, &working_dir, cancel_token, timeout).await {
                 Ok(output_path) => {
                     println!("Success! Progress file written to: {}", output_path.display());
                 }

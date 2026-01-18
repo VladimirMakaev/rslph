@@ -2,13 +2,16 @@
 //!
 //! Executes Claude in headless mode to transform user ideas into structured progress files.
 
+use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
 use crate::config::Config;
 use crate::error::RslphError;
-use crate::planning::detect_stack;
+use crate::planning::{
+    assess_vagueness, detect_stack, REQUIREMENTS_CLARIFIER_PERSONA, TESTING_STRATEGIST_PERSONA,
+};
 use crate::progress::ProgressFile;
 use crate::prompts::get_plan_prompt;
 use crate::subprocess::{ClaudeRunner, OutputLine};
@@ -21,6 +24,7 @@ use crate::subprocess::{ClaudeRunner, OutputLine};
 /// # Arguments
 ///
 /// * `input` - User's idea/plan description
+/// * `adaptive` - Whether to use adaptive mode with clarifying questions
 /// * `config` - Application configuration
 /// * `working_dir` - Directory to use as working directory and output location
 /// * `cancel_token` - Token for graceful cancellation
@@ -30,6 +34,24 @@ use crate::subprocess::{ClaudeRunner, OutputLine};
 ///
 /// Path to the generated progress file.
 pub async fn run_plan_command(
+    input: &str,
+    adaptive: bool,
+    config: &Config,
+    working_dir: &Path,
+    cancel_token: CancellationToken,
+    timeout: Duration,
+) -> color_eyre::Result<PathBuf> {
+    // If adaptive mode, run the adaptive planning flow
+    if adaptive {
+        return run_adaptive_planning(input, config, working_dir, cancel_token, timeout).await;
+    }
+
+    // Basic mode: direct planning without clarification
+    run_basic_planning(input, config, working_dir, cancel_token, timeout).await
+}
+
+/// Run basic (non-adaptive) planning mode.
+async fn run_basic_planning(
     input: &str,
     config: &Config,
     working_dir: &Path,
@@ -51,12 +73,12 @@ pub async fn run_plan_command(
 
     // Step 4: Build Claude CLI args for headless mode
     let args = vec![
-        "-p".to_string(),                    // Print mode (headless)
-        "--output-format".to_string(),       // Output format
-        "text".to_string(),                  // Plain text
-        "--system-prompt".to_string(),       // Custom system prompt
+        "-p".to_string(),              // Print mode (headless)
+        "--output-format".to_string(), // Output format
+        "text".to_string(),            // Plain text
+        "--system-prompt".to_string(), // Custom system prompt
         system_prompt,
-        full_input,                          // User input as positional arg
+        full_input, // User input as positional arg
     ];
 
     // Step 5: Spawn Claude
@@ -87,6 +109,216 @@ pub async fn run_plan_command(
     Ok(output_path)
 }
 
+/// Run adaptive planning mode with clarifying questions.
+///
+/// Adaptive mode:
+/// 1. Detects project stack
+/// 2. Assesses vagueness of input
+/// 3. If vague, asks clarifying questions via requirements clarifier persona
+/// 4. Generates testing strategy via testing strategist persona
+/// 5. Runs final planning with all gathered context
+pub async fn run_adaptive_planning(
+    input: &str,
+    config: &Config,
+    working_dir: &Path,
+    cancel_token: CancellationToken,
+    timeout: Duration,
+) -> color_eyre::Result<PathBuf> {
+    // Step 1: Detect project stack
+    let stack = detect_stack(working_dir);
+    println!("Detected stack:\n{}", stack.to_summary());
+
+    // Step 2: Assess vagueness
+    let vagueness = assess_vagueness(input);
+    println!(
+        "\nVagueness score: {:.2} (threshold: 0.5)",
+        vagueness.score
+    );
+    if !vagueness.reasons.is_empty() {
+        println!("Reasons: {}", vagueness.reasons.join(", "));
+    }
+
+    // Step 3: Initialize clarifications
+    let mut clarifications = String::new();
+
+    // Step 4: If vague, run requirements clarifier
+    if vagueness.is_vague() {
+        println!("\nInput appears vague, gathering requirements...\n");
+
+        let clarifier_input = format!(
+            "## Project Stack\n{}\n\n## User Idea\n{}",
+            stack.to_summary(),
+            input
+        );
+
+        let questions = run_claude_headless(
+            &config.claude_path,
+            REQUIREMENTS_CLARIFIER_PERSONA,
+            &clarifier_input,
+            working_dir,
+            cancel_token.clone(),
+            timeout,
+        )
+        .await?;
+
+        if !questions.contains("REQUIREMENTS_CLEAR") {
+            // Print questions and get user input
+            println!("Clarifying Questions:\n");
+            println!("{}", questions);
+            println!("\nPlease answer the questions above (type your answers, then Enter twice to submit):\n");
+
+            // Read multi-line input from stdin
+            clarifications = read_multiline_input()?;
+            println!("\nGathered clarifications. Continuing...\n");
+        } else {
+            println!("Requirements are clear enough, skipping clarification.\n");
+        }
+    } else {
+        println!("\nInput is specific enough, skipping clarification.\n");
+    }
+
+    // Step 5: Run testing strategist
+    println!("Generating testing strategy...\n");
+
+    let testing_input = format!(
+        "## Project Stack\n{}\n\n## Requirements\n{}\n\n## Clarifications\n{}",
+        stack.to_summary(),
+        input,
+        if clarifications.is_empty() {
+            "None"
+        } else {
+            &clarifications
+        }
+    );
+
+    let testing_strategy = run_claude_headless(
+        &config.claude_path,
+        TESTING_STRATEGIST_PERSONA,
+        &testing_input,
+        working_dir,
+        cancel_token.clone(),
+        timeout,
+    )
+    .await?;
+
+    println!("Testing strategy generated.\n");
+
+    // Step 6: Run final planning with all context
+    println!("Generating final plan...\n");
+
+    let plan_prompt = get_plan_prompt(config)?;
+    let final_input = format!(
+        "## Detected Stack\n{}\n\n## Requirements\n{}\n\n## Clarifications\n{}\n\n## Testing Strategy\n{}",
+        stack.to_summary(),
+        input,
+        if clarifications.is_empty() { "None" } else { &clarifications },
+        testing_strategy
+    );
+
+    // Build Claude CLI args for headless mode
+    let args = vec![
+        "-p".to_string(),
+        "--output-format".to_string(),
+        "text".to_string(),
+        "--system-prompt".to_string(),
+        plan_prompt,
+        final_input,
+    ];
+
+    // Spawn Claude
+    let mut runner = ClaudeRunner::spawn(&config.claude_path, &args, working_dir)
+        .await
+        .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
+
+    // Run with timeout and collect output
+    let output = runner.run_with_timeout(timeout, cancel_token).await?;
+
+    // Collect stdout lines into response text
+    let response_text: String = output
+        .iter()
+        .filter_map(|line| match line {
+            OutputLine::Stdout(s) => Some(s.as_str()),
+            OutputLine::Stderr(_) => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    // Parse response into ProgressFile
+    let progress_file = ProgressFile::parse(&response_text)?;
+
+    // Write to file
+    let output_path = working_dir.join("progress.md");
+    progress_file.write(&output_path)?;
+
+    Ok(output_path)
+}
+
+/// Run Claude CLI in headless mode with a system prompt and return the response.
+async fn run_claude_headless(
+    claude_path: &str,
+    system_prompt: &str,
+    user_input: &str,
+    working_dir: &Path,
+    cancel_token: CancellationToken,
+    timeout: Duration,
+) -> color_eyre::Result<String> {
+    let args = vec![
+        "-p".to_string(),
+        "--output-format".to_string(),
+        "text".to_string(),
+        "--system-prompt".to_string(),
+        system_prompt.to_string(),
+        user_input.to_string(),
+    ];
+
+    let mut runner = ClaudeRunner::spawn(claude_path, &args, working_dir)
+        .await
+        .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
+
+    let output = runner.run_with_timeout(timeout, cancel_token).await?;
+
+    let response_text: String = output
+        .iter()
+        .filter_map(|line| match line {
+            OutputLine::Stdout(s) => Some(s.as_str()),
+            OutputLine::Stderr(_) => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    Ok(response_text)
+}
+
+/// Read multi-line input from stdin.
+///
+/// Reading continues until two consecutive empty lines are entered.
+fn read_multiline_input() -> color_eyre::Result<String> {
+    let stdin = io::stdin();
+    let mut lines = Vec::new();
+    let mut empty_count = 0;
+
+    for line in stdin.lock().lines() {
+        let line = line?;
+        if line.is_empty() {
+            empty_count += 1;
+            if empty_count >= 2 {
+                break;
+            }
+            lines.push(line);
+        } else {
+            empty_count = 0;
+            lines.push(line);
+        }
+    }
+
+    // Remove trailing empty lines
+    while lines.last().is_some_and(|l| l.is_empty()) {
+        lines.pop();
+    }
+
+    Ok(lines.join("\n"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -108,6 +340,7 @@ mod tests {
 
         let result = run_plan_command(
             "build something",
+            false, // basic mode
             &config,
             dir.path(),
             token,
@@ -148,6 +381,7 @@ mod tests {
         let token = CancellationToken::new();
         let result = run_plan_command(
             "anything",
+            false, // basic mode
             &config,
             dir.path(),
             token,
@@ -192,6 +426,7 @@ mod tests {
 
         let result = run_plan_command(
             "anything",
+            false, // basic mode
             &config,
             dir.path(),
             token,
@@ -216,6 +451,7 @@ mod tests {
         let token = CancellationToken::new();
         let result = run_plan_command(
             "anything",
+            false, // basic mode
             &config,
             dir.path(),
             token,

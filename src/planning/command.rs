@@ -76,6 +76,7 @@ async fn run_basic_planning(
     let args = vec![
         "--internet".to_string(),      // WORKAROUND: Required to prevent Claude CLI from hanging
         "-p".to_string(),              // Print mode (headless)
+        "--verbose".to_string(),       // Required for stream-json with -p
         "--output-format".to_string(), // Output format
         "stream-json".to_string(),     // JSONL for structured parsing
         "--system-prompt".to_string(), // Custom system prompt
@@ -290,6 +291,7 @@ pub async fn run_adaptive_planning(
     let args = vec![
         "--internet".to_string(),      // WORKAROUND: Required to prevent Claude CLI from hanging
         "-p".to_string(),
+        "--verbose".to_string(),       // Required for stream-json with -p
         "--output-format".to_string(),
         "stream-json".to_string(),     // JSONL for structured parsing
         "--system-prompt".to_string(),
@@ -337,6 +339,7 @@ async fn run_claude_headless(
     let args = vec![
         "--internet".to_string(),      // WORKAROUND: Required to prevent Claude CLI from hanging
         "-p".to_string(),
+        "--verbose".to_string(),       // Required for stream-json with -p
         "--output-format".to_string(),
         "stream-json".to_string(),     // JSONL for structured parsing
         "--system-prompt".to_string(),

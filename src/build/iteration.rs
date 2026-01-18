@@ -83,9 +83,23 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
         ctx.current_iteration
     );
 
-    let mut runner = ClaudeRunner::spawn(&ctx.config.claude_path, &args, working_dir)
-        .await
-        .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
+    let runner_result = ClaudeRunner::spawn(&ctx.config.claude_path, &args, working_dir).await;
+
+    let mut runner = match runner_result {
+        Ok(r) => r,
+        Err(e) => {
+            // Log attempt on spawn failure
+            ctx.progress.add_attempt(
+                ctx.current_iteration,
+                "Spawn Claude subprocess",
+                &format!("Error: {}", e),
+                Some("Check claude_path configuration"),
+            );
+            ctx.progress.trim_attempts(ctx.config.recent_threads as usize);
+            ctx.progress.write(&ctx.progress_path)?;
+            return Err(RslphError::Subprocess(format!("Failed to spawn claude: {}", e)));
+        }
+    };
 
     eprintln!(
         "[TRACE] Spawned subprocess with PID: {:?}",
@@ -94,9 +108,24 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
 
     // Step 6: Run with timeout (10 minutes per iteration)
     let timeout = Duration::from_secs(600);
-    let output = runner
+    let output = match runner
         .run_with_timeout(timeout, ctx.cancel_token.clone())
-        .await?;
+        .await
+    {
+        Ok(o) => o,
+        Err(e) => {
+            // Log attempt on execution failure (timeout, cancel, etc.)
+            ctx.progress.add_attempt(
+                ctx.current_iteration,
+                "Execute Claude subprocess",
+                &format!("Error: {}", e),
+                Some("Retry or check subprocess"),
+            );
+            ctx.progress.trim_attempts(ctx.config.recent_threads as usize);
+            ctx.progress.write(&ctx.progress_path)?;
+            return Err(e);
+        }
+    };
 
     // Step 7: Parse JSONL response using StreamResponse
     let mut stream_response = StreamResponse::new();
@@ -120,9 +149,25 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
     );
 
     // Step 8: Parse response into ProgressFile
-    let updated_progress = ProgressFile::parse(&response_text)?;
+    let updated_progress = match ProgressFile::parse(&response_text) {
+        Ok(p) => p,
+        Err(e) => {
+            // Log attempt on parse failure
+            ctx.progress.add_attempt(
+                ctx.current_iteration,
+                "Parse Claude response",
+                &format!("Error: {}", e),
+                Some("Check response format"),
+            );
+            ctx.progress.trim_attempts(ctx.config.recent_threads as usize);
+            ctx.progress.write(&ctx.progress_path)?;
+            return Err(e);
+        }
+    };
 
-    // Step 9: Write updated progress file atomically
+    // Step 9: Write updated progress file atomically with trimmed attempts
+    let mut updated_progress = updated_progress;
+    updated_progress.trim_attempts(ctx.config.recent_threads as usize);
     updated_progress.write(&ctx.progress_path)?;
 
     eprintln!(

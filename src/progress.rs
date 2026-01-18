@@ -461,6 +461,14 @@ impl ProgressFile {
         self.completed_this_iteration.clear();
     }
 
+    /// Trim recent attempts to max_count (LOOP-09, CFG-07)
+    /// Removes oldest attempts first to keep memory bounded.
+    pub fn trim_attempts(&mut self, max_count: usize) {
+        while self.recent_attempts.len() > max_count {
+            self.recent_attempts.remove(0); // Remove oldest
+        }
+    }
+
     /// Mark as done
     pub fn mark_done(&mut self, message: &str) {
         self.status = format!("RALPH_DONE - {}", message);
@@ -688,5 +696,23 @@ Some analysis notes here.
         pf.mark_done("All tasks complete");
         assert!(pf.is_done());
         assert!(pf.status.contains("RALPH_DONE"));
+    }
+
+    #[test]
+    fn test_trim_attempts() {
+        let mut progress = ProgressFile::default();
+        // Add 5 attempts
+        for i in 1..=5 {
+            progress.add_attempt(i, "test", "result", None);
+        }
+        assert_eq!(progress.recent_attempts.len(), 5);
+
+        // Trim to 3
+        progress.trim_attempts(3);
+        assert_eq!(progress.recent_attempts.len(), 3);
+
+        // Verify oldest were removed (iterations 1 and 2 gone, 3-5 remain)
+        assert_eq!(progress.recent_attempts[0].iteration, 3);
+        assert_eq!(progress.recent_attempts[2].iteration, 5);
     }
 }

@@ -8,7 +8,7 @@
 
 Phase 5 implements automatic VCS commits after each build iteration to enable rollback safety. This requires:
 
-1. **VCS Detection**: Determine whether the repository uses Git (`.git`) or Sapling (`.sl`) by walking up the directory tree
+1. **VCS Detection**: Check if `sl` is available and functional (via `sl root`), otherwise fall back to Git (`.git` directory)
 2. **Auto-Commit**: After each iteration, stage changed files and commit with a descriptive message
 3. **Error Handling**: Gracefully handle "nothing to commit" scenarios and VCS failures
 
@@ -38,7 +38,7 @@ The established libraries/tools for this phase:
 | Command | Purpose | Detection |
 |---------|---------|-----------|
 | `git` | Git VCS operations | `.git` directory exists |
-| `sl` | Sapling VCS operations | `.sl` directory exists |
+| `sl` | Sapling VCS operations | `sl root` succeeds (Sapling works with Git/Mercurial repos, no separate directory) |
 
 ### Alternatives Considered
 
@@ -109,15 +109,16 @@ pub trait Vcs: Send + Sync {
 }
 ```
 
-### Pattern 2: VCS Detection by Walking Up Directory Tree
+### Pattern 2: VCS Detection (Sapling-first, Git-fallback)
 
-**What:** Find VCS root by checking for `.git` or `.sl` directories
+**What:** Check if Sapling is available and functional, otherwise fall back to Git
 **When to use:** At start of build command, before any VCS operations
 
 ```rust
-// Source: git2::Repository::discover pattern, adapted for multi-VCS
+// Source: Sapling works with Git/Mercurial repos, doesn't create its own directory
 
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 /// Detection result
 pub struct VcsDetection {
@@ -125,42 +126,52 @@ pub struct VcsDetection {
     pub root: PathBuf,
 }
 
-/// Detect VCS type and root directory by walking up from start_path
-pub fn detect_vcs(start_path: &Path) -> Result<VcsDetection, VcsError> {
+/// Detect VCS type and root directory
+/// Priority: Sapling (if available and in a repo) > Git (if .git exists)
+pub fn detect_vcs(start_path: &Path) -> Result<Option<VcsDetection>, VcsError> {
     let start = if start_path.is_file() {
         start_path.parent().unwrap_or(start_path)
     } else {
         start_path
     };
 
-    let mut current = start.canonicalize()
+    let working_dir = start.canonicalize()
         .map_err(|e| VcsError::Detection(format!("Invalid path: {}", e)))?;
 
-    loop {
-        // Check for Sapling first (it can have .git symlink for compatibility)
-        if current.join(".sl").is_dir() {
-            return Ok(VcsDetection {
+    // Try Sapling first: check if `sl root` succeeds
+    // Sapling works with Git and Mercurial repos, no separate .sl directory
+    if let Ok(output) = Command::new("sl")
+        .args(["root"])
+        .current_dir(&working_dir)
+        .output()
+    {
+        if output.status.success() {
+            let root = String::from_utf8_lossy(&output.stdout)
+                .trim()
+                .to_string();
+            return Ok(Some(VcsDetection {
                 vcs_type: VcsType::Sapling,
-                root: current,
-            });
+                root: PathBuf::from(root),
+            }));
         }
+    }
 
-        // Check for Git
+    // Fall back to Git: walk up looking for .git
+    let mut current = working_dir;
+    loop {
         if current.join(".git").exists() {
-            return Ok(VcsDetection {
-                vcs_type: VcsType::Git,
-                root: current,
-            });
+            // Verify git command is available
+            if Command::new("git").arg("--version").output().is_ok() {
+                return Ok(Some(VcsDetection {
+                    vcs_type: VcsType::Git,
+                    root: current,
+                }));
+            }
         }
 
-        // Move up to parent
         match current.parent() {
             Some(parent) => current = parent.to_path_buf(),
-            None => {
-                return Err(VcsError::NotARepository(
-                    start.to_string_lossy().to_string()
-                ));
-            }
+            None => return Ok(None), // No VCS found, not an error
         }
     }
 }
@@ -484,14 +495,15 @@ Problems that look simple but have existing solutions:
 - Future: Check for `.git` file (submodule) vs directory (real repo)
 **Warning signs:** Commits only affecting submodule directory
 
-### Pitfall 6: Sapling .sl/store/git Mode
+### Pitfall 6: Sapling Priority Over Git
 
-**What goes wrong:** Sapling repo has `.git` symlink for compatibility, detected as Git
-**Why it happens:** Sapling can operate in Git-compatible mode
+**What goes wrong:** Git used when user prefers Sapling
+**Why it happens:** Both `sl` and `git` work on the same Git repository
 **How to avoid:**
-- Check for `.sl` FIRST, before `.git`
-- `.sl` directory takes precedence
-**Warning signs:** Using git commands on Sapling repo
+- Check if `sl root` succeeds FIRST, before checking for `.git`
+- Sapling is a smart client that works with Git repos
+- User who has `sl` installed likely prefers it
+**Warning signs:** Using git commands when user expected sl
 
 ## Code Examples
 
@@ -533,35 +545,19 @@ pub enum VcsError {
 // src/vcs/mod.rs
 
 /// Create appropriate VCS implementation based on detection
-pub fn create_vcs(working_dir: &Path) -> Result<Box<dyn Vcs>, VcsError> {
-    let detection = detect_vcs(working_dir)?;
-
-    match detection.vcs_type {
-        VcsType::Git => {
-            // Verify git is available
-            Command::new("git")
-                .arg("--version")
-                .output()
-                .map_err(|_| VcsError::NotAvailable("git".to_string()))?;
-
-            Ok(Box::new(GitVcs::new(detection.root)))
+/// Returns None if not in a repository or VCS not available
+pub fn create_vcs(working_dir: &Path) -> Option<Box<dyn Vcs>> {
+    match detect_vcs(working_dir) {
+        Ok(Some(detection)) => {
+            match detection.vcs_type {
+                VcsType::Git => Some(Box::new(GitVcs::new(detection.root))),
+                VcsType::Sapling => Some(Box::new(SaplingVcs::new(detection.root))),
+            }
         }
-        VcsType::Sapling => {
-            // Verify sl is available
-            Command::new("sl")
-                .arg("--version")
-                .output()
-                .map_err(|_| VcsError::NotAvailable("sl".to_string()))?;
-
-            Ok(Box::new(SaplingVcs::new(detection.root)))
+        Ok(None) => {
+            // Not in a repository - this is fine, just no auto-commits
+            None
         }
-    }
-}
-
-/// Attempt to create VCS, returning None if not available
-pub fn try_create_vcs(working_dir: &Path) -> Option<Box<dyn Vcs>> {
-    match create_vcs(working_dir) {
-        Ok(vcs) => Some(vcs),
         Err(e) => {
             eprintln!("[VCS] Warning: {}", e);
             None
@@ -592,7 +588,7 @@ impl BuildContext {
         dry_run: bool,
     ) -> Self {
         // Detect VCS during context creation
-        let vcs = try_create_vcs(&progress_path);
+        let vcs = create_vcs(&progress_path);
 
         if let Some(ref v) = vcs {
             eprintln!("[VCS] Detected {} repository", v.vcs_type());

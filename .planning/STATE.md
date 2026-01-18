@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 ## Current Position
 
 Phase: 5 of 8 (VCS Integration)
-Plan: 0 of 1 in current phase
-Status: Ready to plan
-Last activity: 2026-01-18 — Completed 04-04 gap closure plan
+Plan: 1 of 1 in current phase
+Status: Phase complete
+Last activity: 2026-01-18 — Completed 05-01 VCS Integration plan
 
-Progress: [██████░░░░] 62%
+Progress: [███████░░░] 69%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 11
-- Average duration: 6m 36s
-- Total execution time: 1.12 hours
+- Total plans completed: 12
+- Average duration: 6m 23s
+- Total execution time: 1.19 hours
 
 **By Phase:**
 
@@ -31,9 +31,10 @@ Progress: [██████░░░░] 62%
 | 02-subprocess-management | 2/2 | 6m 29s | 3m 15s |
 | 03-planning-command | 2/2 | 16m | 8m |
 | 04-core-build-loop | 4/4 | 22m 41s | 5m 40s |
+| 05-vcs-integration | 1/1 | 4m | 4m |
 
 **Recent Trend:**
-- Last 5 plans: 04-01 (5m 26s), 04-02 (8m), 04-03 (7m), 04-04 (2m 15s)
+- Last 5 plans: 04-02 (8m), 04-03 (7m), 04-04 (2m 15s), 05-01 (4m)
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -66,6 +67,10 @@ Recent decisions affecting current work:
 - **WHICH-FALLBACK**: Use `which` to resolve relative command names to absolute paths at config load time
 - **EMPTY-PARENT-PATH**: Filter empty parent paths when getting working_dir from progress_path (Path::parent returns Some("") for bare filenames)
 - **SAPLING-SL-ROOT-DETECT**: Detect Sapling via `sl root` command success, not `.sl` directory (Sapling is a client that works with Git/Mercurial repos, doesn't create its own directory)
+- **VCS-SHELL-OUT**: Shell out to git/sl CLI rather than using git2 crate (simpler, no C dependency)
+- **VCS-SAPLING-FIRST**: Detect Sapling via sl root before Git via .git directory
+- **VCS-WARN-NOT-FAIL**: VCS errors are logged as warnings, do not fail the build
+- **VCS-ITER-COMMIT**: Commit after iteration completion, not per-task
 
 ### Pending Todos
 
@@ -78,6 +83,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-18 05:02 UTC
-Stopped at: Completed 04-04-PLAN.md (gap closure for claude path resolution)
+Last session: 2026-01-18 22:13 UTC
+Stopped at: Completed 05-01-PLAN.md (VCS Integration)
 Resume file: None

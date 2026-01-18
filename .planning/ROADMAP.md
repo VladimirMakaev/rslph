@@ -101,10 +101,10 @@ Plans:
   2. Sapling (sl) repositories auto-commit identically to Git
   3. VCS type is auto-detected (no user configuration required)
   4. User can roll back to any iteration via standard VCS commands
-**Plans**: TBD
+**Plans**: 1 plan in 1 wave
 
 Plans:
-- [ ] 05-01: VCS detection and Git/Sapling commit integration
+- [ ] 05-01-PLAN.md — VCS module with Git/Sapling implementations, auto-detection, build loop integration [Wave 1]
 
 ### Phase 6: TUI Interface
 **Goal**: Rich terminal UI displays status, live output, and collapsible conversation threads
@@ -166,7 +166,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 2. Subprocess Management | 2/2 | Complete | 2026-01-17 |
 | 3. Planning Command | 2/2 | Complete | 2026-01-18 |
 | 4. Core Build Loop | 4/4 | Complete | 2026-01-18 |
-| 5. VCS Integration | 0/1 | Not started | - |
+| 5. VCS Integration | 0/1 | Planned | - |
 | 6. TUI Interface | 0/4 | Not started | - |
 | 7. Verification | 0/1 | Not started | - |
 | 8. Notifications and Polish | 0/2 | Not started | - |

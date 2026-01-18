@@ -2,11 +2,12 @@
 //!
 //! Provides state enum, done reason, iteration result, and build context.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio_util::sync::CancellationToken;
 
 use crate::config::Config;
 use crate::progress::ProgressFile;
+use crate::vcs::{create_vcs, Vcs};
 
 /// Build loop states for the state machine.
 #[derive(Debug, Clone, PartialEq)]
@@ -98,6 +99,8 @@ pub struct BuildContext {
     pub dry_run: bool,
     /// Iteration start time for duration tracking.
     pub iteration_start: Option<std::time::Instant>,
+    /// VCS for auto-commit after iterations (None if not in a repository).
+    pub vcs: Option<Box<dyn Vcs>>,
 }
 
 impl BuildContext {
@@ -111,6 +114,18 @@ impl BuildContext {
         dry_run: bool,
     ) -> Self {
         let max_iterations = config.max_iterations;
+
+        // Detect and create VCS for auto-commit
+        // Handle both None parent and empty parent (when path is just filename)
+        let working_dir = progress_path
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or(Path::new("."));
+        let vcs = create_vcs(working_dir);
+        if let Some(ref v) = vcs {
+            eprintln!("[VCS] Detected {} repository", v.vcs_type());
+        }
+
         Self {
             progress_path,
             progress,
@@ -121,6 +136,7 @@ impl BuildContext {
             once_mode,
             dry_run,
             iteration_start: None,
+            vcs,
         }
     }
 }

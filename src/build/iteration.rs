@@ -12,6 +12,14 @@ use crate::subprocess::{ClaudeRunner, OutputLine, StreamResponse};
 
 use super::state::{BuildContext, DoneReason, IterationResult};
 
+/// Format commit message for an iteration.
+fn format_iteration_commit(project_name: &str, iteration: u32, tasks_completed: u32) -> String {
+    format!(
+        "[{}][iter {}] Completed {} task(s)",
+        project_name, iteration, tasks_completed
+    )
+}
+
 /// Run a single iteration of the build loop.
 ///
 /// This function:
@@ -184,6 +192,26 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
     // Step 10: Calculate tasks completed this iteration
     let tasks_after = updated_progress.completed_tasks();
     let tasks_completed = tasks_after.saturating_sub(tasks_before) as u32;
+
+    // Step 11: VCS auto-commit if tasks were completed
+    if tasks_completed > 0 {
+        if let Some(ref vcs) = ctx.vcs {
+            let commit_msg =
+                format_iteration_commit(&updated_progress.name, ctx.current_iteration, tasks_completed);
+            match vcs.commit_all(&commit_msg) {
+                Ok(Some(hash)) => {
+                    eprintln!("[VCS] Committed: {} ({})", hash, vcs.vcs_type());
+                }
+                Ok(None) => {
+                    eprintln!("[VCS] No file changes to commit");
+                }
+                Err(e) => {
+                    // VCS errors are warnings, not failures
+                    eprintln!("[VCS] Warning: {}", e);
+                }
+            }
+        }
+    }
 
     // Update context with new progress
     ctx.progress = updated_progress;

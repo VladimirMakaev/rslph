@@ -84,12 +84,12 @@ Plans:
   5. Loop stops at max iterations (configurable, sensible default)
   6. `--once` runs single iteration, `--dry-run` previews without executing
   7. Recent attempts section accumulates failure memory across iterations
-**Plans**: TBD
+**Plans**: 3 plans in 2 waves
 
 Plans:
-- [ ] 04-01: State machine and iteration control
-- [ ] 04-02: Completion detection and loop termination
-- [ ] 04-03: Single iteration and dry-run modes
+- [ ] 04-01-PLAN.md — Build module foundation (state machine, PROMPT_build, iteration logic) [Wave 1]
+- [ ] 04-02-PLAN.md — Completion detection and loop termination (RALPH_DONE, max iterations, attempts) [Wave 2, depends on 04-01]
+- [ ] 04-03-PLAN.md — Single iteration and dry-run modes (--once, --dry-run) [Wave 2, depends on 04-01]
 
 ### Phase 5: VCS Integration
 **Goal**: Each iteration auto-commits for rollback safety, supporting both Git and Sapling
@@ -164,7 +164,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 1. Foundation | 3/3 | Complete | 2026-01-17 |
 | 2. Subprocess Management | 2/2 | Complete | 2026-01-17 |
 | 3. Planning Command | 2/2 | Complete | 2026-01-18 |
-| 4. Core Build Loop | 0/3 | Not started | - |
+| 4. Core Build Loop | 0/3 | Planned | - |
 | 5. VCS Integration | 0/1 | Not started | - |
 | 6. TUI Interface | 0/4 | Not started | - |
 | 7. Verification | 0/1 | Not started | - |

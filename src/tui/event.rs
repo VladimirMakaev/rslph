@@ -26,6 +26,8 @@ pub enum SubprocessEvent {
     Usage(f64),
     /// Iteration completed.
     IterationDone { tasks_done: u32 },
+    /// Log message (displayed in output area but not treated as Claude message).
+    Log(String),
 }
 
 impl From<SubprocessEvent> for AppEvent {
@@ -36,6 +38,8 @@ impl From<SubprocessEvent> for AppEvent {
             SubprocessEvent::IterationDone { tasks_done } => {
                 AppEvent::IterationComplete { tasks_done }
             }
+            // Log messages are displayed in the output but treated as system messages
+            SubprocessEvent::Log(s) => AppEvent::LogMessage(s),
         }
     }
 }
@@ -203,5 +207,9 @@ mod tests {
         let done = SubprocessEvent::IterationDone { tasks_done: 5 };
         let app_event: AppEvent = done.into();
         assert!(matches!(app_event, AppEvent::IterationComplete { tasks_done: 5 }));
+
+        let log = SubprocessEvent::Log("log message".to_string());
+        let app_event: AppEvent = log.into();
+        assert!(matches!(app_event, AppEvent::LogMessage(s) if s == "log message"));
     }
 }

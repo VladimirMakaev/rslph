@@ -46,6 +46,10 @@ pub fn handle_event(app: &mut App, event: AppEvent, viewport_height: u16) -> boo
             // Auto-advance viewing to current iteration
             app.viewing_iteration = app.current_iteration;
         }
+        AppEvent::LogMessage(line) => {
+            // Add system message for current iteration
+            app.add_message("system".to_string(), line, viewport_height);
+        }
         AppEvent::Render => {
             // Just triggers a render, no state change
         }

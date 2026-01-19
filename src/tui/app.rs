@@ -141,6 +141,14 @@ impl App {
                 self.current_iteration += 1;
                 self.viewing_iteration = self.current_iteration;
             }
+            AppEvent::LogMessage(content) => {
+                // Add system message for current iteration
+                self.messages.push(Message::new(
+                    "system",
+                    content,
+                    self.current_iteration,
+                ));
+            }
             AppEvent::Render => {
                 // Render events don't change state, just trigger redraw
             }
@@ -231,6 +239,8 @@ pub enum AppEvent {
         /// Number of tasks completed in this iteration.
         tasks_done: u32,
     },
+    /// Log message from build loop (displayed as system message).
+    LogMessage(String),
 
     // Timer events
     /// Time to render a new frame.
@@ -340,6 +350,7 @@ mod tests {
         let _ = AppEvent::ClaudeOutput("test".to_string());
         let _ = AppEvent::ContextUsage(0.5);
         let _ = AppEvent::IterationComplete { tasks_done: 3 };
+        let _ = AppEvent::LogMessage("log".to_string());
         let _ = AppEvent::Render;
     }
 

@@ -88,10 +88,10 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or(Path::new("."));
 
-    eprintln!(
+    ctx.log(&format!(
         "[TRACE] Iteration {}: Spawning Claude subprocess",
         ctx.current_iteration
-    );
+    ));
 
     let runner_result = ClaudeRunner::spawn(&ctx.config.claude_path, &args, working_dir).await;
 
@@ -115,10 +115,10 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
         }
     };
 
-    eprintln!(
+    ctx.log(&format!(
         "[TRACE] Spawned subprocess with PID: {:?}",
         runner.id()
-    );
+    ));
 
     // Step 6: Run with timeout (10 minutes per iteration)
     let timeout = Duration::from_secs(600);
@@ -150,17 +150,17 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
     }
     let response_text = stream_response.text;
 
-    eprintln!(
+    ctx.log(&format!(
         "[TRACE] Claude output length: {} chars",
         response_text.len()
-    );
+    ));
     if let Some(model) = &stream_response.model {
-        eprintln!("[TRACE] Model: {}", model);
+        ctx.log(&format!("[TRACE] Model: {}", model));
     }
-    eprintln!(
+    ctx.log(&format!(
         "[TRACE] Tokens: {} in / {} out",
         stream_response.input_tokens, stream_response.output_tokens
-    );
+    ));
 
     // Step 8: Parse response into ProgressFile
     let updated_progress = match ProgressFile::parse(&response_text) {
@@ -184,10 +184,10 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
     updated_progress.trim_attempts(ctx.config.recent_threads as usize);
     updated_progress.write(&ctx.progress_path)?;
 
-    eprintln!(
+    ctx.log(&format!(
         "[TRACE] Updated progress file: {}",
         ctx.progress_path.display()
-    );
+    ));
 
     // Step 10: Calculate tasks completed this iteration
     let tasks_after = updated_progress.completed_tasks();
@@ -200,14 +200,14 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
                 format_iteration_commit(&ctx.project_name, ctx.current_iteration, tasks_completed);
             match vcs.commit_all(&commit_msg) {
                 Ok(Some(hash)) => {
-                    eprintln!("[VCS] Committed: {} ({})", hash, vcs.vcs_type());
+                    ctx.log(&format!("[VCS] Committed: {} ({})", hash, vcs.vcs_type()));
                 }
                 Ok(None) => {
-                    eprintln!("[VCS] No file changes to commit");
+                    ctx.log("[VCS] No file changes to commit");
                 }
                 Err(e) => {
                     // VCS errors are warnings, not failures
-                    eprintln!("[VCS] Warning: {}", e);
+                    ctx.log(&format!("[VCS] Warning: {}", e));
                 }
             }
         }

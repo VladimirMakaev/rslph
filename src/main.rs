@@ -43,20 +43,27 @@ async fn main() -> color_eyre::Result<()> {
             // Set up Ctrl+C handling
             let cancel_token = setup_ctrl_c_handler();
 
-            println!("Building: {}", plan.display());
-            if once {
-                println!("Mode: single iteration (--once)");
-            }
-            if dry_run {
-                println!("Mode: dry run (--dry-run)");
-            }
-            if no_tui {
-                println!("Mode: headless (--no-tui)");
+            // Determine if TUI will be used - if so, suppress startup messages
+            let use_tui = config.tui_enabled && !no_tui && !dry_run;
+
+            if !use_tui {
+                println!("Building: {}", plan.display());
+                if once {
+                    println!("Mode: single iteration (--once)");
+                }
+                if dry_run {
+                    println!("Mode: dry run (--dry-run)");
+                }
+                if no_tui {
+                    println!("Mode: headless (--no-tui)");
+                }
             }
 
             match run_build_command(plan, once, dry_run, no_tui, &config, cancel_token).await {
                 Ok(()) => {
-                    println!("Build completed successfully.");
+                    if !use_tui {
+                        println!("Build completed successfully.");
+                    }
                 }
                 Err(e) => {
                     eprintln!("Build failed: {}", e);

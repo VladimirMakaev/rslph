@@ -87,7 +87,7 @@ pub async fn run_build_command(
             BuildState::Starting => {
                 ctx.current_iteration = 1;
                 ctx.iteration_start = Some(std::time::Instant::now());
-                eprintln!("\n--- Iteration 1 ---");
+                ctx.log("\n--- Iteration 1 ---");
                 BuildState::Running { iteration: 1 }
             }
 
@@ -118,17 +118,17 @@ pub async fn run_build_command(
                     .iteration_start
                     .map(|s| s.elapsed())
                     .unwrap_or_default();
-                eprintln!(
+                ctx.log(&format!(
                     "[BUILD] Iteration {} complete: {} task(s) completed in {:.1}s",
                     iteration,
                     tasks_completed,
                     duration.as_secs_f64()
-                );
-                eprintln!(
+                ));
+                ctx.log(&format!(
                     "[BUILD] Progress: {}/{} tasks",
                     ctx.progress.completed_tasks(),
                     ctx.progress.total_tasks()
-                );
+                ));
 
                 // Log to progress file
                 log_iteration(&mut ctx, iteration, tasks_completed)?;
@@ -139,7 +139,7 @@ pub async fn run_build_command(
                         reason: DoneReason::SingleIterationComplete,
                     }
                 } else if iteration >= ctx.max_iterations {
-                    eprintln!("[BUILD] Max iterations ({}) reached", ctx.max_iterations);
+                    ctx.log(&format!("[BUILD] Max iterations ({}) reached", ctx.max_iterations));
                     BuildState::Done {
                         reason: DoneReason::MaxIterationsReached,
                     }
@@ -152,7 +152,7 @@ pub async fn run_build_command(
                     } else {
                         ctx.current_iteration = iteration + 1;
                         ctx.iteration_start = Some(std::time::Instant::now());
-                        eprintln!("\n--- Iteration {} ---", iteration + 1);
+                        ctx.log(&format!("\n--- Iteration {} ---", iteration + 1));
                         BuildState::Running {
                             iteration: iteration + 1,
                         }
@@ -298,14 +298,15 @@ async fn run_build_with_tui(
     // Pass a clone of cancel_token so TUI can cancel the build on quit
     let subprocess_tx = run_tui(app, recent_count, cancel_token.clone()).await?;
 
-    // Create build context
-    let mut ctx = BuildContext::new(
+    // Create build context with TUI sender for log routing
+    let mut ctx = BuildContext::with_tui(
         progress_path.clone(),
         progress,
         config.clone(),
         cancel_token.clone(),
         false, // once_mode - TUI always runs full loop
         false, // dry_run - already handled before this function
+        Some(subprocess_tx.clone()),
     );
 
     // Create a channel for build loop to send updates to TUI

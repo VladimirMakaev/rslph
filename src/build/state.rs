@@ -3,10 +3,12 @@
 //! Provides state enum, done reason, iteration result, and build context.
 
 use std::path::{Path, PathBuf};
+use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::config::Config;
 use crate::progress::ProgressFile;
+use crate::tui::SubprocessEvent;
 use crate::vcs::{create_vcs, Vcs};
 
 /// Build loop states for the state machine.
@@ -103,6 +105,9 @@ pub struct BuildContext {
     pub vcs: Option<Box<dyn Vcs>>,
     /// Project name captured at construction for commit messages.
     pub project_name: String,
+    /// TUI event sender for routing logs when TUI is active.
+    /// If None, logs go to stderr.
+    pub tui_tx: Option<mpsc::UnboundedSender<SubprocessEvent>>,
 }
 
 impl BuildContext {
@@ -115,6 +120,19 @@ impl BuildContext {
         once_mode: bool,
         dry_run: bool,
     ) -> Self {
+        Self::with_tui(progress_path, progress, config, cancel_token, once_mode, dry_run, None)
+    }
+
+    /// Create a new build context with optional TUI sender.
+    pub fn with_tui(
+        progress_path: PathBuf,
+        progress: ProgressFile,
+        config: Config,
+        cancel_token: CancellationToken,
+        once_mode: bool,
+        dry_run: bool,
+        tui_tx: Option<mpsc::UnboundedSender<SubprocessEvent>>,
+    ) -> Self {
         let max_iterations = config.max_iterations;
 
         // Detect and create VCS for auto-commit
@@ -124,21 +142,16 @@ impl BuildContext {
             .filter(|p| !p.as_os_str().is_empty())
             .unwrap_or(Path::new("."));
         let vcs = create_vcs(working_dir);
-        if let Some(ref v) = vcs {
-            eprintln!("[VCS] Detected {} repository", v.vcs_type());
-        }
 
         // Capture project name at construction for commit messages
         // Fall back to "Unnamed" if progress file has no project name
         let project_name = if progress.name.is_empty() {
-            eprintln!("[BUILD] Warning: Progress file has no project name, using 'Unnamed'");
             "Unnamed".to_string()
         } else {
-            eprintln!("[BUILD] Project: {}", progress.name);
             progress.name.clone()
         };
 
-        Self {
+        let ctx = Self {
             progress_path,
             progress,
             config,
@@ -149,7 +162,29 @@ impl BuildContext {
             dry_run,
             iteration_start: None,
             vcs,
-            project_name,
+            project_name: project_name.clone(),
+            tui_tx,
+        };
+
+        // Log initialization info
+        if let Some(ref v) = ctx.vcs {
+            ctx.log(&format!("[VCS] Detected {} repository", v.vcs_type()));
+        }
+        if ctx.project_name == "Unnamed" {
+            ctx.log("[BUILD] Warning: Progress file has no project name, using 'Unnamed'");
+        } else {
+            ctx.log(&format!("[BUILD] Project: {}", project_name));
+        }
+
+        ctx
+    }
+
+    /// Log a message to TUI or stderr depending on mode.
+    pub fn log(&self, msg: &str) {
+        if let Some(ref tx) = self.tui_tx {
+            let _ = tx.send(SubprocessEvent::Log(msg.to_string()));
+        } else {
+            eprintln!("{}", msg);
         }
     }
 }

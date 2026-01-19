@@ -1,81 +1,28 @@
 //! Keyboard event handling for the TUI.
 //!
 //! Provides a handler function that processes AppEvents and updates App state.
+//! Delegates to App::update() for most events, with special handling for
+//! scroll (needs viewport_height) and quit (needs to return immediately).
 
-use crate::tui::app::{App, AppEvent, MessageRole};
+use crate::tui::app::{App, AppEvent};
 
 /// Handle an AppEvent and update App state.
 ///
+/// Delegates to App::update() for event processing, with special handling for:
+/// - ScrollDown: needs viewport_height to calculate max scroll
+/// - Quit: needs to return true immediately
+///
 /// Returns true if the app should quit.
 pub fn handle_event(app: &mut App, event: AppEvent, viewport_height: u16) -> bool {
-    match event {
-        AppEvent::ScrollUp => app.scroll_up(),
-        AppEvent::ScrollDown => {
-            let content_height = app.content_height_for_iteration(app.viewing_iteration);
-            app.scroll_down(viewport_height, content_height);
-        }
-        AppEvent::PrevIteration => {
-            if app.viewing_iteration > 1 {
-                app.viewing_iteration -= 1;
-                app.scroll_offset = 0; // Reset scroll on iteration change
-                app.selected_message = None; // Reset selection
-            }
-        }
-        AppEvent::NextIteration => {
-            if app.viewing_iteration < app.current_iteration {
-                app.viewing_iteration += 1;
-                app.scroll_offset = 0;
-                app.selected_message = None;
-            }
-        }
-        AppEvent::TogglePause => {
-            app.is_paused = !app.is_paused;
-            // TODO: Signal pause to build loop when implemented
-        }
-        AppEvent::Quit => {
-            app.should_quit = true;
-            return true;
-        }
-        AppEvent::SelectPrevMessage => {
-            app.select_prev_message();
-        }
-        AppEvent::SelectNextMessage => {
-            app.select_next_message();
-        }
-        AppEvent::ToggleMessage => {
-            app.toggle_selected_message();
-        }
-        AppEvent::ClaudeOutput(line) => {
-            // Add assistant message for current iteration
-            app.add_message(MessageRole::Assistant, line, viewport_height);
-        }
-        AppEvent::ToolMessage { tool_name, content } => {
-            // Add tool message for current iteration
-            app.add_tool_message(tool_name, content, viewport_height);
-        }
-        AppEvent::ContextUsage(ratio) => {
-            app.context_usage = ratio.clamp(0.0, 1.0);
-        }
-        AppEvent::IterationStart { iteration } => {
-            app.current_iteration = iteration;
-            app.viewing_iteration = iteration;
-            app.scroll_offset = 0;
-            app.selected_message = None;
-        }
-        AppEvent::IterationComplete { tasks_done } => {
-            app.current_task += tasks_done;
-            // Auto-advance viewing to current iteration
-            app.viewing_iteration = app.current_iteration;
-            app.selected_message = None;
-        }
-        AppEvent::LogMessage(line) => {
-            // Add system message for current iteration
-            app.add_message(MessageRole::System, line, viewport_height);
-        }
-        AppEvent::Render => {
-            // Just triggers a render, no state change
-        }
+    // Special case: ScrollDown needs viewport_height for clamping
+    if let AppEvent::ScrollDown = &event {
+        let content_height = app.content_height_for_iteration(app.viewing_iteration);
+        app.scroll_down(viewport_height, content_height);
+        return app.should_quit;
     }
+
+    // Delegate all other events to App::update()
+    app.update(event);
 
     app.should_quit
 }

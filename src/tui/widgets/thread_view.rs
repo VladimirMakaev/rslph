@@ -2,7 +2,7 @@
 //!
 //! Renders messages in a style similar to Claude CLI output, with distinct
 //! colors for user, assistant, system, and tool roles.
-//! Supports collapsible messages with expand/collapse toggle.
+//! Supports collapsible message groups with expand/collapse toggle.
 
 use ratatui::{
     layout::Rect,
@@ -12,7 +12,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::tui::app::{App, Message, MessageRole};
+use crate::tui::app::{App, DisplayItem, Message, MessageGroup, MessageRole};
 
 /// Role colors matching Claude CLI style.
 fn role_style(role: &MessageRole) -> Style {
@@ -24,7 +24,102 @@ fn role_style(role: &MessageRole) -> Style {
     }
 }
 
+/// Format a tool message as a single line for grouped display.
+fn format_tool_line(msg: &Message, _is_last: bool, _is_collapsed_more: bool) -> String {
+    // All items use same prefix - tree connectors could be added later
+    let prefix = "   ";
+
+    match &msg.role {
+        MessageRole::Tool(name) => {
+            // Get first line of content, truncated
+            let first_line = msg.content.lines().next().unwrap_or("");
+            let preview = if first_line.len() > 50 {
+                format!("{}...", &first_line[..47])
+            } else {
+                first_line.to_string()
+            };
+            format!("{}{}: {}", prefix, name, preview)
+        }
+        MessageRole::Assistant => {
+            let first_line = msg.content.lines().next().unwrap_or("");
+            let preview = if first_line.len() > 50 {
+                format!("{}...", &first_line[..47])
+            } else {
+                first_line.to_string()
+            };
+            format!("{}Claude: {}", prefix, preview)
+        }
+        _ => {
+            let first_line = msg.content.lines().next().unwrap_or("");
+            format!("{}{}", prefix, first_line)
+        }
+    }
+}
+
+/// Render a message group with Claude CLI-like tree structure.
+fn format_group(group: &MessageGroup, is_selected: bool) -> Vec<Line<'static>> {
+    let mut lines = Vec::new();
+
+    // Group header style
+    let header_style = if is_selected {
+        Style::default()
+            .fg(Color::Green)
+            .add_modifier(Modifier::BOLD | Modifier::REVERSED)
+    } else {
+        Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
+    };
+
+    // Header line
+    lines.push(Line::from(vec![Span::styled(
+        group.header.clone(),
+        header_style,
+    )]));
+
+    // Get visible messages
+    let visible = group.visible_messages();
+    let hidden = group.hidden_count();
+
+    // Render each visible message as a tree item
+    for (i, msg) in visible.iter().enumerate() {
+        let is_last = hidden == 0 && i == visible.len() - 1;
+        let line_text = format_tool_line(msg, is_last, false);
+        let style = role_style(&msg.role);
+        lines.push(Line::from(vec![Span::styled(line_text, style)]));
+    }
+
+    // Show "+N more" if collapsed with hidden items
+    if hidden > 0 {
+        let more_text = format!("   +{} more tool uses (Tab to expand)", hidden);
+        lines.push(Line::from(vec![Span::styled(
+            more_text,
+            Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC),
+        )]));
+    }
+
+    // Blank separator
+    lines.push(Line::from(""));
+
+    lines
+}
+
+/// Render a standalone system message.
+fn format_system_message(msg: &Message, is_selected: bool) -> Vec<Line<'static>> {
+    let mut style = role_style(&msg.role);
+    if is_selected {
+        style = style.add_modifier(Modifier::REVERSED);
+    }
+
+    let first_line = msg.content.lines().next().unwrap_or("");
+    let text = format!("System: {}", first_line);
+
+    vec![
+        Line::from(vec![Span::styled(text, style)]),
+        Line::from(""),
+    ]
+}
+
 /// Role display name.
+#[allow(dead_code)]
 fn role_label(role: &MessageRole) -> String {
     match role {
         MessageRole::User => "You".to_string(),
@@ -35,6 +130,7 @@ fn role_label(role: &MessageRole) -> String {
 }
 
 /// Render a collapsed message (single line with first line preview).
+#[allow(dead_code)]
 fn format_collapsed(msg: &Message, is_selected: bool) -> Vec<Line<'static>> {
     let mut style = role_style(&msg.role);
     if is_selected {
@@ -57,6 +153,7 @@ fn format_collapsed(msg: &Message, is_selected: bool) -> Vec<Line<'static>> {
 }
 
 /// Render an expanded message with role styling.
+#[allow(dead_code)]
 fn format_expanded(msg: &Message, is_selected: bool) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
 
@@ -90,6 +187,7 @@ fn format_expanded(msg: &Message, is_selected: bool) -> Vec<Line<'static>> {
 
 /// Render a single message with role styling.
 /// Handles both collapsed and expanded states.
+#[allow(dead_code)]
 pub fn format_message(msg: &Message, is_selected: bool) -> Vec<Line<'static>> {
     if msg.collapsed {
         format_collapsed(msg, is_selected)
@@ -98,30 +196,39 @@ pub fn format_message(msg: &Message, is_selected: bool) -> Vec<Line<'static>> {
     }
 }
 
-/// Render thread view for current iteration.
+/// Render thread view using grouped display.
 ///
-/// Shows messages for the viewing_iteration, limited to recent_count.
-/// Supports collapsed/expanded messages and selection highlighting.
-pub fn render_thread(frame: &mut Frame, area: Rect, app: &App, recent_count: usize) {
-    let msg_indices = app.message_indices_for_viewing();
+/// Shows display items (groups and system messages) for the viewing_iteration.
+/// Groups show tool uses in a tree structure like Claude CLI.
+pub fn render_thread(frame: &mut Frame, area: Rect, app: &App, _recent_count: usize) {
+    let mut lines: Vec<Line> = Vec::new();
 
-    // Take last N messages
-    let display_indices: Vec<usize> = if msg_indices.len() > recent_count {
-        msg_indices[msg_indices.len() - recent_count..].to_vec()
-    } else {
-        msg_indices
-    };
-
-    let lines: Vec<Line> = display_indices
+    // Collect display items for viewing iteration
+    let items_for_iter: Vec<(usize, &DisplayItem)> = app.display_items
         .iter()
         .enumerate()
-        .flat_map(|(display_idx, &msg_idx)| {
-            let msg = &app.messages[msg_idx];
-            // Check if this message is selected
-            let is_selected = app.selected_message == Some(display_idx);
-            format_message(msg, is_selected)
-        })
+        .filter(|(_, item)| item.iteration() == app.viewing_iteration)
         .collect();
+
+    // Render each display item
+    for (display_idx, (_, item)) in items_for_iter.iter().enumerate() {
+        let is_selected = app.selected_group == Some(display_idx);
+
+        match item {
+            DisplayItem::Group(group) => {
+                lines.extend(format_group(group, is_selected));
+            }
+            DisplayItem::System(msg) => {
+                lines.extend(format_system_message(msg, is_selected));
+            }
+        }
+    }
+
+    // Render current in-progress group if viewing current iteration
+    if let Some(current_group) = app.current_group_for_viewing() {
+        let is_selected = app.selected_group == Some(items_for_iter.len());
+        lines.extend(format_group(current_group, is_selected));
+    }
 
     let paragraph = Paragraph::new(lines)
         .wrap(Wrap { trim: false })
@@ -203,5 +310,57 @@ mod tests {
 
         // Check that we got lines (selection adds REVERSED modifier)
         assert!(!lines.is_empty());
+    }
+
+    #[test]
+    fn test_format_group_collapsed() {
+        let mut group = MessageGroup::new(1);
+        group.push(Message::with_role(MessageRole::Tool("Read".to_string()), "file1.rs", 1));
+        group.push(Message::with_role(MessageRole::Tool("Read".to_string()), "file2.rs", 1));
+        group.push(Message::with_role(MessageRole::Tool("Read".to_string()), "file3.rs", 1));
+        group.push(Message::with_role(MessageRole::Tool("Bash".to_string()), "cargo build", 1));
+        group.push(Message::with_role(MessageRole::Tool("Edit".to_string()), "file4.rs", 1));
+
+        let lines = format_group(&group, false);
+
+        // Should have: header + 3 visible messages + "+2 more" + blank = 6 lines
+        assert_eq!(lines.len(), 6);
+    }
+
+    #[test]
+    fn test_format_group_expanded() {
+        let mut group = MessageGroup::new(1);
+        group.push(Message::with_role(MessageRole::Tool("Read".to_string()), "file1.rs", 1));
+        group.push(Message::with_role(MessageRole::Tool("Read".to_string()), "file2.rs", 1));
+        group.push(Message::with_role(MessageRole::Tool("Read".to_string()), "file3.rs", 1));
+        group.push(Message::with_role(MessageRole::Tool("Bash".to_string()), "cargo build", 1));
+        group.push(Message::with_role(MessageRole::Tool("Edit".to_string()), "file4.rs", 1));
+        group.expanded = true;
+
+        let lines = format_group(&group, false);
+
+        // Should have: header + 5 messages + blank = 7 lines (no "+N more")
+        assert_eq!(lines.len(), 7);
+    }
+
+    #[test]
+    fn test_format_group_small() {
+        let mut group = MessageGroup::new(1);
+        group.push(Message::with_role(MessageRole::Tool("Read".to_string()), "file1.rs", 1));
+        group.push(Message::with_role(MessageRole::Tool("Bash".to_string()), "cargo build", 1));
+
+        let lines = format_group(&group, false);
+
+        // Should have: header + 2 messages + blank = 4 lines (no "+N more" needed)
+        assert_eq!(lines.len(), 4);
+    }
+
+    #[test]
+    fn test_format_system_message() {
+        let msg = Message::new("system", "Build started", 1);
+        let lines = format_system_message(&msg, false);
+
+        // Should have: message line + blank = 2 lines
+        assert_eq!(lines.len(), 2);
     }
 }

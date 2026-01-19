@@ -16,6 +16,10 @@ use crate::tui::App;
 /// Displays messages filtered by the currently viewed iteration.
 /// Each message is formatted as "role: content" with proper indentation
 /// for multiline content.
+///
+/// Note: This function is currently unused as thread_view provides styled output.
+/// Kept for potential future use or fallback rendering.
+#[allow(dead_code)]
 pub fn render_output(frame: &mut Frame, area: Rect, app: &App) {
     let lines: Vec<Line> = app
         .messages

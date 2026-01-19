@@ -2,6 +2,7 @@
 //!
 //! Provides a fluent API for setting up deterministic test scenarios.
 
+use serde_json::json;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
@@ -67,6 +68,64 @@ impl ScenarioBuilder {
     /// Configure the current invocation to crash after N events.
     pub fn crash_after(mut self, count: usize) -> Self {
         self.current_invocation.crash_after_events = Some(count);
+        self
+    }
+
+    /// Add Read tool use to current invocation.
+    pub fn uses_read(mut self, path: &str) -> Self {
+        let event = StreamEventOutput::tool_use(
+            "Read",
+            json!({
+                "file_path": path
+            }),
+        );
+        self.current_invocation.events.push(event);
+        self
+    }
+
+    /// Add Write tool use to current invocation.
+    pub fn uses_write(mut self, path: &str, content: &str) -> Self {
+        let event = StreamEventOutput::tool_use(
+            "Write",
+            json!({
+                "file_path": path,
+                "content": content
+            }),
+        );
+        self.current_invocation.events.push(event);
+        self
+    }
+
+    /// Add Edit tool use to current invocation.
+    pub fn uses_edit(mut self, path: &str, old_string: &str, new_string: &str) -> Self {
+        let event = StreamEventOutput::tool_use(
+            "Edit",
+            json!({
+                "file_path": path,
+                "old_string": old_string,
+                "new_string": new_string
+            }),
+        );
+        self.current_invocation.events.push(event);
+        self
+    }
+
+    /// Add Bash tool use to current invocation.
+    pub fn uses_bash(mut self, command: &str) -> Self {
+        let event = StreamEventOutput::tool_use(
+            "Bash",
+            json!({
+                "command": command
+            }),
+        );
+        self.current_invocation.events.push(event);
+        self
+    }
+
+    /// Add generic tool use (for less common tools or custom testing).
+    pub fn uses_tool(mut self, name: &str, input: serde_json::Value) -> Self {
+        let event = StreamEventOutput::tool_use(name, input);
+        self.current_invocation.events.push(event);
         self
     }
 

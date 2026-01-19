@@ -56,6 +56,12 @@ pub fn handle_event(app: &mut App, event: AppEvent, viewport_height: u16) -> boo
         AppEvent::ContextUsage(ratio) => {
             app.context_usage = ratio.clamp(0.0, 1.0);
         }
+        AppEvent::IterationStart { iteration } => {
+            app.current_iteration = iteration;
+            app.viewing_iteration = iteration;
+            app.scroll_offset = 0;
+            app.selected_message = None;
+        }
         AppEvent::IterationComplete { tasks_done } => {
             app.current_task += tasks_done;
             // Auto-advance viewing to current iteration

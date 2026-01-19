@@ -321,11 +321,9 @@ async fn run_build_with_tui(
                 ctx.current_iteration = 1;
                 ctx.iteration_start = Some(std::time::Instant::now());
 
-                // Send iteration start to TUI
-                let _ = tui_tx.send(SubprocessEvent::Output(format!(
-                    "--- Iteration {} ---",
-                    ctx.current_iteration
-                )));
+                // Send iteration start to TUI to sync iteration number
+                let _ = tui_tx.send(SubprocessEvent::IterationStart { iteration: 1 });
+                let _ = tui_tx.send(SubprocessEvent::Log("--- Iteration 1 ---".to_string()));
 
                 BuildState::Running { iteration: 1 }
             }
@@ -363,7 +361,7 @@ async fn run_build_with_tui(
                     tasks_done: tasks_completed,
                 });
 
-                let _ = tui_tx.send(SubprocessEvent::Output(format!(
+                let _ = tui_tx.send(SubprocessEvent::Log(format!(
                     "Iteration {} complete: {} task(s) in {:.1}s",
                     iteration,
                     tasks_completed,
@@ -375,7 +373,7 @@ async fn run_build_with_tui(
 
                 // Check termination conditions
                 if iteration >= ctx.max_iterations {
-                    let _ = tui_tx.send(SubprocessEvent::Output(format!(
+                    let _ = tui_tx.send(SubprocessEvent::Log(format!(
                         "Max iterations ({}) reached",
                         ctx.max_iterations
                     )));
@@ -390,8 +388,9 @@ async fn run_build_with_tui(
                     ctx.current_iteration = iteration + 1;
                     ctx.iteration_start = Some(std::time::Instant::now());
 
-                    let _ = tui_tx.send(SubprocessEvent::Output(format!(
-                        "\n--- Iteration {} ---",
+                    let _ = tui_tx.send(SubprocessEvent::IterationStart { iteration: iteration + 1 });
+                    let _ = tui_tx.send(SubprocessEvent::Log(format!(
+                        "--- Iteration {} ---",
                         iteration + 1
                     )));
 
@@ -402,16 +401,16 @@ async fn run_build_with_tui(
             }
 
             BuildState::Done { reason } => {
-                let _ = tui_tx.send(SubprocessEvent::Output(format!(
-                    "\nBuild complete: {}",
+                let _ = tui_tx.send(SubprocessEvent::Log(format!(
+                    "Build complete: {}",
                     reason
                 )));
                 break Ok(());
             }
 
             BuildState::Failed { error } => {
-                let _ = tui_tx.send(SubprocessEvent::Output(format!(
-                    "\nBuild failed: {}",
+                let _ = tui_tx.send(SubprocessEvent::Log(format!(
+                    "Build failed: {}",
                     error
                 )));
                 break Err(color_eyre::eyre::eyre!("Build failed: {}", error));

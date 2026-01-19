@@ -237,9 +237,14 @@ impl App {
             AppEvent::ContextUsage(ratio) => {
                 self.context_usage = ratio.clamp(0.0, 1.0);
             }
+            AppEvent::IterationStart { iteration } => {
+                self.current_iteration = iteration;
+                self.viewing_iteration = iteration;
+                self.scroll_offset = 0;
+                self.selected_message = None;
+            }
             AppEvent::IterationComplete { tasks_done } => {
                 self.current_task = tasks_done;
-                self.current_iteration += 1;
                 self.viewing_iteration = self.current_iteration;
                 self.selected_message = None;
             }
@@ -441,6 +446,11 @@ pub enum AppEvent {
     ToolMessage { tool_name: String, content: String },
     /// Updated context usage ratio (0.0 to 1.0).
     ContextUsage(f64),
+    /// New iteration is starting.
+    IterationStart {
+        /// The iteration number (1-indexed).
+        iteration: u32,
+    },
     /// An iteration completed with the given number of tasks done.
     IterationComplete {
         /// Number of tasks completed in this iteration.

@@ -161,6 +161,47 @@ impl StreamEvent {
     pub fn usage(&self) -> Option<&Usage> {
         self.message.as_ref()?.usage.as_ref()
     }
+
+    /// Extract tool use blocks from an assistant message.
+    ///
+    /// Returns a vector of (tool_name, input_json) tuples.
+    pub fn extract_tool_uses(&self) -> Vec<(String, String)> {
+        let message = match &self.message {
+            Some(m) => m,
+            None => return vec![],
+        };
+        let blocks = match &message.content {
+            MessageContent::Blocks(blocks) => blocks,
+            _ => return vec![],
+        };
+
+        blocks
+            .iter()
+            .filter(|block| block.block_type == "tool_use")
+            .filter_map(|block| {
+                let name = block.name.clone()?;
+                let input = block.input.as_ref().map(|v| {
+                    // Format the input as compact JSON
+                    serde_json::to_string(v).unwrap_or_else(|_| "{}".to_string())
+                }).unwrap_or_else(|| "{}".to_string());
+                Some((name, input))
+            })
+            .collect()
+    }
+
+    /// Check if this event contains tool use.
+    pub fn has_tool_use(&self) -> bool {
+        let message = match &self.message {
+            Some(m) => m,
+            None => return false,
+        };
+        match &message.content {
+            MessageContent::Blocks(blocks) => {
+                blocks.iter().any(|b| b.block_type == "tool_use")
+            }
+            _ => false,
+        }
+    }
 }
 
 /// Accumulated response from parsing multiple stream events.
@@ -291,5 +332,27 @@ mod tests {
         let mut response = StreamResponse::new();
         let result = response.process_line("not json");
         assert!(!result);
+    }
+
+    #[test]
+    fn test_extract_tool_uses() {
+        let json = r#"{"type":"assistant","message":{"id":"123","role":"assistant","content":[{"type":"thinking","thinking":"Let me read the file"},{"type":"tool_use","id":"tool1","name":"Read","input":{"file_path":"/tmp/test"}},{"type":"tool_use","id":"tool2","name":"Write","input":{"file_path":"/tmp/out","content":"hello"}}],"model":"claude-opus-4.5","stop_reason":"tool_use","usage":{"input_tokens":100,"output_tokens":50}}}"#;
+
+        let event = StreamEvent::parse(json).expect("should parse");
+        assert!(event.has_tool_use());
+
+        let tool_uses = event.extract_tool_uses();
+        assert_eq!(tool_uses.len(), 2);
+        assert_eq!(tool_uses[0].0, "Read");
+        assert!(tool_uses[0].1.contains("/tmp/test"));
+        assert_eq!(tool_uses[1].0, "Write");
+    }
+
+    #[test]
+    fn test_has_tool_use_false_for_text() {
+        let json = r#"{"type":"assistant","message":{"content":[{"type":"text","text":"Hello"}]}}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+        assert!(!event.has_tool_use());
+        assert!(event.extract_tool_uses().is_empty());
     }
 }

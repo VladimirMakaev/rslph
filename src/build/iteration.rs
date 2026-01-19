@@ -5,10 +5,13 @@
 use std::path::Path;
 use std::time::Duration;
 
+use tokio::sync::mpsc;
+
 use crate::error::RslphError;
 use crate::progress::ProgressFile;
 use crate::prompts::get_build_prompt;
-use crate::subprocess::{ClaudeRunner, OutputLine, StreamResponse};
+use crate::subprocess::{ClaudeRunner, OutputLine, StreamEvent, StreamResponse};
+use crate::tui::SubprocessEvent;
 
 use super::state::{BuildContext, DoneReason, IterationResult};
 
@@ -18,6 +21,46 @@ fn format_iteration_commit(project_name: &str, iteration: u32, tasks_completed: 
         "[{}][iter {}] Completed {} task(s)",
         project_name, iteration, tasks_completed
     )
+}
+
+/// Parse a stream-json line and send appropriate events to TUI.
+///
+/// Returns the parsed event for response accumulation, or None if parsing failed.
+fn parse_and_stream_line(
+    line: &str,
+    tui_tx: &mpsc::UnboundedSender<SubprocessEvent>,
+) -> Option<StreamEvent> {
+    let event = match StreamEvent::parse(line) {
+        Ok(e) => e,
+        Err(_) => return None,
+    };
+
+    // Send assistant text as ClaudeOutput
+    if event.is_assistant() {
+        if let Some(text) = event.extract_text() {
+            if !text.is_empty() {
+                let _ = tui_tx.send(SubprocessEvent::Output(text));
+            }
+        }
+
+        // Send tool uses as ToolUse events
+        for (tool_name, input) in event.extract_tool_uses() {
+            let _ = tui_tx.send(SubprocessEvent::ToolUse {
+                tool_name,
+                content: input,
+            });
+        }
+
+        // Send context usage if available
+        if let Some(usage) = event.usage() {
+            // Estimate context usage as output_tokens / 200k (rough estimate)
+            // A more accurate approach would track input+output vs max context
+            let ratio = (usage.input_tokens + usage.output_tokens) as f64 / 200_000.0;
+            let _ = tui_tx.send(SubprocessEvent::Usage(ratio.min(1.0)));
+        }
+    }
+
+    Some(event)
 }
 
 /// Run a single iteration of the build loop.
@@ -120,34 +163,75 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
         runner.id()
     ));
 
-    // Step 6: Run with timeout (10 minutes per iteration)
+    // Step 6: Run subprocess and collect output
+    // When TUI is active, stream output to TUI while collecting for response parsing
     let timeout = Duration::from_secs(600);
-    let output = match runner
-        .run_with_timeout(timeout, ctx.cancel_token.clone())
-        .await
-    {
-        Ok(o) => o,
-        Err(e) => {
-            // Log attempt on execution failure (timeout, cancel, etc.)
-            ctx.progress.add_attempt(
-                ctx.current_iteration,
-                "Execute Claude subprocess",
-                &format!("Error: {}", e),
-                Some("Retry or check subprocess"),
-            );
-            ctx.progress.trim_attempts(ctx.config.recent_threads as usize);
-            ctx.progress.write(&ctx.progress_path)?;
-            return Err(e);
+    let mut stream_response = StreamResponse::new();
+
+    let run_result = if let Some(ref tui_tx) = ctx.tui_tx {
+        // Streaming mode: use run_with_channel and parse+stream each line
+        let (line_tx, mut line_rx) = mpsc::unbounded_channel::<OutputLine>();
+
+        // Spawn the runner with channel
+        let cancel_token = ctx.cancel_token.clone();
+        let runner_handle = tokio::spawn(async move {
+            runner.run_with_channel(line_tx, cancel_token).await
+        });
+
+        // Process lines as they arrive, with timeout
+        let tui_tx_clone = tui_tx.clone();
+        let process_result = tokio::time::timeout(timeout, async {
+            while let Some(line) = line_rx.recv().await {
+                if let OutputLine::Stdout(s) = &line {
+                    // Stream to TUI
+                    if let Some(event) = parse_and_stream_line(s, &tui_tx_clone) {
+                        stream_response.process_event(&event);
+                    }
+                }
+            }
+            Ok::<(), RslphError>(())
+        }).await;
+
+        // Wait for runner to complete
+        let runner_result = runner_handle.await.map_err(|e| {
+            RslphError::Subprocess(format!("Runner task failed: {}", e))
+        })?;
+
+        // Check for timeout or runner error
+        match process_result {
+            Ok(Ok(())) => runner_result,
+            Ok(Err(e)) => Err(e),
+            Err(_) => Err(RslphError::Timeout(timeout.as_secs())),
         }
+    } else {
+        // Non-streaming mode: collect all output then parse
+        let output = runner
+            .run_with_timeout(timeout, ctx.cancel_token.clone())
+            .await?;
+
+        // Parse JSONL response
+        for line in &output {
+            if let OutputLine::Stdout(s) = line {
+                stream_response.process_line(s);
+            }
+        }
+        Ok(())
     };
 
-    // Step 7: Parse JSONL response using StreamResponse
-    let mut stream_response = StreamResponse::new();
-    for line in &output {
-        if let OutputLine::Stdout(s) = line {
-            stream_response.process_line(s);
-        }
+    // Handle run errors
+    if let Err(e) = run_result {
+        ctx.progress.add_attempt(
+            ctx.current_iteration,
+            "Execute Claude subprocess",
+            &format!("Error: {}", e),
+            Some("Retry or check subprocess"),
+        );
+        ctx.progress.trim_attempts(ctx.config.recent_threads as usize);
+        ctx.progress.write(&ctx.progress_path)?;
+        return Err(e);
     }
+
+    // Step 7: Extract response text
     let response_text = stream_response.text;
 
     ctx.log(&format!(

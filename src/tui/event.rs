@@ -26,6 +26,8 @@ pub enum SubprocessEvent {
     ToolUse { tool_name: String, content: String },
     /// Updated context usage ratio.
     Usage(f64),
+    /// New iteration is starting (sets current_iteration).
+    IterationStart { iteration: u32 },
     /// Iteration completed.
     IterationDone { tasks_done: u32 },
     /// Log message (displayed in output area but not treated as Claude message).
@@ -40,6 +42,9 @@ impl From<SubprocessEvent> for AppEvent {
                 AppEvent::ToolMessage { tool_name, content }
             }
             SubprocessEvent::Usage(ratio) => AppEvent::ContextUsage(ratio),
+            SubprocessEvent::IterationStart { iteration } => {
+                AppEvent::IterationStart { iteration }
+            }
             SubprocessEvent::IterationDone { tasks_done } => {
                 AppEvent::IterationComplete { tasks_done }
             }
@@ -230,6 +235,10 @@ mod tests {
         let done = SubprocessEvent::IterationDone { tasks_done: 5 };
         let app_event: AppEvent = done.into();
         assert!(matches!(app_event, AppEvent::IterationComplete { tasks_done: 5 }));
+
+        let start = SubprocessEvent::IterationStart { iteration: 3 };
+        let app_event: AppEvent = start.into();
+        assert!(matches!(app_event, AppEvent::IterationStart { iteration: 3 }));
 
         let log = SubprocessEvent::Log("log message".to_string());
         let app_event: AppEvent = log.into();

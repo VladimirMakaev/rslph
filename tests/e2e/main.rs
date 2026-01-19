@@ -6,6 +6,11 @@
 
 mod fixtures;
 mod helpers;
+mod scenario_tests;
+
+// Include fake_claude_lib for scenario builder access
+#[path = "../fake_claude_lib/mod.rs"]
+mod fake_claude_lib;
 
 // Re-export for test convenience
 pub use fixtures::{Workspace, WorkspaceBuilder};

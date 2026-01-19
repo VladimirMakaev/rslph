@@ -129,6 +129,29 @@ impl ScenarioBuilder {
         self
     }
 
+    /// Send raw JSON line (for malformed output testing).
+    ///
+    /// Raw lines are output before events. Use this for testing
+    /// how the parser handles malformed or unexpected output.
+    pub fn send_raw(mut self, raw_json: &str) -> Self {
+        self.current_invocation.raw_lines.push(raw_json.to_string());
+        self
+    }
+
+    /// Configure exit code for this invocation.
+    ///
+    /// By default, fake Claude exits with 0. Use this to test
+    /// error handling when Claude CLI fails.
+    pub fn with_exit_code(mut self, code: i32) -> Self {
+        self.current_invocation.exit_code = Some(code);
+        self
+    }
+
+    /// Alias for with_delay_ms for API consistency.
+    pub fn with_delay(self, delay_ms: u64) -> Self {
+        self.with_delay_ms(delay_ms)
+    }
+
     /// Finalize current invocation and start configuring the next one.
     pub fn next_invocation(mut self) -> Self {
         self.invocations
@@ -138,8 +161,10 @@ impl ScenarioBuilder {
 
     /// Build the scenario and return a handle.
     pub fn build(mut self) -> FakeClaudeHandle {
-        // Push current invocation if it has events
-        if !self.current_invocation.events.is_empty() {
+        // Push current invocation if it has content (events or raw_lines)
+        if !self.current_invocation.events.is_empty()
+            || !self.current_invocation.raw_lines.is_empty()
+        {
             self.invocations.push(self.current_invocation);
         }
 

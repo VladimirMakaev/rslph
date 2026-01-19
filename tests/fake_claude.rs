@@ -30,6 +30,12 @@ fn main() {
         return;
     };
 
+    // Output raw lines first (for malformed output tests)
+    for raw in &inv_config.raw_lines {
+        println!("{}", raw);
+        io::stdout().flush().unwrap();
+    }
+
     for (i, event) in inv_config.events.iter().enumerate() {
         if let Some(delay) = inv_config.delay_ms {
             std::thread::sleep(std::time::Duration::from_millis(delay));
@@ -42,6 +48,9 @@ fn main() {
             std::process::exit(1);
         }
     }
+
+    // Exit with configured code or 0
+    std::process::exit(inv_config.exit_code.unwrap_or(0));
 }
 
 /// Increment the invocation counter and return the previous value.

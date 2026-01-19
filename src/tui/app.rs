@@ -153,6 +153,53 @@ impl App {
             .iter()
             .filter(|m| m.iteration == self.viewing_iteration)
     }
+
+    /// Scroll down by one line, clamped to content length.
+    pub fn scroll_down(&mut self, viewport_height: u16, content_height: u16) {
+        let max_offset = content_height.saturating_sub(viewport_height);
+        self.scroll_offset = (self.scroll_offset + 1).min(max_offset);
+    }
+
+    /// Scroll up by one line.
+    pub fn scroll_up(&mut self) {
+        self.scroll_offset = self.scroll_offset.saturating_sub(1);
+    }
+
+    /// Auto-scroll to bottom (for following live output).
+    pub fn scroll_to_bottom(&mut self, viewport_height: u16, content_height: u16) {
+        let max_offset = content_height.saturating_sub(viewport_height);
+        self.scroll_offset = max_offset;
+    }
+
+    /// Add a new message and auto-scroll if at bottom.
+    pub fn add_message(&mut self, role: String, content: String, viewport_height: u16) {
+        let was_at_bottom = self.is_at_bottom(viewport_height);
+        self.messages.push(Message {
+            role,
+            content,
+            iteration: self.current_iteration,
+        });
+        if was_at_bottom {
+            // Content height increased, but we handle this on next render
+            // Just mark that we should scroll
+        }
+    }
+
+    /// Check if scroll is at the bottom of content.
+    fn is_at_bottom(&self, viewport_height: u16) -> bool {
+        let content_height = self.content_height_for_iteration(self.viewing_iteration);
+        let max_offset = content_height.saturating_sub(viewport_height);
+        self.scroll_offset >= max_offset
+    }
+
+    /// Calculate the content height for a given iteration.
+    fn content_height_for_iteration(&self, iteration: u32) -> u16 {
+        self.messages
+            .iter()
+            .filter(|m| m.iteration == iteration)
+            .map(|m| m.content.lines().count() as u16 + 1) // +1 for role line
+            .sum()
+    }
 }
 
 /// Events that can occur in the application.
@@ -294,5 +341,72 @@ mod tests {
         let _ = AppEvent::ContextUsage(0.5);
         let _ = AppEvent::IterationComplete { tasks_done: 3 };
         let _ = AppEvent::Render;
+    }
+
+    #[test]
+    fn test_scroll_down_clamped() {
+        let mut app = App::default();
+        app.scroll_offset = 0;
+
+        // Content of 10 lines, viewport of 5 lines => max offset is 5
+        app.scroll_down(5, 10);
+        assert_eq!(app.scroll_offset, 1);
+
+        // Scroll to the edge
+        app.scroll_offset = 5;
+        app.scroll_down(5, 10);
+        // Should stay at 5 (clamped)
+        assert_eq!(app.scroll_offset, 5);
+    }
+
+    #[test]
+    fn test_scroll_down_empty_content() {
+        let mut app = App::default();
+        app.scroll_offset = 0;
+
+        // Empty content (0 lines), viewport of 10 lines => max offset is 0
+        app.scroll_down(10, 0);
+        assert_eq!(app.scroll_offset, 0);
+    }
+
+    #[test]
+    fn test_scroll_up_saturating() {
+        let mut app = App::default();
+        app.scroll_offset = 0;
+
+        app.scroll_up();
+        assert_eq!(app.scroll_offset, 0); // Should not go negative
+
+        app.scroll_offset = 5;
+        app.scroll_up();
+        assert_eq!(app.scroll_offset, 4);
+    }
+
+    #[test]
+    fn test_scroll_to_bottom() {
+        let mut app = App::default();
+        app.scroll_offset = 0;
+
+        // Content of 20 lines, viewport of 5 lines => max offset is 15
+        app.scroll_to_bottom(5, 20);
+        assert_eq!(app.scroll_offset, 15);
+    }
+
+    #[test]
+    fn test_content_height_for_iteration() {
+        let mut app = App::default();
+        app.current_iteration = 1;
+
+        // Add messages with multiline content
+        app.messages.push(Message::new("assistant", "Line 1", 1));
+        app.messages.push(Message::new("assistant", "Line 1\nLine 2\nLine 3", 1));
+        app.messages.push(Message::new("assistant", "Different iteration", 2));
+
+        // Iteration 1:
+        // - "Line 1" = 1 line + 1 (role) = 2
+        // - "Line 1\nLine 2\nLine 3" = 3 lines + 1 (role) = 4
+        // Total = 6
+        let height = app.content_height_for_iteration(1);
+        assert_eq!(height, 6);
     }
 }

@@ -50,13 +50,13 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full details.
   9. Pytest integration with fixtures works
   10. Multi-invocation support for testing retry/failure memory
 
-**Plans**: TBD (3-4 plans estimated)
+**Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 07-01: Core fake-claude package with scenario API and stream-json output
-- [ ] 07-02: Workspace fixtures, verifier helpers, and pytest integration
-- [ ] 07-03: Edge case scenarios and multi-invocation support
-- [ ] 07-04: UAT demo scenarios and visual testing
+- [ ] 07-01-PLAN.md — Core fake-claude package with stream-json generators
+- [ ] 07-02-PLAN.md — Workspace fixtures and pytest infrastructure
+- [ ] 07-03-PLAN.md — Edge case scenarios and multi-invocation support
+- [ ] 07-04-PLAN.md — Verifier helpers and UAT demo scenarios
 
 ### Phase 8: Verification
 **Goal**: Test agent runs independently to verify build results
@@ -104,6 +104,6 @@ Phases execute in numeric order: 7 -> 8 -> 9
 | 4. Core Build Loop | v1.0 | 4/4 | Complete | 2026-01-18 |
 | 5. VCS Integration | v1.0 | 2/2 | Complete | 2026-01-18 |
 | 6. TUI Interface | v1.0 | 4/4 | Complete | 2026-01-19 |
-| 7. E2E Testing Framework | v1.1 | 0/4 | Not started | - |
+| 7. E2E Testing Framework | v1.1 | 0/4 | Planned | - |
 | 8. Verification | v1.1 | 0/1 | Not started | - |
 | 9. Notifications and Polish | v1.1 | 0/2 | Not started | - |

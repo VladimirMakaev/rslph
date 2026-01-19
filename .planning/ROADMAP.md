@@ -28,6 +28,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full details.
 ### 🚧 v1.1 Prompt Engineering (In Progress)
 
 - [x] **Phase 7: E2E Testing Framework** - Fake Claude (Rust), scenario API, workspace fixtures ✓
+- [ ] **Phase 7.1: TUI Testing** - TestBackend + insta snapshot tests for TUI (INSERTED)
 - [ ] **Phase 8: Verification** - Test agent and independent verification
 - [ ] **Phase 9: Notifications and Polish** - Notify scripts, prompt overrides, error refinement
 
@@ -58,6 +59,22 @@ Plans:
 - [x] 07-03-PLAN.md — Tool calls, edge cases, multi-invocation support
 - [x] 07-04-PLAN.md — Infrastructure verification tests
 - [x] 07-05-PLAN.md — True E2E integration tests (rslph with fake Claude)
+
+### Phase 7.1: TUI Testing with TestBackend + insta (INSERTED)
+**Goal**: Implement TUI-specific snapshot tests using ratatui TestBackend and insta
+**Depends on**: Phase 7 (E2E testing infrastructure)
+**Plans**: 1 plan
+
+**Context**: Phase 7 deferred TUI testing. Research determined TestBackend + insta is the right approach (ratatui-testlib is PTY-based overkill). This phase implements TUI rendering and key handling tests.
+
+**Success Criteria** (what must be TRUE):
+  1. ratatui-testlib API verified and documented (DONE in RESEARCH.md)
+  2. TUI rendering tests exist (widgets, layout, visual output)
+  3. Key handling tests exist (navigation, input)
+  4. TUI tests integrate with existing E2E infrastructure
+
+Plans:
+- [ ] 07.1-01-PLAN.md — TUI snapshot tests (rendering + key handling)
 
 ### Phase 8: Verification
 **Goal**: Test agent runs independently to verify build results
@@ -95,7 +112,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 7 -> 8 -> 9
+Phases execute in numeric order: 7 -> 7.1 -> 8 -> 9
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -106,5 +123,6 @@ Phases execute in numeric order: 7 -> 8 -> 9
 | 5. VCS Integration | v1.0 | 2/2 | Complete | 2026-01-18 |
 | 6. TUI Interface | v1.0 | 4/4 | Complete | 2026-01-19 |
 | 7. E2E Testing Framework | v1.1 | 5/5 | Complete | 2026-01-19 |
+| 7.1 TUI Testing | v1.1 | 0/1 | Planned | - |
 | 8. Verification | v1.1 | 0/1 | Not started | - |
 | 9. Notifications and Polish | v1.1 | 0/2 | Not started | - |

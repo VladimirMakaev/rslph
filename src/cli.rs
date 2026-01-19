@@ -49,6 +49,10 @@ pub enum Commands {
         /// Preview without executing
         #[arg(long)]
         dry_run: bool,
+
+        /// Disable TUI and use simple output
+        #[arg(long)]
+        no_tui: bool,
     },
 }
 
@@ -111,10 +115,12 @@ mod tests {
                 plan,
                 once,
                 dry_run,
+                no_tui,
             } => {
                 assert_eq!(plan, PathBuf::from("progress.md"));
                 assert!(once);
                 assert!(!dry_run);
+                assert!(!no_tui);
             }
             _ => panic!("Expected Build command"),
         }
@@ -159,10 +165,32 @@ mod tests {
                 plan,
                 once,
                 dry_run,
+                no_tui,
             } => {
                 assert_eq!(plan, PathBuf::from("progress.md"));
                 assert!(!once);
                 assert!(dry_run);
+                assert!(!no_tui);
+            }
+            _ => panic!("Expected Build command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_build_with_no_tui() {
+        let cli = Cli::try_parse_from(["rslph", "build", "progress.md", "--no-tui"])
+            .expect("Should parse");
+        match cli.command {
+            Commands::Build {
+                plan,
+                once,
+                dry_run,
+                no_tui,
+            } => {
+                assert_eq!(plan, PathBuf::from("progress.md"));
+                assert!(!once);
+                assert!(!dry_run);
+                assert!(no_tui);
             }
             _ => panic!("Expected Build command"),
         }

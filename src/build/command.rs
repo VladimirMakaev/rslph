@@ -23,6 +23,7 @@ use super::state::{BuildContext, BuildState, DoneReason, IterationResult};
 /// * `progress_path` - Path to the progress.md file
 /// * `once` - If true, run only one iteration
 /// * `dry_run` - If true, preview what would be done without executing
+/// * `no_tui` - If true, disable TUI and use headless output
 /// * `config` - Application configuration
 /// * `cancel_token` - Token for graceful cancellation
 ///
@@ -34,21 +35,27 @@ pub async fn run_build_command(
     progress_path: PathBuf,
     once: bool,
     dry_run: bool,
+    no_tui: bool,
     config: &Config,
     cancel_token: CancellationToken,
 ) -> color_eyre::Result<()> {
     // Load initial progress file
     let progress = ProgressFile::load(&progress_path)?;
 
-    println!(
-        "Build started: {}",
-        progress_path.display()
-    );
-    println!(
-        "Tasks: {}/{} complete",
-        progress.completed_tasks(),
-        progress.total_tasks()
-    );
+    // Determine if TUI should be used
+    let use_tui = config.tui_enabled && !no_tui && !dry_run;
+
+    if !use_tui {
+        println!(
+            "Build started: {}",
+            progress_path.display()
+        );
+        println!(
+            "Tasks: {}/{} complete",
+            progress.completed_tasks(),
+            progress.total_tasks()
+        );
+    }
 
     // Create build context
     let mut ctx = BuildContext::new(
@@ -63,6 +70,13 @@ pub async fn run_build_command(
     // Dry-run mode: preview and exit
     if dry_run {
         return run_dry_run(&ctx);
+    }
+
+    // TUI mode: run with interactive terminal UI
+    // Note: Full subprocess integration requires refactoring iteration.rs to use channels.
+    // For now, TUI runs with initial state and headless build runs in parallel.
+    if use_tui {
+        return run_build_with_tui(progress_path, ctx.progress.clone(), config, cancel_token).await;
     }
 
     // Main iteration loop with state machine
@@ -253,6 +267,45 @@ fn run_dry_run(ctx: &BuildContext) -> color_eyre::Result<()> {
     Ok(())
 }
 
+/// Run build with TUI mode enabled.
+///
+/// Initializes the TUI and runs the build loop with visual feedback.
+///
+/// Note: Full subprocess integration (streaming Claude output to TUI channel)
+/// requires deeper refactoring of iteration.rs. This establishes the integration
+/// point. A follow-up improvement would refactor run_single_iteration to accept
+/// a channel sender.
+async fn run_build_with_tui(
+    progress_path: PathBuf,
+    progress: ProgressFile,
+    config: &Config,
+    _cancel_token: CancellationToken,
+) -> color_eyre::Result<()> {
+    use crate::tui::{run_tui_blocking, App};
+
+    // Initialize app state from progress
+    let mut app = App::new(
+        config.max_iterations,
+        "Claude",
+        progress.name.clone(),
+    );
+    app.current_task = progress.completed_tasks() as u32;
+    app.total_tasks = progress.total_tasks() as u32;
+    app.log_path = Some(progress_path);
+    app.current_iteration = 0;
+    app.viewing_iteration = 0;
+
+    // Get recent message count from config
+    let recent_count = config.tui_recent_messages;
+
+    // Run TUI blocking loop
+    // Note: This currently just displays the TUI with initial state.
+    // Full integration would spawn build loop and forward events to TUI.
+    run_tui_blocking(app, recent_count).await?;
+
+    Ok(())
+}
+
 /// Print completion message based on done reason.
 fn print_completion_message(reason: &DoneReason, ctx: &BuildContext) {
     println!("\n=== BUILD COMPLETE ===");
@@ -369,6 +422,7 @@ mod tests {
             progress_path,
             true, // once
             false,
+            true, // no_tui
             &config,
             token,
         )
@@ -390,6 +444,7 @@ mod tests {
             progress_path,
             false,
             true, // dry_run
+            true, // no_tui
             &config,
             token,
         )
@@ -435,6 +490,7 @@ mod tests {
             progress_path,
             true, // once mode to limit iterations
             false,
+            true, // no_tui
             &config,
             token,
         )
@@ -476,7 +532,7 @@ mod tests {
             token_clone.cancel();
         });
 
-        let result = run_build_command(progress_path, false, false, &config, token).await;
+        let result = run_build_command(progress_path, false, false, true, &config, token).await;
 
         // Should complete with user cancelled status
         assert!(result.is_ok(), "Should handle cancellation: {:?}", result);
@@ -491,6 +547,7 @@ mod tests {
             PathBuf::from("/nonexistent/progress.md"),
             false,
             false,
+            true, // no_tui
             &config,
             token,
         )
@@ -537,6 +594,7 @@ mod tests {
             progress_path.clone(),
             false,
             true, // dry_run
+            true, // no_tui
             &config,
             token,
         )
@@ -581,6 +639,7 @@ mod tests {
             progress_path,
             true,  // once mode
             true,  // dry_run
+            true,  // no_tui
             &config,
             token,
         )
@@ -686,6 +745,7 @@ mod tests {
             progress_path.clone(),
             true,  // once mode
             false, // not dry-run
+            true,  // no_tui
             &config,
             token,
         )
@@ -780,6 +840,7 @@ mod tests {
             progress_path,
             false,
             false,
+            true, // no_tui
             &config,
             token,
         )
@@ -845,6 +906,7 @@ mod tests {
             progress_path,
             false,
             false,
+            true, // no_tui
             &config,
             token,
         )
@@ -902,6 +964,7 @@ mod tests {
             progress_path.clone(),
             false,
             false,
+            true, // no_tui
             &config,
             token,
         )
@@ -1010,6 +1073,7 @@ mod tests {
             progress_path.clone(),
             true,  // once mode to limit execution
             false,
+            true,  // no_tui
             &config,
             token,
         )

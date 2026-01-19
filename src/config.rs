@@ -50,6 +50,12 @@ pub struct Config {
 
     /// Shell for notify script execution (CFG-05)
     pub notify_shell: String,
+
+    /// Enable TUI mode for build command (TUI-09)
+    pub tui_enabled: bool,
+
+    /// Number of recent messages to display in TUI (TUI-09)
+    pub tui_recent_messages: usize,
 }
 
 impl Default for Config {
@@ -62,6 +68,8 @@ impl Default for Config {
             plan_prompt: None,
             build_prompt: None,
             notify_shell: "/bin/sh".to_string(),
+            tui_enabled: true,
+            tui_recent_messages: 10,
         }
     }
 }
@@ -140,6 +148,10 @@ pub struct PartialConfig {
     pub build_prompt: Option<PathBuf>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub notify_shell: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tui_enabled: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tui_recent_messages: Option<usize>,
 }
 
 #[cfg(test)]
@@ -160,6 +172,8 @@ mod tests {
         assert!(config.plan_prompt.is_none());
         assert!(config.build_prompt.is_none());
         assert_eq!(config.notify_shell, "/bin/sh");
+        assert!(config.tui_enabled);
+        assert_eq!(config.tui_recent_messages, 10);
     }
 
     #[test]

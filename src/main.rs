@@ -39,7 +39,7 @@ async fn main() -> color_eyre::Result<()> {
                 }
             }
         }
-        Commands::Build { plan, once, dry_run } => {
+        Commands::Build { plan, once, dry_run, no_tui } => {
             // Set up Ctrl+C handling
             let cancel_token = setup_ctrl_c_handler();
 
@@ -50,8 +50,11 @@ async fn main() -> color_eyre::Result<()> {
             if dry_run {
                 println!("Mode: dry run (--dry-run)");
             }
+            if no_tui {
+                println!("Mode: headless (--no-tui)");
+            }
 
-            match run_build_command(plan, once, dry_run, &config, cancel_token).await {
+            match run_build_command(plan, once, dry_run, no_tui, &config, cancel_token).await {
                 Ok(()) => {
                     println!("Build completed successfully.");
                 }

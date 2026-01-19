@@ -252,7 +252,7 @@ fn get_fake_claude_path() -> PathBuf {
     // During tests, binary is in target/debug/deps or target/debug
     let base = PathBuf::from(manifest_dir);
 
-    // Check common locations
+    // Check common locations (exact paths first)
     let candidates = [
         base.join("target/debug/fake_claude"),
         base.join("target/debug/deps/fake_claude"),
@@ -261,6 +261,39 @@ fn get_fake_claude_path() -> PathBuf {
     for candidate in &candidates {
         if candidate.exists() {
             return candidate.clone();
+        }
+    }
+
+    // Try finding binary with hash suffix in deps directory
+    // The test binary is named like fake_claude-7d73059a19867aac
+    let deps_dir = base.join("target/debug/deps");
+    if deps_dir.exists() {
+        if let Ok(entries) = std::fs::read_dir(&deps_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
+                    // Match fake_claude-HASH (executable, not .d or .o files)
+                    if name.starts_with("fake_claude-")
+                        && !name.contains('.')
+                        && path.is_file()
+                    {
+                        // Verify it's executable on Unix
+                        #[cfg(unix)]
+                        {
+                            use std::os::unix::fs::PermissionsExt;
+                            if let Ok(metadata) = path.metadata() {
+                                if metadata.permissions().mode() & 0o111 != 0 {
+                                    return path;
+                                }
+                            }
+                        }
+                        #[cfg(not(unix))]
+                        {
+                            return path;
+                        }
+                    }
+                }
+            }
         }
     }
 

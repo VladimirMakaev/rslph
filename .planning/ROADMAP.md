@@ -28,7 +28,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full details.
 ### 🚧 v1.1 Prompt Engineering (In Progress)
 
 - [x] **Phase 7: E2E Testing Framework** - Fake Claude (Rust), scenario API, workspace fixtures ✓
-- [ ] **Phase 7.1: TUI Testing** - TestBackend + insta snapshot tests for TUI (INSERTED)
+- [x] **Phase 7.1: TUI Testing** - TestBackend + insta snapshot tests for TUI ✓
 - [ ] **Phase 8: Verification** - Test agent and independent verification
 - [ ] **Phase 9: Notifications and Polish** - Notify scripts, prompt overrides, error refinement
 
@@ -74,7 +74,7 @@ Plans:
   4. TUI tests integrate with existing E2E infrastructure
 
 Plans:
-- [ ] 07.1-01-PLAN.md — TUI snapshot tests (rendering + key handling)
+- [x] 07.1-01-PLAN.md — TUI snapshot tests (rendering + key handling) ✓
 
 ### Phase 8: Verification
 **Goal**: Test agent runs independently to verify build results
@@ -123,6 +123,6 @@ Phases execute in numeric order: 7 -> 7.1 -> 8 -> 9
 | 5. VCS Integration | v1.0 | 2/2 | Complete | 2026-01-18 |
 | 6. TUI Interface | v1.0 | 4/4 | Complete | 2026-01-19 |
 | 7. E2E Testing Framework | v1.1 | 5/5 | Complete | 2026-01-19 |
-| 7.1 TUI Testing | v1.1 | 0/1 | Planned | - |
+| 7.1 TUI Testing | v1.1 | 1/1 | Complete | 2026-01-19 |
 | 8. Verification | v1.1 | 0/1 | Not started | - |
 | 9. Notifications and Polish | v1.1 | 0/2 | Not started | - |

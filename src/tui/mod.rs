@@ -11,7 +11,7 @@ mod terminal;
 mod ui;
 mod widgets;
 
-pub use app::{App, AppEvent, Message};
+pub use app::{App, AppEvent, Message, MessageRole};
 pub use event::{EventHandler, SubprocessEvent};
 pub use keybindings::handle_event;
 pub use run::{run_tui, run_tui_blocking};

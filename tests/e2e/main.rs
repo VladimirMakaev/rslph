@@ -15,6 +15,9 @@ mod test_edge_cases;
 // True E2E integration tests (Plan 07-05)
 mod test_rslph_integration;
 
+// TUI snapshot tests (Plan 07.1-01)
+mod tui_tests;
+
 // Include fake_claude_lib for scenario builder access
 #[path = "../fake_claude_lib/mod.rs"]
 mod fake_claude_lib;

@@ -34,7 +34,7 @@ fn role_label(role: &MessageRole) -> String {
     }
 }
 
-/// Render a collapsed message (single line with line count).
+/// Render a collapsed message (single line with first line preview).
 fn format_collapsed(msg: &Message, is_selected: bool) -> Vec<Line<'static>> {
     let mut style = role_style(&msg.role);
     if is_selected {
@@ -42,7 +42,16 @@ fn format_collapsed(msg: &Message, is_selected: bool) -> Vec<Line<'static>> {
     }
 
     let label = role_label(&msg.role);
-    let indicator = format!("{} > ({} lines)", label, msg.line_count);
+
+    // Get first line of content, truncated if too long
+    let first_line = msg.content.lines().next().unwrap_or("");
+    let preview = if first_line.len() > 60 {
+        format!("{}...", &first_line[..57])
+    } else {
+        first_line.to_string()
+    };
+
+    let indicator = format!("{} > {}", label, preview);
 
     vec![Line::from(vec![Span::styled(indicator, style)])]
 }

@@ -88,11 +88,13 @@ impl Message {
     pub fn with_role(role: MessageRole, content: impl Into<String>, iteration: u32) -> Self {
         let content_str: String = content.into();
         let line_count = content_str.lines().count().max(1);
+        // Tool messages start collapsed by default for cleaner output
+        let collapsed = matches!(role, MessageRole::Tool(_));
         Self {
             role,
             content: content_str,
             iteration,
-            collapsed: false,
+            collapsed,
             line_count,
         }
     }
@@ -563,6 +565,14 @@ mod tests {
 
         assert_eq!(msg.role, MessageRole::Tool("Read".to_string()));
         assert_eq!(msg.content, "file contents");
+        // Tool messages start collapsed by default
+        assert!(msg.collapsed);
+    }
+
+    #[test]
+    fn test_message_with_role_non_tool_not_collapsed() {
+        let msg = Message::with_role(MessageRole::Assistant, "response", 1);
+        // Non-tool messages start expanded
         assert!(!msg.collapsed);
     }
 

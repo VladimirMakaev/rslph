@@ -96,6 +96,83 @@ pub struct ContentBlock {
     pub id: Option<String>,
 }
 
+/// Format tool input JSON into a human-readable summary.
+///
+/// Extracts key fields based on tool type:
+/// - Read: shows file_path
+/// - Bash: shows command
+/// - Edit/Write: shows file_path
+/// - Grep/Glob: shows pattern
+/// - Other: shows first few fields
+pub fn format_tool_summary(tool_name: &str, input_json: &str) -> String {
+    // Parse JSON input
+    let value: serde_json::Value = match serde_json::from_str(input_json) {
+        Ok(v) => v,
+        Err(_) => return input_json.to_string(), // Fallback to raw if unparseable
+    };
+
+    let obj = match value.as_object() {
+        Some(o) => o,
+        None => return input_json.to_string(),
+    };
+
+    match tool_name {
+        "Read" => {
+            if let Some(path) = obj.get("file_path").and_then(|v| v.as_str()) {
+                return path.to_string();
+            }
+        }
+        "Bash" => {
+            if let Some(cmd) = obj.get("command").and_then(|v| v.as_str()) {
+                // Truncate long commands
+                let display = if cmd.len() > 80 {
+                    format!("{}...", &cmd[..77])
+                } else {
+                    cmd.to_string()
+                };
+                return display;
+            }
+        }
+        "Edit" => {
+            if let Some(path) = obj.get("file_path").and_then(|v| v.as_str()) {
+                return format!("Edit {}", path);
+            }
+        }
+        "Write" => {
+            if let Some(path) = obj.get("file_path").and_then(|v| v.as_str()) {
+                return format!("Write {}", path);
+            }
+        }
+        "Grep" => {
+            let pattern = obj.get("pattern").and_then(|v| v.as_str()).unwrap_or("?");
+            let path = obj.get("path").and_then(|v| v.as_str());
+            return if let Some(p) = path {
+                format!("Grep: {} in {}", pattern, p)
+            } else {
+                format!("Grep: {}", pattern)
+            };
+        }
+        "Glob" => {
+            let pattern = obj.get("pattern").and_then(|v| v.as_str()).unwrap_or("?");
+            let path = obj.get("path").and_then(|v| v.as_str());
+            return if let Some(p) = path {
+                format!("Glob: {} in {}", pattern, p)
+            } else {
+                format!("Glob: {}", pattern)
+            };
+        }
+        _ => {}
+    }
+
+    // Fallback: show compact JSON, truncated
+    let compact = serde_json::to_string(&value).unwrap_or_else(|_| input_json.to_string());
+    if compact.len() > 80 {
+        format!("{}...", &compact[..77])
+    } else {
+        compact
+    }
+}
+
 /// Token usage statistics.
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct Usage {
@@ -354,5 +431,77 @@ mod tests {
         let event = StreamEvent::parse(json).expect("should parse");
         assert!(!event.has_tool_use());
         assert!(event.extract_tool_uses().is_empty());
+    }
+
+    #[test]
+    fn test_format_tool_summary_read() {
+        let input = r#"{"file_path":"/Users/test/project/Cargo.toml"}"#;
+        let result = format_tool_summary("Read", input);
+        assert_eq!(result, "/Users/test/project/Cargo.toml");
+    }
+
+    #[test]
+    fn test_format_tool_summary_bash() {
+        let input = r#"{"command":"cargo build --release"}"#;
+        let result = format_tool_summary("Bash", input);
+        assert_eq!(result, "cargo build --release");
+    }
+
+    #[test]
+    fn test_format_tool_summary_bash_long() {
+        let long_cmd = "a".repeat(100);
+        let input = format!(r#"{{"command":"{}"}}"#, long_cmd);
+        let result = format_tool_summary("Bash", &input);
+        assert!(result.ends_with("..."));
+        assert!(result.len() <= 83); // 80 + "..."
+    }
+
+    #[test]
+    fn test_format_tool_summary_edit() {
+        let input = r#"{"file_path":"/src/main.rs","old_string":"old","new_string":"new"}"#;
+        let result = format_tool_summary("Edit", input);
+        assert_eq!(result, "Edit /src/main.rs");
+    }
+
+    #[test]
+    fn test_format_tool_summary_write() {
+        let input = r#"{"file_path":"/src/lib.rs","content":"fn main() {}"}"#;
+        let result = format_tool_summary("Write", input);
+        assert_eq!(result, "Write /src/lib.rs");
+    }
+
+    #[test]
+    fn test_format_tool_summary_grep() {
+        let input = r#"{"pattern":"TODO","path":"/src"}"#;
+        let result = format_tool_summary("Grep", input);
+        assert_eq!(result, "Grep: TODO in /src");
+    }
+
+    #[test]
+    fn test_format_tool_summary_grep_no_path() {
+        let input = r#"{"pattern":"FIXME"}"#;
+        let result = format_tool_summary("Grep", input);
+        assert_eq!(result, "Grep: FIXME");
+    }
+
+    #[test]
+    fn test_format_tool_summary_glob() {
+        let input = r#"{"pattern":"*.rs","path":"/src"}"#;
+        let result = format_tool_summary("Glob", input);
+        assert_eq!(result, "Glob: *.rs in /src");
+    }
+
+    #[test]
+    fn test_format_tool_summary_unknown_tool() {
+        let input = r#"{"foo":"bar"}"#;
+        let result = format_tool_summary("UnknownTool", input);
+        assert_eq!(result, r#"{"foo":"bar"}"#);
+    }
+
+    #[test]
+    fn test_format_tool_summary_invalid_json() {
+        let input = "not json";
+        let result = format_tool_summary("Read", input);
+        assert_eq!(result, "not json");
     }
 }

@@ -10,7 +10,7 @@ use tokio::sync::mpsc;
 use crate::error::RslphError;
 use crate::progress::ProgressFile;
 use crate::prompts::get_build_prompt;
-use crate::subprocess::{ClaudeRunner, OutputLine, StreamEvent, StreamResponse};
+use crate::subprocess::{format_tool_summary, ClaudeRunner, OutputLine, StreamEvent, StreamResponse};
 use crate::tui::SubprocessEvent;
 
 use super::state::{BuildContext, DoneReason, IterationResult};
@@ -43,11 +43,12 @@ fn parse_and_stream_line(
             }
         }
 
-        // Send tool uses as ToolUse events
+        // Send tool uses as ToolUse events with formatted summary
         for (tool_name, input) in event.extract_tool_uses() {
+            let summary = format_tool_summary(&tool_name, &input);
             let _ = tui_tx.send(SubprocessEvent::ToolUse {
                 tool_name,
-                content: input,
+                content: summary,
             });
         }
 

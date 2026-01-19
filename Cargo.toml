@@ -30,3 +30,4 @@ insta = "1"
 [[test]]
 name = "fake_claude"
 path = "tests/fake_claude.rs"
+harness = false

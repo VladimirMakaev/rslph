@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Planning Command** - `rslph plan` with basic and adaptive modes
 - [x] **Phase 4: Core Build Loop** - Iteration logic, completion detection, fresh context
 - [x] **Phase 5: VCS Integration** - Git and Sapling auto-commit per iteration
-- [ ] **Phase 6: TUI Interface** - Status bar, live output, collapsible threads
+- [x] **Phase 6: TUI Interface** - Status bar, live output, collapsible threads
 - [ ] **Phase 7: Verification** - Test agent and independent verification
 - [ ] **Phase 8: Notifications and Polish** - Notify scripts, prompt overrides, error refinement
 
@@ -122,10 +122,10 @@ Plans:
 **Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 06-01-PLAN.md — Terminal setup, panic hooks, app state, event handler [Wave 1]
-- [ ] 06-02-PLAN.md — Status bar header and progress bar widgets [Wave 2, depends on 06-01]
-- [ ] 06-03-PLAN.md — Live output view with scrolling and ClaudeRunner channel integration [Wave 2, depends on 06-01]
-- [ ] 06-04-PLAN.md — Thread view, keyboard navigation, build command integration [Wave 3, depends on 06-02, 06-03]
+- [x] 06-01-PLAN.md — Terminal setup, panic hooks, app state, event handler [Wave 1]
+- [x] 06-02-PLAN.md — Status bar header and progress bar widgets [Wave 2, depends on 06-01]
+- [x] 06-03-PLAN.md — Live output view with scrolling and ClaudeRunner channel integration [Wave 2, depends on 06-01]
+- [x] 06-04-PLAN.md — Thread view, keyboard navigation, build command integration [Wave 3, depends on 06-02, 06-03]
 
 ### Phase 7: Verification
 **Goal**: Test agent runs independently to verify build results
@@ -168,6 +168,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 3. Planning Command | 2/2 | Complete | 2026-01-18 |
 | 4. Core Build Loop | 4/4 | Complete | 2026-01-18 |
 | 5. VCS Integration | 2/2 | Complete | 2026-01-18 |
-| 6. TUI Interface | 0/4 | Ready to execute | - |
+| 6. TUI Interface | 4/4 | Complete | 2026-01-19 |
 | 7. Verification | 0/1 | Not started | - |
 | 8. Notifications and Polish | 0/2 | Not started | - |

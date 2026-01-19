@@ -166,16 +166,16 @@
 | VCS-01 | Phase 5 | Complete |
 | VCS-02 | Phase 5 | Complete |
 | VCS-03 | Phase 5 | Complete |
-| TUI-01 | Phase 6 | Pending |
-| TUI-02 | Phase 6 | Pending |
-| TUI-03 | Phase 6 | Pending |
-| TUI-04 | Phase 6 | Pending |
-| TUI-05 | Phase 6 | Pending |
-| TUI-06 | Phase 6 | Pending |
-| TUI-07 | Phase 6 | Pending |
-| TUI-08 | Phase 6 | Pending |
-| TUI-09 | Phase 6 | Pending |
-| TUI-10 | Phase 6 | Pending |
+| TUI-01 | Phase 6 | Complete |
+| TUI-02 | Phase 6 | Complete |
+| TUI-03 | Phase 6 | Complete |
+| TUI-04 | Phase 6 | Complete |
+| TUI-05 | Phase 6 | Complete |
+| TUI-06 | Phase 6 | Complete |
+| TUI-07 | Phase 6 | Complete |
+| TUI-08 | Phase 6 | Complete |
+| TUI-09 | Phase 6 | Complete |
+| TUI-10 | Phase 6 | Complete |
 | CFG-01 | Phase 1 | Complete |
 | CFG-02 | Phase 1 | Complete |
 | CFG-03 | Phase 1 | Complete |
@@ -221,4 +221,4 @@
 
 ---
 *Requirements defined: 2026-01-17*
-*Last updated: 2026-01-18 after Phase 5 completion*
+*Last updated: 2026-01-19 after Phase 6 completion*

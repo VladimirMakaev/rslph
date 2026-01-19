@@ -3,6 +3,7 @@ use std::process::Stdio;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, BufReader, Lines};
 use tokio::process::{Child, ChildStderr, ChildStdout, Command};
+use tokio::sync::mpsc;
 use tokio::time::{sleep, timeout};
 use tokio_util::sync::CancellationToken;
 
@@ -194,6 +195,53 @@ impl ClaudeRunner {
                 Err(RslphError::Timeout(max_duration.as_secs()))
             }
         }
+    }
+
+    /// Run subprocess while sending output lines to a channel.
+    ///
+    /// Unlike run_to_completion which collects all output, this streams
+    /// each line to the provided sender for real-time display.
+    ///
+    /// # Arguments
+    /// * `tx` - Unbounded sender for output lines
+    /// * `cancel_token` - Token to request graceful cancellation
+    ///
+    /// # Returns
+    /// * `Ok(())` - Process completed normally
+    /// * `Err(RslphError::Cancelled)` - User cancelled
+    /// * `Err(RslphError::Subprocess)` - Process error
+    pub async fn run_with_channel(
+        &mut self,
+        tx: mpsc::UnboundedSender<OutputLine>,
+        cancel_token: CancellationToken,
+    ) -> Result<(), RslphError> {
+        loop {
+            tokio::select! {
+                biased;
+
+                _ = cancel_token.cancelled() => {
+                    self.terminate_gracefully(Duration::from_secs(5)).await
+                        .map_err(|e| RslphError::Subprocess(e.to_string()))?;
+                    return Err(RslphError::Cancelled);
+                }
+
+                line = self.next_output() => {
+                    match line {
+                        Some(l) => {
+                            // If receiver dropped, stop gracefully
+                            if tx.send(l).is_err() {
+                                break;
+                            }
+                        }
+                        None => break, // Process finished
+                    }
+                }
+            }
+        }
+
+        // Reap child to prevent zombie
+        let _ = self.child.wait().await;
+        Ok(())
     }
 }
 

@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-17)
 ## Current Position
 
 Phase: 6 of 8 (TUI Interface)
-Plan: 0 of 4 in current phase
-Status: Ready to plan
-Last activity: 2026-01-18 — Completed Phase 5 (VCS Integration)
+Plan: 1 of 4 in current phase
+Status: In progress
+Last activity: 2026-01-19 - Completed 06-01-PLAN.md
 
-Progress: [███████░░░] 75%
+Progress: [████████░░] 81%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
-- Average duration: 6m 23s
-- Total execution time: 1.19 hours
+- Total plans completed: 13
+- Average duration: 6m 5s
+- Total execution time: 1.23 hours
 
 **By Phase:**
 
@@ -32,10 +32,11 @@ Progress: [███████░░░] 75%
 | 03-planning-command | 2/2 | 16m | 8m |
 | 04-core-build-loop | 4/4 | 22m 41s | 5m 40s |
 | 05-vcs-integration | 1/1 | 4m | 4m |
+| 06-tui-interface | 1/4 | 2m 27s | 2m 27s |
 
 **Recent Trend:**
-- Last 5 plans: 04-02 (8m), 04-03 (7m), 04-04 (2m 15s), 05-01 (4m)
-- Trend: Stable
+- Last 5 plans: 04-03 (7m), 04-04 (2m 15s), 05-01 (4m), 06-01 (2m 27s)
+- Trend: Improving
 
 *Updated after each plan completion*
 
@@ -73,6 +74,9 @@ Recent decisions affecting current work:
 - **VCS-ITER-COMMIT**: Commit after iteration completion, not per-task
 - **CONTEXT-CAPTURED-NAME**: Store project_name in BuildContext at construction, not rely on Claude response parsing
 - **SL-LOG-HASH**: Use `sl log -l 1 --template '{node|short}'` to get commit hash after sl commit (sl commit produces no stdout)
+- **TUI-STDERR-BACKEND**: Use stderr for terminal backend to keep stdout available for non-TUI output
+- **TUI-PANIC-HOOK-CHAIN**: Chain panic hooks instead of replacing to preserve existing panic behavior
+- **TUI-UNBOUNDED-CHANNEL**: Use unbounded channels for event handling to avoid backpressure with fast Claude output
 
 ### Pending Todos
 
@@ -85,6 +89,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-18 22:35 UTC
-Stopped at: Completed Phase 5 gap closure (VCS fixes)
+Last session: 2026-01-19 01:36 UTC
+Stopped at: Completed 06-01-PLAN.md (TUI Module Foundation)
 Resume file: None

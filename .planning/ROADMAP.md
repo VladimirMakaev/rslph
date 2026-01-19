@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-6 (shipped 2026-01-19)
-- 🚧 **v1.1 Testing Enhancement** — Phases 7-9 (in progress)
+- 🚧 **v1.1 Testing Enhancement** — Phases 7-8 (in progress)
 
 ## Overview
 
@@ -30,7 +30,6 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full details.
 - [x] **Phase 7: E2E Testing Framework** - Fake Claude (Rust), scenario API, workspace fixtures ✓
 - [x] **Phase 7.1: TUI Testing** - TestBackend + insta snapshot tests for TUI ✓
 - [ ] **Phase 8: Verification** - Test agent and independent verification
-- [ ] **Phase 9: Notifications and Polish** - Notify scripts, prompt overrides, error refinement
 
 ## Phase Details
 
@@ -91,28 +90,10 @@ Plans:
 Plans:
 - [ ] 08-01: Test agent implementation and verification runner
 
-### Phase 9: Notifications and Polish
-**Goal**: User receives notifications at key points, prompts are fully customizable
-**Depends on**: Phase 6
-**Requirements**: NOTIF-01, NOTIF-02, NOTIF-03, NOTIF-04, NOTIF-05, PROMPT-04
-
-**Success Criteria** (what must be TRUE):
-  1. User-provided notify script runs after 1st iteration
-  2. Notify script runs every X iterations (configurable)
-  3. Notify script runs on completion and on failure
-  4. Script executes via configurable shell with context (status, counts)
-  5. User can override PROMPT_plan and PROMPT_build via config file paths
-
-**Plans**: TBD (2 plans estimated)
-
-Plans:
-- [ ] 09-01: Notification system
-- [ ] 09-02: Prompt override system and final polish
-
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 7 -> 7.1 -> 8 -> 9
+Phases execute in numeric order: 7 -> 7.1 -> 8
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -125,4 +106,3 @@ Phases execute in numeric order: 7 -> 7.1 -> 8 -> 9
 | 7. E2E Testing Framework | v1.1 | 5/5 | Complete | 2026-01-19 |
 | 7.1 TUI Testing | v1.1 | 1/1 | Complete | 2026-01-19 |
 | 8. Verification | v1.1 | 0/1 | Not started | - |
-| 9. Notifications and Polish | v1.1 | 0/2 | Not started | - |

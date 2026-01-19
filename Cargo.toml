@@ -23,3 +23,10 @@ futures = "0.3"
 
 [dev-dependencies]
 tempfile = "3"
+assert_cmd = "2"
+assert_fs = "1"
+insta = "1"
+
+[[test]]
+name = "fake_claude"
+path = "tests/fake_claude.rs"

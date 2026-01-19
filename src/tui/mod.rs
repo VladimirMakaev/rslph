@@ -6,7 +6,10 @@
 mod app;
 mod event;
 mod terminal;
+mod ui;
+mod widgets;
 
 pub use app::{App, AppEvent, Message};
 pub use event::EventHandler;
 pub use terminal::{init_terminal, restore_terminal};
+pub use ui::render;

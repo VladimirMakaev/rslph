@@ -12,8 +12,14 @@ use std::io::{self, Write};
 use std::path::Path;
 
 fn main() {
-    let config_path = env::var("FAKE_CLAUDE_CONFIG")
-        .expect("FAKE_CLAUDE_CONFIG env var must be set");
+    let config_path = match env::var("FAKE_CLAUDE_CONFIG") {
+        Ok(path) => path,
+        Err(_) => {
+            // Exit gracefully when not configured (e.g., when cargo runs this as a test target)
+            eprintln!("fake_claude: FAKE_CLAUDE_CONFIG not set, exiting gracefully");
+            return;
+        }
+    };
 
     let config: FakeClaudeConfig = serde_json::from_str(
         &fs::read_to_string(&config_path)

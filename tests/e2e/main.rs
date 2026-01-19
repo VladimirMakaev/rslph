@@ -8,6 +8,10 @@ mod fixtures;
 mod helpers;
 mod scenario_tests;
 
+// Infrastructure verification tests (Plan 07-04)
+mod test_basic_loop;
+mod test_edge_cases;
+
 // Include fake_claude_lib for scenario builder access
 #[path = "../fake_claude_lib/mod.rs"]
 mod fake_claude_lib;

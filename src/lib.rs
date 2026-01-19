@@ -6,4 +6,5 @@ pub mod planning;
 pub mod progress;
 pub mod prompts;
 pub mod subprocess;
+pub mod tui;
 pub mod vcs;

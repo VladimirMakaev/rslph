@@ -27,7 +27,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full details.
 
 ### 🚧 v1.1 Prompt Engineering (In Progress)
 
-- [ ] **Phase 7: E2E Testing Framework** - Fake Claude (Rust), scenario API, workspace fixtures
+- [x] **Phase 7: E2E Testing Framework** - Fake Claude (Rust), scenario API, workspace fixtures ✓
 - [ ] **Phase 8: Verification** - Test agent and independent verification
 - [ ] **Phase 9: Notifications and Polish** - Notify scripts, prompt overrides, error refinement
 
@@ -53,11 +53,11 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full details.
 **Plans**: 5 plans in 4 waves
 
 Plans:
-- [ ] 07-01-PLAN.md — Core fake-claude infrastructure with stream-json output
-- [ ] 07-02-PLAN.md — Workspace fixtures and verifier helpers
-- [ ] 07-03-PLAN.md — Tool calls, edge cases, multi-invocation support
-- [ ] 07-04-PLAN.md — Infrastructure verification tests
-- [ ] 07-05-PLAN.md — True E2E integration tests (rslph with fake Claude)
+- [x] 07-01-PLAN.md — Core fake-claude infrastructure with stream-json output
+- [x] 07-02-PLAN.md — Workspace fixtures and verifier helpers
+- [x] 07-03-PLAN.md — Tool calls, edge cases, multi-invocation support
+- [x] 07-04-PLAN.md — Infrastructure verification tests
+- [x] 07-05-PLAN.md — True E2E integration tests (rslph with fake Claude)
 
 ### Phase 8: Verification
 **Goal**: Test agent runs independently to verify build results
@@ -105,6 +105,6 @@ Phases execute in numeric order: 7 -> 8 -> 9
 | 4. Core Build Loop | v1.0 | 4/4 | Complete | 2026-01-18 |
 | 5. VCS Integration | v1.0 | 2/2 | Complete | 2026-01-18 |
 | 6. TUI Interface | v1.0 | 4/4 | Complete | 2026-01-19 |
-| 7. E2E Testing Framework | v1.1 | 0/5 | Planned | - |
+| 7. E2E Testing Framework | v1.1 | 5/5 | Complete | 2026-01-19 |
 | 8. Verification | v1.1 | 0/1 | Not started | - |
 | 9. Notifications and Polish | v1.1 | 0/2 | Not started | - |

@@ -5,11 +5,12 @@
 use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
     style::{Color, Style},
-    widgets::Paragraph,
+    widgets::{Block, Borders, Clear, Paragraph},
     Frame,
 };
 
 use super::app::App;
+use super::widgets::output_view::render_output;
 use super::widgets::status_bar::render_header;
 
 /// Render the entire TUI interface.
@@ -29,14 +30,24 @@ pub fn render(frame: &mut Frame, app: &App) {
     render_header(frame, header, app);
     render_body(frame, body, app);
     render_footer(frame, footer, app);
+
+    // Show pause overlay if paused
+    if app.is_paused {
+        render_pause_overlay(frame, body);
+    }
 }
 
-/// Render the main body area (placeholder for Plan 03).
-fn render_body(frame: &mut Frame, area: Rect, _app: &App) {
-    let paragraph = Paragraph::new("Output area")
-        .style(Style::default().fg(Color::DarkGray))
-        .alignment(Alignment::Center);
-    frame.render_widget(paragraph, area);
+/// Render the main body area with output view.
+fn render_body(frame: &mut Frame, area: Rect, app: &App) {
+    // Add a subtle border at the top
+    let block = Block::default()
+        .borders(Borders::TOP)
+        .border_style(Style::default().fg(Color::DarkGray));
+
+    let inner = block.inner(area);
+    frame.render_widget(block, area);
+
+    render_output(frame, inner, app);
 }
 
 /// Render the footer with key binding hints and log path.
@@ -70,4 +81,30 @@ fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
             right,
         );
     }
+}
+
+/// Render a centered pause overlay.
+fn render_pause_overlay(frame: &mut Frame, area: Rect) {
+    let message = "PAUSED - press p to resume";
+    let width = message.len() as u16 + 4;
+    let height = 3;
+
+    let popup_area = Rect {
+        x: area.x + (area.width.saturating_sub(width)) / 2,
+        y: area.y + (area.height.saturating_sub(height)) / 2,
+        width: width.min(area.width),
+        height: height.min(area.height),
+    };
+
+    frame.render_widget(Clear, popup_area);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Yellow));
+
+    let text = Paragraph::new(message)
+        .alignment(Alignment::Center)
+        .block(block);
+
+    frame.render_widget(text, popup_area);
 }

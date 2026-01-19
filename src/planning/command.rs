@@ -94,7 +94,7 @@ async fn run_basic_planning(
     eprintln!("[TRACE] Spawned subprocess with PID: {:?}", runner.id());
 
     // Step 6: Run with timeout and collect output, tracing each line
-    let output = run_with_tracing(&mut runner, timeout, cancel_token).await?;
+    let output = run_with_tracing(&mut runner, timeout, cancel_token.clone()).await?;
 
     // Step 7: Parse JSONL output using StreamResponse
     let mut stream_response = StreamResponse::new();
@@ -115,7 +115,22 @@ async fn run_basic_planning(
     );
 
     // Step 8: Parse response into ProgressFile
-    let progress_file = ProgressFile::parse(&response_text)?;
+    let mut progress_file = ProgressFile::parse(&response_text)?;
+
+    // Step 8.5: Generate project name if empty
+    if progress_file.name.is_empty() {
+        eprintln!("[TRACE] Progress file has no name, generating one...");
+        let generated_name = generate_project_name(
+            &config.claude_path,
+            input,
+            working_dir,
+            cancel_token.clone(),
+            timeout,
+        )
+        .await?;
+        eprintln!("[TRACE] Generated project name: {}", generated_name);
+        progress_file.name = generated_name;
+    }
 
     // Step 9: Write to file
     let output_path = working_dir.join("progress.md");
@@ -305,7 +320,7 @@ pub async fn run_adaptive_planning(
         .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
 
     // Run with timeout and collect output
-    let output = runner.run_with_timeout(timeout, cancel_token).await?;
+    let output = runner.run_with_timeout(timeout, cancel_token.clone()).await?;
 
     // Parse JSONL output using StreamResponse
     let mut stream_response = StreamResponse::new();
@@ -317,7 +332,22 @@ pub async fn run_adaptive_planning(
     let response_text = stream_response.text;
 
     // Parse response into ProgressFile
-    let progress_file = ProgressFile::parse(&response_text)?;
+    let mut progress_file = ProgressFile::parse(&response_text)?;
+
+    // Generate project name if empty
+    if progress_file.name.is_empty() {
+        eprintln!("[TRACE] Progress file has no name, generating one...");
+        let generated_name = generate_project_name(
+            &config.claude_path,
+            input,
+            working_dir,
+            cancel_token.clone(),
+            timeout,
+        )
+        .await?;
+        eprintln!("[TRACE] Generated project name: {}", generated_name);
+        progress_file.name = generated_name;
+    }
 
     // Write to file
     let output_path = working_dir.join("progress.md");
@@ -362,6 +392,60 @@ async fn run_claude_headless(
     }
 
     Ok(stream_response.text)
+}
+
+/// Generate a short kebab-case project name from the user's input.
+///
+/// Asks Claude to summarize the project in 2 words max, formatted as kebab-case.
+async fn generate_project_name(
+    claude_path: &str,
+    user_input: &str,
+    working_dir: &Path,
+    cancel_token: CancellationToken,
+    timeout: Duration,
+) -> color_eyre::Result<String> {
+    const NAME_GENERATOR_PROMPT: &str = r#"Generate a short project name for the following idea.
+
+Rules:
+- Exactly 2 words maximum
+- Use kebab-case (lowercase with hyphens, e.g., "quadratic-solver", "todo-app", "file-sync")
+- Be descriptive but concise
+- Output ONLY the project name, nothing else
+
+Example outputs:
+- task-manager
+- code-formatter
+- weather-api
+- chat-bot"#;
+
+    let response = run_claude_headless(
+        claude_path,
+        NAME_GENERATOR_PROMPT,
+        user_input,
+        working_dir,
+        cancel_token,
+        timeout,
+    )
+    .await?;
+
+    // Clean up the response - take first line, trim, convert to kebab-case
+    let name = response
+        .lines()
+        .next()
+        .unwrap_or("unnamed-project")
+        .trim()
+        .to_lowercase()
+        .replace(' ', "-")
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == '-')
+        .collect::<String>();
+
+    // Ensure it's not empty
+    if name.is_empty() {
+        Ok("unnamed-project".to_string())
+    } else {
+        Ok(name)
+    }
 }
 
 /// Read multi-line input from stdin.

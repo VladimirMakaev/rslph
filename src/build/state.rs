@@ -129,7 +129,14 @@ impl BuildContext {
         }
 
         // Capture project name at construction for commit messages
-        let project_name = progress.name.clone();
+        // Fall back to "Unnamed" if progress file has no project name
+        let project_name = if progress.name.is_empty() {
+            eprintln!("[BUILD] Warning: Progress file has no project name, using 'Unnamed'");
+            "Unnamed".to_string()
+        } else {
+            eprintln!("[BUILD] Project: {}", progress.name);
+            progress.name.clone()
+        };
 
         Self {
             progress_path,

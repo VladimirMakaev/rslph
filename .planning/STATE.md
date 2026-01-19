@@ -2,28 +2,29 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-17)
+See: .planning/PROJECT.md (updated 2026-01-19)
 
 **Core value:** Autonomous task execution with fresh context per iteration and accumulated learnings
-**Current focus:** Phase 7 - Verification
+**Current focus:** v1.1 - E2E Testing Framework (Phase 7)
 
 ## Current Position
 
-Phase: 7 of 8 (Verification)
-Plan: 0 of 1 in current phase
+Phase: 7 of 9 (E2E Testing Framework)
+Plan: 0 of 4 in current phase
 Status: Ready to plan
-Last activity: 2026-01-19 - Completed Phase 6 (TUI Interface)
+Last activity: 2026-01-19 - v1.0 milestone complete
 
-Progress: [█████████░] 75% (6/8 phases complete)
+Progress: [██████████] 100% v1.0 | [░░░░░░░░░░] 0% v1.1
 
 ## Performance Metrics
 
-**Velocity:**
-- Total plans completed: 16
+**v1.0 Velocity:**
+- Total plans completed: 17
 - Average duration: 5m 31s
 - Total execution time: 1.47 hours
+- Shipped: 2026-01-19 (3 days from start)
 
-**By Phase:**
+**By Phase (v1.0):**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
@@ -31,12 +32,8 @@ Progress: [█████████░] 75% (6/8 phases complete)
 | 02-subprocess-management | 2/2 | 6m 29s | 3m 15s |
 | 03-planning-command | 2/2 | 16m | 8m |
 | 04-core-build-loop | 4/4 | 22m 41s | 5m 40s |
-| 05-vcs-integration | 1/1 | 4m | 4m |
+| 05-vcs-integration | 2/2 | 8m | 4m |
 | 06-tui-interface | 4/4 | 17m 4s | 4m 16s |
-
-**Recent Trend:**
-- Last 5 plans: 06-01 (2m 27s), 06-02 (2m 18s), 06-03 (4m 19s), 06-04 (8m)
-- Trend: Consistent
 
 *Updated after each plan completion*
 
@@ -45,48 +42,12 @@ Progress: [█████████░] 75% (6/8 phases complete)
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- **CFG-ENV-LOWERCASE**: Use lowercase env var mapping without split for flat config structure
-- **TABLE-HEAD-CLEAR**: Must clear table_row on End(TableHead) to avoid mixing header and data cells
-- **TASK-MARKER-PRIORITY**: Check current_task_checked before in_list_item in text handler
-- **CLI-VALUE-SOURCE**: Use clap value_source() to distinguish explicit CLI values from defaults
-- **TOKIO-UTIL-NO-SYNC**: tokio-util does not have a sync feature, CancellationToken is in base crate
-- **EOF-STATE-STRUCT**: Track stdout_done/stderr_done in struct, not local to next_output()
-- **PROCESS-GROUP-SIGTERM**: Send SIGTERM to negative PID to signal entire process group
-- **BIASED-SELECT-CANCEL**: Use biased select! to check cancellation before output
-- **PROMPT-INCLUDE-STR**: Use include_str! for compile-time prompt embedding (zero runtime cost)
-- **CLAUDE-HEADLESS-P**: Use -p flag for headless Claude CLI execution
-- **STACK-PRIORITY-ORDER**: Check Cargo.toml before package.json before pyproject.toml before go.mod
-- **BOX-FIGMENT-ERROR**: Box figment::Error in RslphError to reduce enum size
-- **VAGUENESS-THRESHOLD-055**: Use +0.55 for very short inputs to ensure score > 0.5 triggers clarification
-- **DOUBLE-ENTER-STDIN**: Use two consecutive empty lines to terminate multi-line input
-- **STREAM-JSON-FORMAT**: Use `--output-format stream-json` with `--verbose` for Claude CLI (required when using -p mode)
-- **CHRONO-TIMESTAMP**: Use chrono for iteration timestamps in log
-- **STDERR-BUILD-LOGS**: Use eprintln with [BUILD] prefix for iteration status logs
-- **DRY-RUN-VALIDATE-PROMPT**: Validate prompt loading in dry-run to catch config errors early
-- **WHICH-FALLBACK**: Use `which` to resolve relative command names to absolute paths at config load time
-- **EMPTY-PARENT-PATH**: Filter empty parent paths when getting working_dir from progress_path (Path::parent returns Some("") for bare filenames)
-- **SAPLING-SL-ROOT-DETECT**: Detect Sapling via `sl root` command success, not `.sl` directory (Sapling is a client that works with Git/Mercurial repos, doesn't create its own directory)
-- **VCS-SHELL-OUT**: Shell out to git/sl CLI rather than using git2 crate (simpler, no C dependency)
-- **VCS-SAPLING-FIRST**: Detect Sapling via sl root before Git via .git directory
-- **VCS-WARN-NOT-FAIL**: VCS errors are logged as warnings, do not fail the build
-- **VCS-ITER-COMMIT**: Commit after iteration completion, not per-task
-- **CONTEXT-CAPTURED-NAME**: Store project_name in BuildContext at construction, not rely on Claude response parsing
-- **SL-LOG-HASH**: Use `sl log -l 1 --template '{node|short}'` to get commit hash after sl commit (sl commit produces no stdout)
-- **TUI-STDERR-BACKEND**: Use stderr for terminal backend to keep stdout available for non-TUI output
-- **TUI-PANIC-HOOK-CHAIN**: Chain panic hooks instead of replacing to preserve existing panic behavior
-- **TUI-UNBOUNDED-CHANNEL**: Use unbounded channels for event handling to avoid backpressure with fast Claude output
-- **OUTPUT-ROLE-PREFIX**: Format messages as 'role: content' with indentation for multiline
-- **SCROLL-CLAMP-VIEWPORT**: Use viewport_height and content_height for scroll bounds
-- **TUI-LOG-ROUTING**: Route logs through TUI channel when active to prevent stderr corruption
-- **BUILDCONTEXT-TUI-TX**: Add optional tui_tx sender to BuildContext for log routing
-- **LOG-AS-SYSTEM-MESSAGE**: Display log messages as 'system' role in thread view
+Recent decisions affecting current work: None (fresh milestone)
 
 ### Pending Todos
 
 - **CLAUDE-INTERNET-FLAG**: Remove `--internet` workaround flag from Claude CLI invocations once the underlying issue causing Claude CLI to hang without it is resolved. See `src/planning/command.rs`.
-- **CLAUDE-CLI-OUTPUT-FLAGS**: Research Claude CLI `--output-format stream-json` and `--json-schema` flags for correct usage. See `.planning/todos/pending/2026-01-18-research-claude-cli-stream-json-and-json-schema.md`.
+- **CLAUDE-CLI-OUTPUT-FLAGS**: Research Claude CLI `--output-format stream-json` and `--json-schema` flags for correct usage.
 
 ### Blockers/Concerns
 
@@ -95,5 +56,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-19
-Stopped at: Completed Phase 6 (TUI Interface)
+Stopped at: v1.0 milestone complete, ready to plan v1.1
 Resume file: None

@@ -4,76 +4,41 @@
 
 A Rust CLI application implementing the Ralph Wiggum Loop — an autonomous AI coding agent that reads a plan, breaks it into tasks, and iteratively executes them using Claude. Each iteration starts with fresh context, preventing context pollution while preserving learnings through a progress file. Features a modern TUI for monitoring execution.
 
+## Current State
+
+**Version:** v1.0 "MVP" (shipped 2026-01-19)
+**Lines of code:** 8,762 Rust
+**Tech stack:** Rust, ratatui (TUI), figment (config), clap (CLI), tokio (async)
+
+**What works:**
+- `rslph plan "idea"` — generates structured progress file with adaptive mode
+- `rslph build progress.md` — iterates autonomously with fresh context, auto-commits
+- Rich TUI with status bar, live output, collapsible threads, keyboard navigation
+- Git and Sapling VCS support with auto-detection
+
 ## Core Value
 
 Autonomous task execution with fresh context per iteration and accumulated learnings — enabling Claude to complete complex multi-step plans without human intervention while avoiding context window exhaustion.
 
 ## Requirements
 
-### Validated
+### Validated (v1.0)
 
-(None yet — ship to validate)
+- ✓ `rslph plan <plan>` command with basic and adaptive modes — v1.0
+- ✓ `rslph build <plan>` command with autonomous iteration — v1.0
+- ✓ Fresh context per iteration with progress file persistence — v1.0
+- ✓ RALPH_DONE marker detection for early termination — v1.0
+- ✓ Git and Sapling VCS auto-commit per iteration — v1.0
+- ✓ Rich TUI with status bar, live output, collapsible threads — v1.0
+- ✓ TOML config with layered precedence (defaults < file < env < CLI) — v1.0
+- ✓ Ctrl+C graceful handling and timeout support — v1.0
 
-### Active
+### Active (v1.1)
 
-#### Commands
-- [ ] `rslph plan <plan>` — Transform idea/plan into structured progress file with tasks
-- [ ] `rslph build <plan>` — Execute tasks iteratively, piloting Claude CLI headlessly
-
-#### Planning Phase
-- [ ] Adaptive vagueness detection — ask clarifying questions only when input is vague
-- [ ] Requirements clarifier persona — surfaces ambiguity before structuring
-- [ ] Testing strategist persona — determines verification approach for the project
-- [ ] Auto-detect project stack and confirm testing setup with user
-- [ ] Multi-layer testing strategy (unit, type-check, static analysis, e2e)
-- [ ] Output structured progress file ready for build phase
-
-#### Build Phase
-- [ ] Headless Claude CLI execution as subprocess
-- [ ] Fresh context per iteration (prevents context pollution)
-- [ ] Configurable max iterations — stop when exhausted regardless of completion
-- [ ] Progress file accumulates learnings between iterations
-- [ ] Recent attempts section (configurable depth) for failure memory
-- [ ] Task completion via checkbox marking (`- [x]` / `- [ ]`)
-- [ ] RALPH_DONE marker detection for early termination
-
-#### TUI Interface
-- [ ] Top status bar: iteration X/Y remaining, task X/Y remaining, log link
-- [ ] Model display (e.g., "Opus 4.5")
-- [ ] Folder/project name display
-- [ ] Context usage progress bar (visual percentage)
-- [ ] Live Claude output stream in main area
-- [ ] Collapsible conversation threads
-- [ ] Configurable number of recent threads to display
-
-#### Configuration
-- [ ] TOML config file support (`~/.config/rslph/config.toml`)
-- [ ] CLI argument overrides for all config options
-- [ ] Override Claude command path
-- [ ] Override system prompts (plan + build) via file paths
-- [ ] Override shell for notify script execution
-- [ ] Max iterations setting
-- [ ] Recent threads count setting
-
-#### System Prompts
-- [ ] Baked-in default prompts compiled into binary
-- [ ] PROMPT_plan — instructions for task decomposition and clarification
-- [ ] PROMPT_build — instructions for task execution and progress updates
-- [ ] User-overridable via `~/.config/rslph/` with paths in config
-
-#### Notifications
-- [ ] Notify script execution on completion/failure
-- [ ] Script called via configurable shell
-- [ ] User provides their own notification logic (desktop, sound, webhook, etc.)
-
-#### Progress File Format
-- [ ] Status section with RALPH_DONE marker
-- [ ] Analysis/research section
-- [ ] Task list with phases and checkboxes
-- [ ] Testing strategy section
-- [ ] Completed This Iteration section
-- [ ] Recent Attempts section (last N iterations for memory)
-- [ ] Iteration log for historical record
+- [ ] E2E Testing Framework with fake Claude simulation
+- [ ] Verification agent (separate from build loop)
+- [ ] Notification system (completion, failure, intervals)
+- [ ] User-overridable prompts via config file paths
 
 ### Out of Scope
 
@@ -91,17 +56,11 @@ Autonomous task execution with fresh context per iteration and accumulated learn
 
 **Key insight:** The progress file IS the memory. Each iteration Claude reads accumulated learnings, sees what was tried, and avoids repeating failures. Fresh context + persistent file = best of both worlds.
 
-**Async TUI patterns:** Reference `/Users/vmakaev/fbsource/fbcode/linttool/crates/command` for async subprocess handling in TUI contexts. Prefer streams over channels for subprocess output.
-
-**Research sources:**
-- [kylemclaren/ralph](https://github.com/kylemclaren/ralph) — CLI with maxIterations, progress.txt, prd.json pattern
-- [PJFP Guide](https://pjfp.com/what-is-the-ralph-wiggum-loop-in-programming-ultimate-guide-to-ai-powered-iterative-coding/) — Comprehensive overview of the pattern
-
 ## Constraints
 
 - **Language**: Rust — self-contained binary, no runtime dependencies
 - **Claude integration**: CLI subprocess only — shell out to `claude` command
-- **TUI library**: Modern Rust TUI (ratatui or similar)
+- **TUI library**: ratatui
 - **Config format**: TOML for configuration files
 - **Platform**: Cross-platform (macOS, Linux primarily)
 
@@ -109,12 +68,18 @@ Autonomous task execution with fresh context per iteration and accumulated learn
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Claude CLI subprocess over API | Simpler auth, leverages existing claude CLI setup, user already authenticated | — Pending |
-| TOML for config | Standard Rust ecosystem choice, human-readable | — Pending |
-| Adaptive planning over always-ask | Better UX for detailed plans, only interrupt when value-add | — Pending |
-| Progress file as memory | Proven pattern from reference implementations, survives context resets | — Pending |
-| Two-phase prompts (plan/build) | Separation of concerns, different personas for different tasks | — Pending |
-| Streams over channels for async TUI | Cleaner async pattern, reference linttool/crates/command implementation | — Pending |
+| Claude CLI subprocess over API | Simpler auth, leverages existing claude CLI setup | ✓ Good |
+| TOML for config | Standard Rust ecosystem choice, human-readable | ✓ Good |
+| Adaptive planning over always-ask | Better UX for detailed plans, only interrupt when value-add | ✓ Good |
+| Progress file as memory | Proven pattern from reference implementations, survives context resets | ✓ Good |
+| Two-phase prompts (plan/build) | Separation of concerns, different personas for different tasks | ✓ Good |
+| TUI stderr backend | Keeps stdout available for non-TUI output | ✓ Good |
+| VCS shell out over git2 crate | Simpler, no C dependency, supports both Git and Sapling | ✓ Good |
+
+## Technical Debt
+
+- **CLAUDE-INTERNET-FLAG**: Using `--internet` workaround flag to prevent Claude CLI hanging
+- **STREAM-JSON-RESEARCH**: Need to research Claude CLI `--output-format stream-json` and `--json-schema` flags for correct usage
 
 ---
-*Last updated: 2026-01-17 after initialization*
+*Last updated: 2026-01-19 after v1.0 MVP milestone*

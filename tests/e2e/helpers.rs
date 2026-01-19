@@ -154,7 +154,7 @@ pub fn git_commit_count(workspace: &Workspace) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::e2e::fixtures::WorkspaceBuilder;
+    use crate::fixtures::WorkspaceBuilder;
 
     #[test]
     fn test_assert_task_complete() {

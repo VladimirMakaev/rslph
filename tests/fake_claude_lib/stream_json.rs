@@ -5,6 +5,16 @@
 //! changes, both files should be updated together.
 
 use serde::{Deserialize, Serialize};
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+/// Global counter for generating unique tool IDs.
+static TOOL_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+/// Generate a unique tool ID for tool_use blocks.
+pub fn next_tool_id() -> String {
+    let id = TOOL_ID_COUNTER.fetch_add(1, Ordering::SeqCst);
+    format!("toolu_{:04}", id)
+}
 
 /// A single stream-json event output.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -110,6 +120,56 @@ pub struct UsageOutput {
     pub cache_read_input_tokens: Option<u64>,
 }
 
+impl ContentBlockOutput {
+    /// Create a text content block.
+    pub fn text(text: &str) -> Self {
+        Self {
+            block_type: "text".to_string(),
+            text: Some(text.to_string()),
+            thinking: None,
+            name: None,
+            input: None,
+            id: None,
+        }
+    }
+
+    /// Create a thinking content block.
+    pub fn thinking(thinking: &str) -> Self {
+        Self {
+            block_type: "thinking".to_string(),
+            text: None,
+            thinking: Some(thinking.to_string()),
+            name: None,
+            input: None,
+            id: None,
+        }
+    }
+
+    /// Create a tool_use content block.
+    pub fn tool_use(id: &str, name: &str, input: serde_json::Value) -> Self {
+        Self {
+            block_type: "tool_use".to_string(),
+            text: None,
+            thinking: None,
+            name: Some(name.to_string()),
+            input: Some(input),
+            id: Some(id.to_string()),
+        }
+    }
+
+    /// Create a tool_result content block.
+    pub fn tool_result(tool_use_id: &str, content: &str) -> Self {
+        Self {
+            block_type: "tool_result".to_string(),
+            text: Some(content.to_string()),
+            thinking: None,
+            name: None,
+            input: None,
+            id: Some(tool_use_id.to_string()),
+        }
+    }
+}
+
 impl StreamEventOutput {
     /// Create an assistant text response event.
     pub fn assistant_text(text: &str) -> Self {
@@ -163,6 +223,39 @@ impl StreamEventOutput {
                 content: MessageContentOutput::Text(format!("Cost: ${:.4}", cost_usd)),
                 model: None,
                 stop_reason: None,
+                usage: Some(UsageOutput {
+                    input_tokens: 100,
+                    output_tokens: 50,
+                    cache_creation_input_tokens: None,
+                    cache_read_input_tokens: None,
+                }),
+            }),
+            uuid: Some(uuid_v4_simple()),
+            timestamp: Some(chrono::Utc::now().to_rfc3339()),
+        }
+    }
+
+    /// Create a tool_use assistant event.
+    ///
+    /// Generates a unique tool ID automatically.
+    pub fn tool_use(name: &str, input: serde_json::Value) -> Self {
+        let id = next_tool_id();
+        Self::assistant_with_blocks(
+            vec![ContentBlockOutput::tool_use(&id, name, input)],
+            Some("tool_use"),
+        )
+    }
+
+    /// Create an assistant event with multiple content blocks.
+    pub fn assistant_with_blocks(blocks: Vec<ContentBlockOutput>, stop_reason: Option<&str>) -> Self {
+        Self {
+            event_type: "assistant".to_string(),
+            message: Some(MessageOutput {
+                id: Some(format!("msg_{}", uuid_v4_simple())),
+                role: Some("assistant".to_string()),
+                content: MessageContentOutput::Blocks(blocks),
+                model: Some("claude-opus-4-5-20251101".to_string()),
+                stop_reason: stop_reason.map(|s| s.to_string()),
                 usage: Some(UsageOutput {
                     input_tokens: 100,
                     output_tokens: 50,

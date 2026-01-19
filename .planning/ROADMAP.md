@@ -3,11 +3,11 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-6 (shipped 2026-01-19)
-- 🚧 **v1.1 Prompt Engineering** — Phases 7-9 (in progress)
+- 🚧 **v1.1 Testing Enhancement** — Phases 7-9 (in progress)
 
 ## Overview
 
-v1.1 "Prompt Engineering" adds comprehensive E2E testing with fake Claude simulation, verification agent, notifications, and prompt customization.
+v1.1 "Testing Enhancement" adds comprehensive E2E testing with fake Claude simulation, verification agent, notifications, and prompt customization.
 
 ## Phases
 
@@ -25,7 +25,7 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full details.
 
 </details>
 
-### 🚧 v1.1 Prompt Engineering (In Progress)
+### 🚧 v1.1 Testing Enhancement (In Progress)
 
 - [x] **Phase 7: E2E Testing Framework** - Fake Claude (Rust), scenario API, workspace fixtures ✓
 - [x] **Phase 7.1: TUI Testing** - TestBackend + insta snapshot tests for TUI ✓

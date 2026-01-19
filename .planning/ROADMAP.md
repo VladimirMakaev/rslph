@@ -3,11 +3,11 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-6 (shipped 2026-01-19)
-- 🚧 **v1.1 Testing Enhancement** — Phases 7-8 (in progress)
+- ✅ **v1.1 Testing Enhancement** — Phases 7-7.1 (shipped 2026-01-19)
 
 ## Overview
 
-v1.1 "Testing Enhancement" adds comprehensive E2E testing with fake Claude simulation, verification agent, notifications, and prompt customization.
+v1.1 "Testing Enhancement" adds comprehensive E2E testing with fake Claude simulation and TUI snapshot tests.
 
 ## Phases
 
@@ -25,11 +25,10 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full details.
 
 </details>
 
-### 🚧 v1.1 Testing Enhancement (In Progress)
+### ✅ v1.1 Testing Enhancement (SHIPPED 2026-01-19)
 
 - [x] **Phase 7: E2E Testing Framework** - Fake Claude (Rust), scenario API, workspace fixtures ✓
 - [x] **Phase 7.1: TUI Testing** - TestBackend + insta snapshot tests for TUI ✓
-- [ ] **Phase 8: Verification** - Test agent and independent verification
 
 ## Phase Details
 
@@ -75,25 +74,10 @@ Plans:
 Plans:
 - [x] 07.1-01-PLAN.md — TUI snapshot tests (rendering + key handling) ✓
 
-### Phase 8: Verification
-**Goal**: Test agent runs independently to verify build results
-**Depends on**: Phase 7 (testing framework for verification testing)
-**Requirements**: VERIF-01, VERIF-02, VERIF-03
-
-**Success Criteria** (what must be TRUE):
-  1. Testing strategy from planning phase is captured and available
-  2. Separate test agent persona (not embedded in build loop) can execute
-  3. Verification runs independently and reports pass/fail
-
-**Plans**: TBD (1-2 plans estimated)
-
-Plans:
-- [ ] 08-01: Test agent implementation and verification runner
-
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 7 -> 7.1 -> 8
+Phases execute in numeric order: 7 -> 7.1
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -105,4 +89,3 @@ Phases execute in numeric order: 7 -> 7.1 -> 8
 | 6. TUI Interface | v1.0 | 4/4 | Complete | 2026-01-19 |
 | 7. E2E Testing Framework | v1.1 | 5/5 | Complete | 2026-01-19 |
 | 7.1 TUI Testing | v1.1 | 1/1 | Complete | 2026-01-19 |
-| 8. Verification | v1.1 | 0/1 | Not started | - |

@@ -1,7 +1,8 @@
 //! Thread view widget for displaying Claude conversation with role styling.
 //!
 //! Renders messages in a style similar to Claude CLI output, with distinct
-//! colors for user, assistant, and system roles.
+//! colors for user, assistant, system, and tool roles.
+//! Supports collapsible messages with expand/collapse toggle.
 
 use ratatui::{
     layout::Rect,
@@ -11,36 +12,59 @@ use ratatui::{
     Frame,
 };
 
-use crate::tui::app::{App, Message};
+use crate::tui::app::{App, Message, MessageRole};
 
 /// Role colors matching Claude CLI style.
-fn role_style(role: &str) -> Style {
+fn role_style(role: &MessageRole) -> Style {
     match role {
-        "user" => Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-        "assistant" => Style::default().fg(Color::Green),
-        "system" => Style::default().fg(Color::Yellow).add_modifier(Modifier::ITALIC),
-        _ => Style::default(),
+        MessageRole::User => Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+        MessageRole::Assistant => Style::default().fg(Color::Green),
+        MessageRole::System => Style::default().fg(Color::Yellow).add_modifier(Modifier::ITALIC),
+        MessageRole::Tool(_) => Style::default().fg(Color::Magenta),
     }
 }
 
 /// Role display name.
-fn role_label(role: &str) -> &str {
+fn role_label(role: &MessageRole) -> String {
     match role {
-        "user" => "You",
-        "assistant" => "Claude",
-        "system" => "System",
-        _ => role,
+        MessageRole::User => "You".to_string(),
+        MessageRole::Assistant => "Claude".to_string(),
+        MessageRole::System => "System".to_string(),
+        MessageRole::Tool(name) => format!("Tool:{}", name),
     }
 }
 
-/// Render a single message with role styling.
-pub fn format_message(msg: &Message) -> Vec<Line<'static>> {
+/// Render a collapsed message (single line with line count).
+fn format_collapsed(msg: &Message, is_selected: bool) -> Vec<Line<'static>> {
+    let mut style = role_style(&msg.role);
+    if is_selected {
+        style = style.add_modifier(Modifier::REVERSED);
+    }
+
+    let label = role_label(&msg.role);
+    let indicator = format!("{} > ({} lines)", label, msg.line_count);
+
+    vec![Line::from(vec![Span::styled(indicator, style)])]
+}
+
+/// Render an expanded message with role styling.
+fn format_expanded(msg: &Message, is_selected: bool) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
 
-    // Role header line
+    let style = role_style(&msg.role);
+    let label = role_label(&msg.role);
+
+    // Selection highlighting on header
+    let header_style = if is_selected {
+        style.add_modifier(Modifier::REVERSED)
+    } else {
+        style
+    };
+
+    // Role header line with collapse indicator
     let header = Line::from(vec![Span::styled(
-        format!("{}: ", role_label(&msg.role)),
-        role_style(&msg.role),
+        format!("{}: ", label),
+        header_style,
     )]);
     lines.push(header);
 
@@ -55,26 +79,39 @@ pub fn format_message(msg: &Message) -> Vec<Line<'static>> {
     lines
 }
 
+/// Render a single message with role styling.
+/// Handles both collapsed and expanded states.
+pub fn format_message(msg: &Message, is_selected: bool) -> Vec<Line<'static>> {
+    if msg.collapsed {
+        format_collapsed(msg, is_selected)
+    } else {
+        format_expanded(msg, is_selected)
+    }
+}
+
 /// Render thread view for current iteration.
 ///
 /// Shows messages for the viewing_iteration, limited to recent_count.
+/// Supports collapsed/expanded messages and selection highlighting.
 pub fn render_thread(frame: &mut Frame, area: Rect, app: &App, recent_count: usize) {
-    let messages: Vec<&Message> = app
-        .messages
-        .iter()
-        .filter(|m| m.iteration == app.viewing_iteration)
-        .collect();
+    let msg_indices = app.message_indices_for_viewing();
 
     // Take last N messages
-    let display_messages: Vec<&Message> = if messages.len() > recent_count {
-        messages[messages.len() - recent_count..].to_vec()
+    let display_indices: Vec<usize> = if msg_indices.len() > recent_count {
+        msg_indices[msg_indices.len() - recent_count..].to_vec()
     } else {
-        messages
+        msg_indices
     };
 
-    let lines: Vec<Line> = display_messages
+    let lines: Vec<Line> = display_indices
         .iter()
-        .flat_map(|m| format_message(m))
+        .enumerate()
+        .flat_map(|(display_idx, &msg_idx)| {
+            let msg = &app.messages[msg_idx];
+            // Check if this message is selected
+            let is_selected = app.selected_message == Some(display_idx);
+            format_message(msg, is_selected)
+        })
         .collect();
 
     let paragraph = Paragraph::new(lines)
@@ -90,56 +127,72 @@ mod tests {
 
     #[test]
     fn test_role_style_user() {
-        let style = role_style("user");
+        let style = role_style(&MessageRole::User);
         assert_eq!(style.fg, Some(Color::Cyan));
         assert!(style.add_modifier.contains(Modifier::BOLD));
     }
 
     #[test]
     fn test_role_style_assistant() {
-        let style = role_style("assistant");
+        let style = role_style(&MessageRole::Assistant);
         assert_eq!(style.fg, Some(Color::Green));
     }
 
     #[test]
     fn test_role_style_system() {
-        let style = role_style("system");
+        let style = role_style(&MessageRole::System);
         assert_eq!(style.fg, Some(Color::Yellow));
         assert!(style.add_modifier.contains(Modifier::ITALIC));
     }
 
     #[test]
-    fn test_role_style_unknown() {
-        let style = role_style("unknown");
-        assert_eq!(style, Style::default());
+    fn test_role_style_tool() {
+        let style = role_style(&MessageRole::Tool("Read".to_string()));
+        assert_eq!(style.fg, Some(Color::Magenta));
     }
 
     #[test]
     fn test_role_label() {
-        assert_eq!(role_label("user"), "You");
-        assert_eq!(role_label("assistant"), "Claude");
-        assert_eq!(role_label("system"), "System");
-        assert_eq!(role_label("other"), "other");
+        assert_eq!(role_label(&MessageRole::User), "You");
+        assert_eq!(role_label(&MessageRole::Assistant), "Claude");
+        assert_eq!(role_label(&MessageRole::System), "System");
+        assert_eq!(role_label(&MessageRole::Tool("Read".to_string())), "Tool:Read");
     }
 
     #[test]
-    fn test_format_message_single_line() {
+    fn test_format_message_expanded_single_line() {
         let msg = Message::new("assistant", "Hello, world!", 1);
-        let lines = format_message(&msg);
+        let lines = format_message(&msg, false);
 
         // Should have: header, content line, blank line
         assert_eq!(lines.len(), 3);
-        // First line is the header with role
-        // Content is indented
-        // Last line is blank
     }
 
     #[test]
-    fn test_format_message_multiline() {
+    fn test_format_message_expanded_multiline() {
         let msg = Message::new("user", "Line 1\nLine 2\nLine 3", 1);
-        let lines = format_message(&msg);
+        let lines = format_message(&msg, false);
 
         // Should have: header + 3 content lines + blank line = 5 lines
         assert_eq!(lines.len(), 5);
+    }
+
+    #[test]
+    fn test_format_message_collapsed() {
+        let mut msg = Message::new("assistant", "Line 1\nLine 2\nLine 3", 1);
+        msg.collapsed = true;
+        let lines = format_message(&msg, false);
+
+        // Should have: single collapsed line
+        assert_eq!(lines.len(), 1);
+    }
+
+    #[test]
+    fn test_format_message_selected() {
+        let msg = Message::new("assistant", "Hello", 1);
+        let lines = format_message(&msg, true);
+
+        // Check that we got lines (selection adds REVERSED modifier)
+        assert!(!lines.is_empty());
     }
 }

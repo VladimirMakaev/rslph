@@ -23,7 +23,7 @@ pub fn render_output(frame: &mut Frame, area: Rect, app: &App) {
         .filter(|m| m.iteration == app.viewing_iteration)
         .flat_map(|msg| {
             // Format message with role prefix
-            let prefix = format!("{}: ", msg.role);
+            let prefix = format!("{}: ", msg.role.label());
             msg.content
                 .lines()
                 .enumerate()
@@ -57,7 +57,7 @@ mod tests {
     fn test_message_formatting_logic() {
         // Test the formatting logic used in render_output
         let msg = Message::new("assistant", "Line 1\nLine 2\nLine 3", 1);
-        let prefix = format!("{}: ", msg.role);
+        let prefix = format!("{}: ", msg.role.label());
 
         let lines: Vec<String> = msg
             .content
@@ -73,8 +73,8 @@ mod tests {
             .collect();
 
         assert_eq!(lines.len(), 3);
-        assert_eq!(lines[0], "assistant: Line 1");
-        assert_eq!(lines[1], "           Line 2");
-        assert_eq!(lines[2], "           Line 3");
+        assert_eq!(lines[0], "Claude: Line 1");
+        assert_eq!(lines[1], "        Line 2");
+        assert_eq!(lines[2], "        Line 3");
     }
 }

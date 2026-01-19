@@ -20,8 +20,10 @@ use super::AppEvent;
 /// These events come from the ClaudeRunner or other subprocess components.
 #[derive(Debug, Clone)]
 pub enum SubprocessEvent {
-    /// New line of output from Claude.
+    /// New line of output from Claude (assistant text).
     Output(String),
+    /// Tool use message (tool_name, content).
+    ToolUse { tool_name: String, content: String },
     /// Updated context usage ratio.
     Usage(f64),
     /// Iteration completed.
@@ -34,6 +36,9 @@ impl From<SubprocessEvent> for AppEvent {
     fn from(event: SubprocessEvent) -> Self {
         match event {
             SubprocessEvent::Output(s) => AppEvent::ClaudeOutput(s),
+            SubprocessEvent::ToolUse { tool_name, content } => {
+                AppEvent::ToolMessage { tool_name, content }
+            }
             SubprocessEvent::Usage(ratio) => AppEvent::ContextUsage(ratio),
             SubprocessEvent::IterationDone { tasks_done } => {
                 AppEvent::IterationComplete { tasks_done }
@@ -158,6 +163,11 @@ impl EventHandler {
                     }
                 }
 
+                // Check for Shift+Tab (BackTab)
+                if let KeyCode::BackTab = key.code {
+                    return Some(AppEvent::SelectPrevMessage);
+                }
+
                 match key.code {
                     KeyCode::Char('j') | KeyCode::Down => Some(AppEvent::ScrollDown),
                     KeyCode::Char('k') | KeyCode::Up => Some(AppEvent::ScrollUp),
@@ -166,6 +176,8 @@ impl EventHandler {
                     KeyCode::Char('p') => Some(AppEvent::TogglePause),
                     KeyCode::Char('q') => Some(AppEvent::Quit),
                     KeyCode::Esc => Some(AppEvent::Quit),
+                    KeyCode::Tab => Some(AppEvent::SelectNextMessage),
+                    KeyCode::Enter | KeyCode::Char(' ') => Some(AppEvent::ToggleMessage),
                     _ => None,
                 }
             }
@@ -199,6 +211,17 @@ mod tests {
         let output = SubprocessEvent::Output("hello".to_string());
         let app_event: AppEvent = output.into();
         assert!(matches!(app_event, AppEvent::ClaudeOutput(s) if s == "hello"));
+
+        let tool = SubprocessEvent::ToolUse {
+            tool_name: "Read".to_string(),
+            content: "file contents".to_string()
+        };
+        let app_event: AppEvent = tool.into();
+        assert!(matches!(
+            app_event,
+            AppEvent::ToolMessage { tool_name, content }
+                if tool_name == "Read" && content == "file contents"
+        ));
 
         let usage = SubprocessEvent::Usage(0.75);
         let app_event: AppEvent = usage.into();

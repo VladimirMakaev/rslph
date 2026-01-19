@@ -2,7 +2,7 @@
 //!
 //! Provides a handler function that processes AppEvents and updates App state.
 
-use crate::tui::app::{App, AppEvent};
+use crate::tui::app::{App, AppEvent, MessageRole};
 
 /// Handle an AppEvent and update App state.
 ///
@@ -18,12 +18,14 @@ pub fn handle_event(app: &mut App, event: AppEvent, viewport_height: u16) -> boo
             if app.viewing_iteration > 1 {
                 app.viewing_iteration -= 1;
                 app.scroll_offset = 0; // Reset scroll on iteration change
+                app.selected_message = None; // Reset selection
             }
         }
         AppEvent::NextIteration => {
             if app.viewing_iteration < app.current_iteration {
                 app.viewing_iteration += 1;
                 app.scroll_offset = 0;
+                app.selected_message = None;
             }
         }
         AppEvent::TogglePause => {
@@ -34,9 +36,22 @@ pub fn handle_event(app: &mut App, event: AppEvent, viewport_height: u16) -> boo
             app.should_quit = true;
             return true;
         }
+        AppEvent::SelectPrevMessage => {
+            app.select_prev_message();
+        }
+        AppEvent::SelectNextMessage => {
+            app.select_next_message();
+        }
+        AppEvent::ToggleMessage => {
+            app.toggle_selected_message();
+        }
         AppEvent::ClaudeOutput(line) => {
             // Add assistant message for current iteration
-            app.add_message("assistant".to_string(), line, viewport_height);
+            app.add_message(MessageRole::Assistant, line, viewport_height);
+        }
+        AppEvent::ToolMessage { tool_name, content } => {
+            // Add tool message for current iteration
+            app.add_tool_message(tool_name, content, viewport_height);
         }
         AppEvent::ContextUsage(ratio) => {
             app.context_usage = ratio.clamp(0.0, 1.0);
@@ -45,10 +60,11 @@ pub fn handle_event(app: &mut App, event: AppEvent, viewport_height: u16) -> boo
             app.current_task += tasks_done;
             // Auto-advance viewing to current iteration
             app.viewing_iteration = app.current_iteration;
+            app.selected_message = None;
         }
         AppEvent::LogMessage(line) => {
             // Add system message for current iteration
-            app.add_message("system".to_string(), line, viewport_height);
+            app.add_message(MessageRole::System, line, viewport_height);
         }
         AppEvent::Render => {
             // Just triggers a render, no state change

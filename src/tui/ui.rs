@@ -59,7 +59,7 @@ fn render_body(frame: &mut Frame, area: Rect, app: &App, recent_count: usize) {
 
 /// Render the footer with key binding hints and log path.
 fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
-    let key_hints = "j/k:scroll  {/}:iteration  p:pause  Ctrl+C:quit";
+    let key_hints = "j/k:scroll  Tab:select  Enter:toggle  {/}:iteration  p:pause  Ctrl+C:quit";
 
     // If log_path exists, show it on the right
     let log_display = app

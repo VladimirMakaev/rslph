@@ -1,491 +1,627 @@
 # Phase 7: E2E Testing Framework - Research
 
-**Researched:** 2026-01-19
+**Researched:** 2026-01-19 (updated)
 **Domain:** End-to-end testing infrastructure with fake Claude simulation
 **Confidence:** MEDIUM
 
 ## Summary
 
-This research investigates the technical foundations for building a comprehensive E2E testing framework for rslph. The framework requires a fake Claude process that outputs stream-json format matching the real Claude CLI, pytest fixtures for workspace isolation, and approaches for TUI testing.
+This research investigates the technical foundations for building a comprehensive E2E testing framework for rslph. The framework requires a fake Claude process that outputs stream-json format matching the real Claude CLI, workspace fixtures, and TUI integration testing.
 
 Key findings:
-1. Claude CLI's stream-json format uses JSONL with event types: user, assistant, system, result, summary - already partially implemented in `src/subprocess/stream_json.rs`
-2. Python is the recommended language for fake Claude due to easy executable creation (shebang + chmod) and pytest integration
-3. Ratatui provides built-in `TestBackend` for unit testing widgets, while `ratatui-testlib` offers PTY-based integration testing (still in early development)
-4. pytest's `tmp_path_retention_policy = "failed"` configuration directly supports keeping test directories on failure
+1. Claude CLI's stream-json format uses JSONL with event types: user, assistant, system, result, summary - already implemented in `src/subprocess/stream_json.rs`
+2. **All-Rust approach** recommended: fake-claude as a Rust binary, tests using ratatui-testlib for TUI testing
+3. ratatui-testlib (v0.1.0, Dec 2025) provides TuiTestHarness for PTY-based testing with wait_for() and send_text() APIs
+4. Rust tests can share types with main crate (StreamJsonEvent, content block types)
 
-**Primary recommendation:** Use Python/pytest for test orchestration with the fake-claude package, leverage Rust's existing TestBackend for widget testing, and defer full TUI integration testing to phase 8 or later.
+**Primary recommendation:** Use Rust for all testing - fake-claude as a test binary, ratatui-testlib for TUI E2E tests, TestBackend for widget unit tests.
 
 ## Standard Stack
 
-The established libraries/tools for this domain:
-
-### Python Testing Stack (for fake-claude and E2E tests)
+### Rust Testing Stack (All-Rust Approach)
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
-| pytest | 8.x | Test framework | Industry standard, fixture system, parametrization |
-| tempfile | stdlib | Temp file management | Python stdlib, delete=False for persistent fake executable |
-| subprocess | stdlib | Process invocation | Test rslph binary invocation |
-| pytest-git | 1.8.0 | Git repo fixtures | Creates isolated git repos for testing VCS features |
-
-### Rust Testing Stack (for TUI unit tests)
-| Library | Version | Purpose | Why Standard |
-|---------|---------|---------|--------------|
+| ratatui-testlib | 0.1.0 | PTY-based TUI testing | TuiTestHarness spawns app, wait_for screen content |
 | ratatui TestBackend | 0.30+ | Widget unit testing | Built into ratatui, renders to buffer |
 | tempfile | 3.x | Temp directory management | Already in dev-dependencies |
 | assert_cmd | 2.x | CLI binary testing | Standard for Rust CLI testing |
 | assert_fs | 1.x | Filesystem fixtures | Pairs with assert_cmd |
+| insta | 2.x | Snapshot testing | Visual TUI regression testing |
+| serde_json | 1.x | JSON generation | Already in dependencies |
 
-### Optional/Future
-| Library | Version | Purpose | When to Use |
-|---------|---------|---------|-------------|
-| insta | 2.x | Snapshot testing | For visual TUI regression testing |
-| ratatui-testlib | 0.1+ (future) | PTY-based TUI testing | When testing real terminal behavior |
-| scrut | 0.4.x | CLI doc-tests | For documentation-as-tests approach |
-
-**Installation (Python):**
+**Installation:**
 ```bash
-pip install pytest pytest-git
-```
-
-**Installation (Rust):**
-```bash
-# Already have tempfile in dev-dependencies
-cargo add --dev assert_cmd assert_fs insta
+cargo add --dev ratatui-testlib assert_cmd assert_fs insta
 ```
 
 ## Architecture Patterns
 
-### Recommended Project Structure
+### Recommended Project Structure (All-Rust)
 ```
 tests/
-  e2e/                    # Python E2E tests
-    conftest.py           # pytest fixtures
-    test_basic_loop.py    # Basic loop scenarios
-    test_edge_cases.py    # Timeout, crash, malformed
-    test_multi_invoke.py  # Multi-invocation scenarios
-  fixtures/               # Shared test data
-    sample_progress.md    # Sample progress files
-    sample_config.toml    # Sample configs
+  fake_claude/              # Fake Claude test binary
+    mod.rs                  # Module with builder API
+    scenario.rs             # Scenario builder pattern
+    stream_json.rs          # Re-use/extend main crate types
+  fake_claude.rs            # Binary entry point (uses tests/fake_claude/)
+  e2e/
+    mod.rs                  # Test module
+    test_basic_loop.rs      # Basic loop scenarios
+    test_edge_cases.rs      # Timeout, crash, malformed
+    test_multi_invoke.rs    # Multi-invocation scenarios
+    test_tui.rs             # TUI tests with ratatui-testlib
+    helpers.rs              # Assertion helpers
+    fixtures.rs             # Workspace fixtures
 
-fake_claude/              # Python package for fake CLI
-  __init__.py             # Package init with fake_claude() factory
-  scenario.py             # Scenario builder API
-  executable.py           # Fake executable script generator
-  stream_json.py          # stream-json output generators
-
-src/                      # Rust TUI tests (inline)
+src/                        # Existing Rust TUI tests (inline)
   tui/
     widgets/
-      progress_bar.rs     # Contains #[cfg(test)] mod tests
-      status_bar.rs       # Contains #[cfg(test)] mod tests
+      progress_bar.rs       # Contains #[cfg(test)] mod tests
+      status_bar.rs         # Contains #[cfg(test)] mod tests
 ```
 
-### Pattern 1: Fake Claude Builder API
-**What:** Fluent builder pattern for configuring fake Claude responses
-**When to use:** All E2E tests that need deterministic Claude output
-**Example:**
-```python
-# Source: CONTEXT.md decisions
-def test_basic_task_completion():
-    fake = (
-        fake_claude()
-        .on_invocation(1)
-            .respond_with_text("I'll complete task 1")
-            .uses_read("src/main.rs")
-            .uses_write("PROGRESS.md", updated_progress)
-        .next_invocation()
-            .respond_with_text("Task 2 complete")
-            .uses_bash("cargo test")
-        .build()
-    )
+### Pattern 1: Fake Claude as Rust Binary
 
-    result = subprocess.run(
-        ["rslph", "build", "--claude-path", fake.executable_path],
-        cwd=workspace.path
-    )
+**What:** A separate test binary that acts as fake Claude CLI
+**When to use:** All E2E tests needing deterministic Claude output
+**Why Rust:** Shares types with main crate, single ecosystem, no Python dependency
 
-    assert result.returncode == 0
-    assert "RALPH_DONE" in (workspace.path / "PROGRESS.md").read_text()
-
-    fake.cleanup()
-```
-
-### Pattern 2: Workspace Fixture with Builder
-**What:** pytest fixture providing isolated workspace with fluent customization
-**When to use:** All tests needing file system isolation
-**Example:**
-```python
-# Source: pytest-git documentation + CONTEXT.md decisions
-@pytest.fixture
-def workspace(tmp_path):
-    """Creates minimal valid rslph workspace."""
-    ws = WorkspaceBuilder(tmp_path)
-    ws.init_git()
-    ws.write_config({"claude_path": "claude"})
-    return ws
-
-def test_custom_workspace(workspace):
-    ws = (
-        workspace
-        .with_progress_file("PROGRESS.md", sample_progress)
-        .with_source_file("src/main.rs", "fn main() {}")
-    )
-    # Test uses ws.path
-```
-
-### Pattern 3: Stream-JSON Response Generation
-**What:** Generate valid stream-json JSONL matching Claude CLI format
-**When to use:** Fake Claude response output
-**Example:**
-```python
-# Source: src/subprocess/stream_json.rs + claude-clean github
-def generate_stream_json(
-    event_type: str,  # "assistant", "user", "system", "result"
-    content_blocks: list,  # [{"type": "text", "text": "..."}]
-    model: str = "claude-opus-4.5",
-    stop_reason: str = None,
-    usage: dict = None
-) -> str:
-    """Generate a single stream-json line."""
-    event = {
-        "type": event_type,
-        "message": {
-            "role": event_type if event_type in ("assistant", "user") else None,
-            "content": content_blocks,
-            "model": model,
-        },
-        "uuid": str(uuid.uuid4()),
-        "timestamp": datetime.now().isoformat()
-    }
-    if stop_reason:
-        event["message"]["stop_reason"] = stop_reason
-    if usage:
-        event["message"]["usage"] = usage
-    return json.dumps(event)
-```
-
-### Anti-Patterns to Avoid
-- **Testing against real Claude:** Never use real Claude in tests - non-deterministic, slow, expensive
-- **Mocking at wrong layer:** Don't mock internal rslph functions - test the actual binary
-- **Tight coupling to JSON format:** Use helpers/constants for JSON field names, not hardcoded strings
-- **Ignoring cleanup:** Always call cleanup() on fake processes, use context managers where possible
-
-## Don't Hand-Roll
-
-Problems that look simple but have existing solutions:
-
-| Problem | Don't Build | Use Instead | Why |
-|---------|-------------|-------------|-----|
-| Temp directories | Manual tempfile | pytest tmp_path | Automatic cleanup, retention policy support |
-| Git repo in tests | Manual git init | pytest-git | Handles cleanup, provides GitPython API |
-| Fake executable | Shell script | Python with shebang | Cross-platform, easier JSON generation |
-| Stream-json parsing | Regex parsing | serde_json / json.loads | Already have type-safe structs |
-| Buffer assertions | Manual string compare | TestBackend.assert_buffer | Provides diff output on failure |
-| CLI binary invocation | Raw subprocess | assert_cmd | Better error messages, fluent API |
-
-**Key insight:** The Python ecosystem has mature testing infrastructure. Use pytest fixtures and existing packages rather than building custom test harnesses.
-
-## Common Pitfalls
-
-### Pitfall 1: Stream-JSON Format Mismatch
-**What goes wrong:** Fake Claude outputs JSON that doesn't match real Claude CLI format, causing parse failures
-**Why it happens:** Claude CLI wraps Anthropic API responses in a different structure than raw API
-**How to avoid:**
-- Reference existing `stream_json.rs` tests for exact format
-- Use event types: "user", "assistant", "system", "result", "summary"
-- Include required fields: type, message.content[], uuid, timestamp
-**Warning signs:** serde_json parse errors, missing text extraction, usage tracking failures
-
-### Pitfall 2: Temporary File Cleanup Race
-**What goes wrong:** Fake executable is deleted before subprocess finishes reading it
-**Why it happens:** Python's tempfile with delete=True cleans up on close, not on subprocess exit
-**How to avoid:**
-- Use NamedTemporaryFile with delete=False
-- Implement explicit cleanup() method called after subprocess completes
-- Consider using temp directory instead of temp file
-**Warning signs:** FileNotFoundError, "executable not found" errors
-
-### Pitfall 3: Pytest tmp_path Cleanup Hides Failures
-**What goes wrong:** Test fails but workspace files are deleted, can't debug
-**Why it happens:** Default tmp_path_retention_policy is "all" but count is 3
-**How to avoid:**
-- Set `tmp_path_retention_policy = "failed"` in pytest.ini
-- Use `--basetemp` to override location for debugging
-- Set `RSLPH_TEST_KEEP_WORKSPACE=1` env var to always keep
-**Warning signs:** Can't find test output files after failure
-
-### Pitfall 4: TUI Test Terminal Size Mismatch
-**What goes wrong:** Widget tests pass locally but fail in CI
-**Why it happens:** Different terminal sizes between environments
-**How to avoid:**
-- Always specify explicit dimensions: TestBackend::new(80, 24)
-- Use consistent dimensions across all tests
-- Document expected dimensions in test comments
-**Warning signs:** Truncated text, layout differences between environments
-
-### Pitfall 5: Streaming Timing Assumptions
-**What goes wrong:** Tests pass with instant output but fail with delays
-**Why it happens:** rslph may have timeouts or buffering assumptions
-**How to avoid:**
-- Make streaming delays configurable in fake Claude
-- Test both instant and delayed output scenarios
-- Use small delays (10-100ms) to catch timing bugs
-**Warning signs:** Timeout errors, partial output, buffering issues
-
-## Code Examples
-
-### Claude CLI Stream-JSON Format
-```json
-// Source: src/subprocess/stream_json.rs tests (verified)
-// User message event
-{"type":"user","message":{"role":"user","content":"Hello"},"uuid":"abc","timestamp":"2026-01-18T00:00:00Z"}
-
-// Assistant text response
-{"type":"assistant","message":{"id":"123","role":"assistant","content":[{"type":"text","text":"Hello world"}],"model":"claude-opus-4.5","stop_reason":"end_turn","usage":{"input_tokens":100,"output_tokens":50}},"uuid":"abc","timestamp":"2026-01-18T00:00:00Z"}
-
-// Tool use response
-{"type":"assistant","message":{"id":"123","role":"assistant","content":[{"type":"thinking","thinking":"Let me read the file"},{"type":"tool_use","id":"tool1","name":"Read","input":{"file_path":"/tmp/test"}}],"model":"claude-opus-4.5","stop_reason":"tool_use","usage":{"input_tokens":100,"output_tokens":50}}}
-
-// Content block types: "text", "tool_use", "thinking", "tool_result"
-```
-
-### Python Fake Executable Pattern
-```python
-# Source: Python tempfile docs + CONTEXT.md decisions
-import tempfile
-import os
-import stat
-import json
-import sys
-
-def create_fake_claude_executable(responses: list[dict]) -> str:
-    """Create a temporary Python script that acts as fake Claude CLI."""
-    script_content = f'''#!/usr/bin/env python3
-import sys
-import json
-import time
-
-# Pre-configured responses (invocation index -> response data)
-RESPONSES = {json.dumps(responses)}
-INVOCATION_FILE = "{tempfile.gettempdir()}/fake_claude_invocation_count"
-
-def get_invocation_number():
-    try:
-        with open(INVOCATION_FILE, "r") as f:
-            count = int(f.read().strip())
-    except FileNotFoundError:
-        count = 0
-    count += 1
-    with open(INVOCATION_FILE, "w") as f:
-        f.write(str(count))
-    return count
-
-def main():
-    invocation = get_invocation_number()
-    if invocation <= len(RESPONSES):
-        response = RESPONSES[invocation - 1]
-        for line in response.get("lines", []):
-            print(json.dumps(line))
-            sys.stdout.flush()
-            time.sleep(response.get("delay", 0))
-    sys.exit(response.get("exit_code", 0) if invocation <= len(RESPONSES) else 0)
-
-if __name__ == "__main__":
-    main()
-'''
-
-    # Create temp file with Python shebang
-    fd, path = tempfile.mkstemp(suffix=".py", prefix="fake_claude_")
-    os.write(fd, script_content.encode())
-    os.close(fd)
-
-    # Make executable
-    os.chmod(path, os.stat(path).st_mode | stat.S_IEXEC | stat.S_IXUSR)
-
-    return path
-```
-
-### Ratatui TestBackend Widget Testing
 ```rust
-// Source: ratatui docs + existing codebase patterns
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use ratatui::{backend::TestBackend, Terminal};
+// tests/fake_claude.rs - Binary entry point
+use std::env;
+use std::fs;
+use std::io::{self, Write};
 
-    #[test]
-    fn test_progress_bar_rendering() {
-        let backend = TestBackend::new(40, 1);
-        let mut terminal = Terminal::new(backend).unwrap();
+fn main() {
+    // Read scenario config from file path in env var
+    let config_path = env::var("FAKE_CLAUDE_CONFIG")
+        .expect("FAKE_CLAUDE_CONFIG must be set");
+    let config: FakeClaudeConfig = serde_json::from_str(
+        &fs::read_to_string(config_path).unwrap()
+    ).unwrap();
 
-        terminal.draw(|frame| {
-            let area = frame.area();
-            let widget = ProgressBar::new(0.75);
-            frame.render_widget(widget, area);
-        }).unwrap();
+    // Track invocation count
+    let invocation = increment_invocation_counter(&config.counter_path);
 
-        let buffer = terminal.backend().buffer();
-        // Assert specific cells
-        assert!(buffer.get(0, 0).symbol() == "[");
-        assert!(buffer.get(38, 0).symbol() == "]");
+    // Get response for this invocation
+    if let Some(response) = config.invocations.get(invocation - 1) {
+        for event in &response.events {
+            // Apply delay if configured
+            if let Some(delay) = response.delay_ms {
+                std::thread::sleep(std::time::Duration::from_millis(delay));
+            }
+            // Output stream-json line
+            println!("{}", serde_json::to_string(&event).unwrap());
+            io::stdout().flush().unwrap();
 
-        // Or use assert_buffer for full comparison
-        let expected = Buffer::with_lines(vec![
-            "[==============================        ]",
-        ]);
-        terminal.backend().assert_buffer(&expected);
+            // Simulate crash if configured
+            if response.crash_after_events == Some(events_output) {
+                std::process::exit(1);
+            }
+        }
+    }
+
+    std::process::exit(0);
+}
+```
+
+### Pattern 2: Scenario Builder API in Rust
+
+**What:** Fluent builder pattern for configuring fake Claude behavior
+**When to use:** Test setup for E2E scenarios
+
+```rust
+// tests/fake_claude/scenario.rs
+use std::path::PathBuf;
+use tempfile::TempDir;
+
+pub struct ScenarioBuilder {
+    invocations: Vec<InvocationConfig>,
+    current_invocation: Option<InvocationConfig>,
+    temp_dir: TempDir,
+}
+
+impl ScenarioBuilder {
+    pub fn new() -> Self {
+        Self {
+            invocations: vec![],
+            current_invocation: Some(InvocationConfig::default()),
+            temp_dir: TempDir::new().unwrap(),
+        }
+    }
+
+    /// Add text response to current invocation
+    pub fn respond_with_text(mut self, text: &str) -> Self {
+        let inv = self.current_invocation.as_mut().unwrap();
+        inv.events.push(StreamJsonEvent::assistant_text(text));
+        self
+    }
+
+    /// Add Read tool use to current invocation
+    pub fn uses_read(mut self, path: &str) -> Self {
+        let inv = self.current_invocation.as_mut().unwrap();
+        inv.events.push(StreamJsonEvent::tool_use("Read", json!({
+            "file_path": path
+        })));
+        self
+    }
+
+    /// Add Write tool use to current invocation
+    pub fn uses_write(mut self, path: &str, content: &str) -> Self {
+        let inv = self.current_invocation.as_mut().unwrap();
+        inv.events.push(StreamJsonEvent::tool_use("Write", json!({
+            "file_path": path,
+            "content": content
+        })));
+        self
+    }
+
+    /// Add Bash tool use
+    pub fn uses_bash(mut self, command: &str) -> Self {
+        let inv = self.current_invocation.as_mut().unwrap();
+        inv.events.push(StreamJsonEvent::tool_use("Bash", json!({
+            "command": command
+        })));
+        self
+    }
+
+    /// Add Edit tool use
+    pub fn uses_edit(mut self, path: &str, old: &str, new: &str) -> Self {
+        let inv = self.current_invocation.as_mut().unwrap();
+        inv.events.push(StreamJsonEvent::tool_use("Edit", json!({
+            "file_path": path,
+            "old_string": old,
+            "new_string": new
+        })));
+        self
+    }
+
+    /// Start configuring next invocation
+    pub fn next_invocation(mut self) -> Self {
+        if let Some(inv) = self.current_invocation.take() {
+            self.invocations.push(inv);
+        }
+        self.current_invocation = Some(InvocationConfig::default());
+        self
+    }
+
+    /// Configure delay between events (ms)
+    pub fn with_delay(mut self, delay_ms: u64) -> Self {
+        self.current_invocation.as_mut().unwrap().delay_ms = Some(delay_ms);
+        self
+    }
+
+    /// Configure crash after N events
+    pub fn crash_after(mut self, n: usize) -> Self {
+        self.current_invocation.as_mut().unwrap().crash_after_events = Some(n);
+        self
+    }
+
+    /// Build and return path to fake executable
+    pub fn build(mut self) -> FakeClaudeHandle {
+        // Finalize current invocation
+        if let Some(inv) = self.current_invocation.take() {
+            self.invocations.push(inv);
+        }
+
+        // Write config file
+        let config_path = self.temp_dir.path().join("config.json");
+        let counter_path = self.temp_dir.path().join("invocation_count");
+
+        let config = FakeClaudeConfig {
+            invocations: self.invocations,
+            counter_path: counter_path.clone(),
+        };
+
+        std::fs::write(&config_path, serde_json::to_string(&config).unwrap()).unwrap();
+
+        // Return handle with paths
+        FakeClaudeHandle {
+            executable_path: get_fake_claude_binary_path(),
+            config_path,
+            counter_path,
+            _temp_dir: self.temp_dir, // Keep alive
+        }
+    }
+}
+
+pub struct FakeClaudeHandle {
+    pub executable_path: PathBuf,
+    pub config_path: PathBuf,
+    counter_path: PathBuf,
+    _temp_dir: TempDir,
+}
+
+impl FakeClaudeHandle {
+    /// Get invocation count for assertions
+    pub fn invocation_count(&self) -> usize {
+        std::fs::read_to_string(&self.counter_path)
+            .ok()
+            .and_then(|s| s.trim().parse().ok())
+            .unwrap_or(0)
+    }
+
+    /// Environment variables to pass to rslph
+    pub fn env_vars(&self) -> Vec<(&str, &Path)> {
+        vec![
+            ("FAKE_CLAUDE_CONFIG", self.config_path.as_path()),
+        ]
     }
 }
 ```
 
-### pytest.ini Configuration
-```ini
-# Source: pytest documentation
-[pytest]
-testpaths = tests/e2e
-python_files = test_*.py
-python_functions = test_*
+### Pattern 3: TUI Testing with ratatui-testlib
 
-# Keep tmp_path directories for failed tests only
-tmp_path_retention_policy = failed
-tmp_path_retention_count = 5
+**What:** PTY-based TUI integration testing
+**When to use:** Testing actual TUI behavior, keyboard interaction, visual output
 
-# Custom markers
-markers =
-    slow: marks tests as slow (deselect with '-m "not slow"')
-    tui: marks tests that require TUI testing infrastructure
+```rust
+// tests/e2e/test_tui.rs
+use ratatui_testlib::TuiTestHarness;
+use std::time::Duration;
+
+#[tokio::test]
+async fn test_tui_shows_iteration_progress() {
+    // Set up fake Claude
+    let fake = ScenarioBuilder::new()
+        .respond_with_text("Working on task 1...")
+        .uses_write("PROGRESS.md", "- [x] Task 1\n- [ ] Task 2")
+        .build();
+
+    // Set up workspace
+    let workspace = WorkspaceBuilder::new()
+        .with_progress_file("- [ ] Task 1\n- [ ] Task 2")
+        .build();
+
+    // Create TUI test harness (80x24 terminal)
+    let mut harness = TuiTestHarness::new(80, 24).unwrap();
+
+    // Spawn rslph with fake Claude
+    harness.spawn_with_env(
+        &get_rslph_binary_path(),
+        &["build", "--claude-path", fake.executable_path.to_str().unwrap()],
+        workspace.path(),
+        fake.env_vars(),
+    ).unwrap();
+
+    // Wait for iteration indicator
+    harness.wait_for(|state| {
+        state.contents().contains("Iteration 1")
+    }, Duration::from_secs(5)).await.unwrap();
+
+    // Verify progress shows in TUI
+    harness.wait_for(|state| {
+        state.contents().contains("Task 1")
+    }, Duration::from_secs(2)).await.unwrap();
+
+    // Send quit key
+    harness.send_text("q").unwrap();
+
+    // Wait for exit
+    harness.wait_for_exit(Duration::from_secs(2)).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_tui_scroll_keybindings() {
+    let fake = ScenarioBuilder::new()
+        .respond_with_text("Line 1\nLine 2\nLine 3\n...")  // Long output
+        .build();
+
+    let workspace = WorkspaceBuilder::new()
+        .with_progress_file("- [ ] Task 1")
+        .build();
+
+    let mut harness = TuiTestHarness::new(80, 10).unwrap(); // Small height
+
+    harness.spawn_with_env(
+        &get_rslph_binary_path(),
+        &["build", "--claude-path", fake.executable_path.to_str().unwrap()],
+        workspace.path(),
+        fake.env_vars(),
+    ).unwrap();
+
+    // Wait for content
+    harness.wait_for(|state| {
+        state.contents().contains("Line 1")
+    }, Duration::from_secs(5)).await.unwrap();
+
+    // Scroll down
+    harness.send_text("j").unwrap();
+
+    // Verify scroll happened (Line 1 may be off-screen)
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    let state = harness.current_state();
+
+    // Press q to quit
+    harness.send_text("q").unwrap();
+}
 ```
 
-### Workspace Fixture Implementation
-```python
-# Source: pytest-git docs + pytest tmp_path docs
-import pytest
-from pathlib import Path
-import subprocess
+### Pattern 4: Workspace Fixture Builder
 
-@pytest.fixture
-def rslph_binary():
-    """Build and return path to rslph binary."""
-    result = subprocess.run(
-        ["cargo", "build", "--release"],
-        cwd=Path(__file__).parent.parent.parent,
-        capture_output=True
-    )
-    assert result.returncode == 0, f"Build failed: {result.stderr.decode()}"
-    return Path(__file__).parent.parent.parent / "target" / "release" / "rslph"
+**What:** Isolated workspace with git and config for testing
+**When to use:** All E2E tests needing file system isolation
 
-@pytest.fixture
-def workspace(tmp_path, git_repo):
-    """Create isolated workspace with git and minimal config."""
-    class Workspace:
-        def __init__(self, path: Path, git):
-            self.path = path
-            self.git = git
-            # Create minimal config
-            config_path = path / ".rslph" / "config.toml"
-            config_path.parent.mkdir(parents=True, exist_ok=True)
-            config_path.write_text('[rslph]\nclaude_path = "claude"\n')
+```rust
+// tests/e2e/fixtures.rs
+use tempfile::TempDir;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
-        def write_progress(self, content: str) -> Path:
-            path = self.path / "PROGRESS.md"
-            path.write_text(content)
-            return path
+pub struct WorkspaceBuilder {
+    temp_dir: TempDir,
+    init_git: bool,
+    config: Option<String>,
+    progress_content: Option<String>,
+    source_files: Vec<(PathBuf, String)>,
+}
 
-        def write_file(self, rel_path: str, content: str) -> Path:
-            path = self.path / rel_path
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(content)
-            return path
+impl WorkspaceBuilder {
+    pub fn new() -> Self {
+        Self {
+            temp_dir: TempDir::new().unwrap(),
+            init_git: true,
+            config: None,
+            progress_content: None,
+            source_files: vec![],
+        }
+    }
 
-    return Workspace(git_repo.workspace, git_repo)
+    pub fn with_progress_file(mut self, content: &str) -> Self {
+        self.progress_content = Some(content.to_string());
+        self
+    }
+
+    pub fn with_source_file(mut self, path: &str, content: &str) -> Self {
+        self.source_files.push((PathBuf::from(path), content.to_string()));
+        self
+    }
+
+    pub fn with_config(mut self, config_toml: &str) -> Self {
+        self.config = Some(config_toml.to_string());
+        self
+    }
+
+    pub fn without_git(mut self) -> Self {
+        self.init_git = false;
+        self
+    }
+
+    pub fn build(self) -> Workspace {
+        let path = self.temp_dir.path();
+
+        // Initialize git if requested
+        if self.init_git {
+            Command::new("git")
+                .args(["init"])
+                .current_dir(path)
+                .output()
+                .expect("Failed to init git");
+
+            Command::new("git")
+                .args(["config", "user.email", "test@test.com"])
+                .current_dir(path)
+                .output()
+                .expect("Failed to set git email");
+
+            Command::new("git")
+                .args(["config", "user.name", "Test"])
+                .current_dir(path)
+                .output()
+                .expect("Failed to set git name");
+        }
+
+        // Write config
+        let config_dir = path.join(".rslph");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        let config_content = self.config.unwrap_or_else(|| {
+            "[rslph]\nclaude_path = \"claude\"\n".to_string()
+        });
+        std::fs::write(config_dir.join("config.toml"), &config_content).unwrap();
+
+        // Write progress file
+        if let Some(content) = self.progress_content {
+            std::fs::write(path.join("PROGRESS.md"), &content).unwrap();
+        }
+
+        // Write source files
+        for (rel_path, content) in self.source_files {
+            let full_path = path.join(&rel_path);
+            if let Some(parent) = full_path.parent() {
+                std::fs::create_dir_all(parent).unwrap();
+            }
+            std::fs::write(full_path, content).unwrap();
+        }
+
+        Workspace {
+            _temp_dir: self.temp_dir,
+            path: path.to_path_buf(),
+        }
+    }
+}
+
+pub struct Workspace {
+    _temp_dir: TempDir, // Keep alive
+    path: PathBuf,
+}
+
+impl Workspace {
+    pub fn path(&self) -> &Path {
+        &self.path
+    }
+
+    pub fn read_file(&self, rel_path: &str) -> String {
+        std::fs::read_to_string(self.path.join(rel_path)).unwrap()
+    }
+
+    pub fn file_exists(&self, rel_path: &str) -> bool {
+        self.path.join(rel_path).exists()
+    }
+}
 ```
 
-## State of the Art
+### Pattern 5: Verifier Helpers
 
-| Old Approach | Current Approach | When Changed | Impact |
-|--------------|------------------|--------------|--------|
-| TestBackend only | ratatui-testlib (PTY) | 2025 (in development) | Real terminal testing possible |
-| cram .t files | scrut Markdown tests | 2024+ | Tests as documentation |
-| Manual temp cleanup | pytest retention_policy | pytest 7.3+ | Automatic failure preservation |
-| Shell script fakes | Python fakes | Always | Cross-platform, typed |
+```rust
+// tests/e2e/helpers.rs
 
-**Deprecated/outdated:**
-- `tmpdir` fixture: Use `tmp_path` instead (returns pathlib.Path)
-- pytest-tmpdir plugin: Superseded by built-in tmp_path
-- Manual TestBackend buffer inspection: Use assert_buffer()
+/// Assert that a task is marked complete in progress file
+pub fn assert_task_complete(workspace: &Workspace, task_pattern: &str) {
+    let content = workspace.read_file("PROGRESS.md");
+    let pattern = format!("- [x] {}", task_pattern);
+    assert!(
+        content.contains(&pattern),
+        "Expected task '{}' to be complete in PROGRESS.md:\n{}",
+        task_pattern, content
+    );
+}
 
-## Open Questions
+/// Assert that RALPH_DONE marker exists
+pub fn assert_ralph_done(workspace: &Workspace) {
+    let content = workspace.read_file("PROGRESS.md");
+    assert!(
+        content.contains("RALPH_DONE"),
+        "Expected RALPH_DONE in PROGRESS.md:\n{}",
+        content
+    );
+}
 
-Things that couldn't be fully resolved:
+/// Assert file contains content
+pub fn assert_file_contains(workspace: &Workspace, path: &str, expected: &str) {
+    let content = workspace.read_file(path);
+    assert!(
+        content.contains(expected),
+        "Expected '{}' in {}:\n{}",
+        expected, path, content
+    );
+}
 
-1. **Exact tool_result format in stream-json**
-   - What we know: Content blocks include "tool_result" type
-   - What's unclear: Exact structure of tool_result content (is it stringified JSON or structured?)
-   - Recommendation: Capture real Claude CLI output to document; fake can start with minimal fields
+/// Assert git commit exists with message pattern
+pub fn assert_git_commit_exists(workspace: &Workspace, message_pattern: &str) {
+    let output = std::process::Command::new("git")
+        .args(["log", "--oneline", "-1"])
+        .current_dir(workspace.path())
+        .output()
+        .expect("Failed to run git log");
 
-2. **System and summary event timing**
-   - What we know: Event types include "system" and "summary"
-   - What's unclear: When exactly these appear in the stream (start only? end only?)
-   - Recommendation: Can be added later based on observed behavior
+    let log = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        log.contains(message_pattern),
+        "Expected commit with '{}' in git log:\n{}",
+        message_pattern, log
+    );
+}
+```
 
-3. **ratatui-testlib maturity**
-   - What we know: Exists, provides PTY testing, in early development (MVP planned)
-   - What's unclear: API stability, production readiness
-   - Recommendation: Defer PTY-based testing; use TestBackend for now
+## Don't Hand-Roll
 
-4. **Multi-process test isolation**
-   - What we know: Each test gets separate tmp_path
-   - What's unclear: Race conditions when multiple tests use fake Claude invocation counter
-   - Recommendation: Include test ID in invocation counter file path
+| Problem | Don't Build | Use Instead | Why |
+|---------|-------------|-------------|-----|
+| Temp directories | Manual tempfile | tempfile::TempDir | Automatic cleanup, RAII |
+| PTY testing | Manual pty crate | ratatui-testlib | wait_for, send_text API |
+| Stream-json generation | New types | Extend existing StreamJsonEvent | Type reuse |
+| Binary path finding | Hardcoded paths | cargo_test_binary crate | Cross-platform |
+| CLI assertions | Raw process output | assert_cmd | Better error messages |
+
+## Common Pitfalls
+
+### Pitfall 1: Stream-JSON Format Mismatch
+**What goes wrong:** Fake Claude outputs JSON that doesn't match real Claude CLI format
+**How to avoid:** Reuse types from `src/subprocess/stream_json.rs`
+
+### Pitfall 2: Test Binary Not Built
+**What goes wrong:** Tests fail because fake_claude binary doesn't exist
+**How to avoid:** Use `cargo test --all-targets` or build helper function
+
+### Pitfall 3: Invocation Counter Race Condition
+**What goes wrong:** Parallel tests share invocation counter file
+**How to avoid:** Use unique counter file per test (in TempDir)
+
+### Pitfall 4: Terminal Size Mismatch
+**What goes wrong:** TUI tests pass locally, fail in CI
+**How to avoid:** Always use explicit dimensions in TuiTestHarness::new(80, 24)
+
+### Pitfall 5: Async Test Timeouts
+**What goes wrong:** Tests hang waiting for TUI content
+**How to avoid:** Use reasonable timeouts in wait_for(), add tokio::time::timeout wrapper
+
+## ratatui-testlib API Reference
+
+From docs.rs/ratatui-testlib (v0.1.0):
+
+```rust
+// Create harness with terminal dimensions
+let mut harness = TuiTestHarness::new(80, 24)?;
+
+// Spawn application
+harness.spawn(cmd)?;
+
+// Wait for screen content condition
+harness.wait_for(|state| state.contents().contains("Welcome"), Duration::from_secs(5))?;
+
+// Send text input
+harness.send_text("hello")?;
+
+// Get current screen state
+let state = harness.current_state();
+let contents = state.contents(); // Full screen as string
+
+// Wait for exit
+harness.wait_for_exit(Duration::from_secs(2)).await?;
+```
+
+## Code Examples
+
+### Stream-JSON Event Types (from existing code)
+
+```rust
+// Source: src/subprocess/stream_json.rs (existing implementation)
+
+// Text response
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Hello"}],"model":"claude-opus-4.5","stop_reason":"end_turn"}}
+
+// Tool use
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tool1","name":"Read","input":{"file_path":"/tmp/test"}}],"stop_reason":"tool_use"}}
+
+// Thinking block
+{"type":"assistant","message":{"content":[{"type":"thinking","thinking":"Let me analyze..."}]}}
+```
+
+## Cargo.toml Dev Dependencies
+
+```toml
+[dev-dependencies]
+ratatui-testlib = "0.1"
+assert_cmd = "2"
+assert_fs = "1"
+tempfile = "3"
+insta = "2"
+tokio = { version = "1", features = ["full", "test-util"] }
+
+[[test]]
+name = "fake_claude"
+path = "tests/fake_claude.rs"
+```
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- src/subprocess/stream_json.rs - Existing implementation with tests
-- [pytest tmp_path documentation](https://docs.pytest.org/en/stable/reference/reference.html) - Retention policy options
-- [ratatui TestBackend](https://docs.rs/ratatui/0.26.2/ratatui/backend/struct.TestBackend.html) - Widget testing API
-- [Python tempfile docs](https://docs.python.org/3/library/tempfile.html) - Executable creation
+- src/subprocess/stream_json.rs - Existing stream-json implementation
+- [ratatui-testlib docs](https://docs.rs/ratatui-testlib/latest/ratatui_testlib/) - TuiTestHarness API
+- [ratatui TestBackend](https://docs.rs/ratatui/0.30/ratatui/backend/struct.TestBackend.html) - Widget testing
+- [tempfile docs](https://docs.rs/tempfile/latest/tempfile/) - TempDir API
 
 ### Secondary (MEDIUM confidence)
-- [pytest-git PyPI](https://pypi.org/project/pytest-git/) - Git fixture API
-- [assert_cmd lib.rs](https://lib.rs/crates/assert_cmd) - Rust CLI testing patterns
-- [Anthropic streaming API](https://platform.claude.com/docs/en/api/messages-streaming) - Event type reference
-- [claude-clean GitHub](https://github.com/ariel-frischer/claude-clean) - Stream-json event types
-
-### Tertiary (LOW confidence)
-- [ratatui-testlib lib.rs](https://lib.rs/crates/ratatui-testlib) - Still in MVP development
-- [scrut documentation](https://facebookincubator.github.io/scrut/docs/) - Alternative to pytest for CLI tests
-- [cram GitHub](https://github.com/aiiie/cram) - Original .t test format reference
+- [ratatui-testlib lib.rs](https://lib.rs/crates/ratatui-testlib) - v0.1.0, Dec 2025
+- [assert_cmd docs](https://docs.rs/assert_cmd/latest/assert_cmd/) - CLI testing patterns
 
 ## Metadata
 
 **Confidence breakdown:**
-- Standard stack: HIGH - Well-established tools (pytest, tempfile, TestBackend)
-- Stream-json format: HIGH - Verified against existing codebase implementation
-- Architecture patterns: MEDIUM - Based on decisions + standard practices
-- Pitfalls: MEDIUM - Combination of documentation and experience
-- TUI testing: LOW - ratatui-testlib still in early development
+- Rust test structure: HIGH - Standard cargo patterns
+- Stream-json reuse: HIGH - Types already exist in crate
+- ratatui-testlib: MEDIUM - v0.1.0 is new but API is straightforward
+- Builder pattern: HIGH - Standard Rust pattern
 
-**Research date:** 2026-01-19
-**Valid until:** 2026-02-19 (30 days - stable domain)
-
-## Test Language Recommendation
-
-Based on research comparing cram, scrut, Python/pytest, and Rust cargo test:
-
-| Criteria | Python/pytest | Rust cargo test | scrut/cram |
-|----------|--------------|-----------------|------------|
-| Fake Claude creation | Excellent (shebang) | Poor (requires compilation) | Poor (shell only) |
-| Subprocess testing | Excellent (subprocess) | Good (std::process) | Good (native) |
-| Fixture management | Excellent (fixtures) | Manual setup | None |
-| Temp directory | Excellent (tmp_path) | Good (tempfile crate) | Manual |
-| Git integration | Excellent (pytest-git) | Manual | Manual |
-| Parallel tests | Built-in (pytest-xdist) | Built-in | Limited |
-| Assertion readability | High | Medium | High |
-| Integration with rslph | External process | Internal + process | External process |
-
-**Recommendation:**
-- **Use Python/pytest** for E2E tests with fake Claude
-- **Use Rust cargo test** for TUI widget unit tests (with TestBackend)
-- **Defer scrut** - Nice for documentation but adds complexity; evaluate for phase 8
+**Research date:** 2026-01-19 (updated for all-Rust approach)
+**Valid until:** 2026-02-19 (30 days)

@@ -12,14 +12,14 @@ use ratatui::{
     Frame,
 };
 
-use crate::tui::app::{App, DisplayItem, Message, MessageGroup, MessageRole};
+use crate::tui::app::{App, DisplayItem, Message, MessageGroup, MessageRole, SystemGroup};
 
 /// Role colors matching Claude CLI style.
 fn role_style(role: &MessageRole) -> Style {
     match role {
         MessageRole::User => Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
         MessageRole::Assistant => Style::default().fg(Color::Green),
-        MessageRole::System => Style::default().fg(Color::Yellow).add_modifier(Modifier::ITALIC),
+        MessageRole::System => Style::default().fg(Color::DarkGray),
         MessageRole::Tool(_) => Style::default().fg(Color::Magenta),
     }
 }
@@ -102,7 +102,54 @@ fn format_group(group: &MessageGroup, is_selected: bool) -> Vec<Line<'static>> {
     lines
 }
 
-/// Render a standalone system message.
+/// Render a system message group with collapsible display.
+fn format_system_group(group: &SystemGroup, is_selected: bool) -> Vec<Line<'static>> {
+    let mut lines = Vec::new();
+
+    // Group header style - grey like system messages
+    let header_style = if is_selected {
+        Style::default()
+            .fg(Color::DarkGray)
+            .add_modifier(Modifier::BOLD | Modifier::REVERSED)
+    } else {
+        Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)
+    };
+
+    // Header line
+    lines.push(Line::from(vec![Span::styled(
+        format!("System (Iteration {})", group.iteration),
+        header_style,
+    )]));
+
+    // Get visible messages (most recent N)
+    let visible = group.visible_messages();
+    let hidden = group.hidden_count();
+
+    // Render each visible message as a single line
+    for msg in visible.iter() {
+        let first_line = msg.content.lines().next().unwrap_or("");
+        let text = format!("   {}", first_line);
+        let style = role_style(&msg.role);
+        lines.push(Line::from(vec![Span::styled(text, style)]));
+    }
+
+    // Show "+N more" if collapsed with hidden items
+    if hidden > 0 {
+        let more_text = format!("   +{} more system messages (Tab to expand)", hidden);
+        lines.push(Line::from(vec![Span::styled(
+            more_text,
+            Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC),
+        )]));
+    }
+
+    // Blank separator
+    lines.push(Line::from(""));
+
+    lines
+}
+
+/// Render a standalone system message (backwards compatibility, unused).
+#[allow(dead_code)]
 fn format_system_message(msg: &Message, is_selected: bool) -> Vec<Line<'static>> {
     let mut style = role_style(&msg.role);
     if is_selected {
@@ -198,7 +245,7 @@ pub fn format_message(msg: &Message, is_selected: bool) -> Vec<Line<'static>> {
 
 /// Render thread view using grouped display.
 ///
-/// Shows display items (groups and system messages) for the viewing_iteration.
+/// Shows display items (groups and system groups) for the viewing_iteration.
 /// Groups show tool uses in a tree structure like Claude CLI.
 pub fn render_thread(frame: &mut Frame, area: Rect, app: &App, _recent_count: usize) {
     let mut lines: Vec<Line> = Vec::new();
@@ -218,16 +265,24 @@ pub fn render_thread(frame: &mut Frame, area: Rect, app: &App, _recent_count: us
             DisplayItem::Group(group) => {
                 lines.extend(format_group(group, is_selected));
             }
-            DisplayItem::System(msg) => {
-                lines.extend(format_system_message(msg, is_selected));
+            DisplayItem::SystemGroup(group) => {
+                lines.extend(format_system_group(group, is_selected));
             }
         }
     }
 
-    // Render current in-progress group if viewing current iteration
+    // Render current in-progress groups if viewing current iteration
+    let mut extra_idx = items_for_iter.len();
+
     if let Some(current_group) = app.current_group_for_viewing() {
-        let is_selected = app.selected_group == Some(items_for_iter.len());
+        let is_selected = app.selected_group == Some(extra_idx);
         lines.extend(format_group(current_group, is_selected));
+        extra_idx += 1;
+    }
+
+    if let Some(current_system_group) = app.current_system_group_for_viewing() {
+        let is_selected = app.selected_group == Some(extra_idx);
+        lines.extend(format_system_group(current_system_group, is_selected));
     }
 
     let paragraph = Paragraph::new(lines)
@@ -257,8 +312,7 @@ mod tests {
     #[test]
     fn test_role_style_system() {
         let style = role_style(&MessageRole::System);
-        assert_eq!(style.fg, Some(Color::Yellow));
-        assert!(style.add_modifier.contains(Modifier::ITALIC));
+        assert_eq!(style.fg, Some(Color::DarkGray));
     }
 
     #[test]

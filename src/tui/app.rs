@@ -66,22 +66,94 @@ impl MessageGroup {
     }
 
     /// Get visible messages based on expanded state.
+    /// When collapsed, shows the MOST RECENT (last) messages.
     pub fn visible_messages(&self) -> &[Message] {
         if self.expanded || self.messages.len() <= self.max_visible {
             &self.messages
         } else {
-            &self.messages[..self.max_visible]
+            // Show the last N messages (most recent)
+            let start = self.messages.len() - self.max_visible;
+            &self.messages[start..]
         }
     }
 }
 
-/// Display item - either a group or a standalone system message.
+/// A group of consecutive system/log messages.
+///
+/// Groups system messages together to reduce visual noise.
+/// Shows only the most recent N messages when collapsed.
+#[derive(Debug, Clone)]
+pub struct SystemGroup {
+    /// All system messages in this group
+    pub messages: Vec<Message>,
+    /// Whether the group is expanded to show all messages
+    pub expanded: bool,
+    /// Maximum messages to show when collapsed (default 3)
+    pub max_visible: usize,
+    /// Iteration this group belongs to
+    pub iteration: u32,
+}
+
+impl SystemGroup {
+    /// Create a new system group for an iteration.
+    pub fn new(iteration: u32) -> Self {
+        Self {
+            messages: Vec::new(),
+            expanded: false,
+            max_visible: 3,
+            iteration,
+        }
+    }
+
+    /// Add a message to the group.
+    pub fn push(&mut self, message: Message) {
+        self.messages.push(message);
+    }
+
+    /// Check if the group is empty.
+    pub fn is_empty(&self) -> bool {
+        self.messages.is_empty()
+    }
+
+    /// Get the number of messages in the group.
+    pub fn len(&self) -> usize {
+        self.messages.len()
+    }
+
+    /// Toggle the expanded state.
+    pub fn toggle_expanded(&mut self) {
+        self.expanded = !self.expanded;
+    }
+
+    /// Get the number of hidden messages when collapsed.
+    pub fn hidden_count(&self) -> usize {
+        if self.expanded || self.messages.len() <= self.max_visible {
+            0
+        } else {
+            self.messages.len() - self.max_visible
+        }
+    }
+
+    /// Get visible messages based on expanded state.
+    /// When collapsed, shows the MOST RECENT (last) messages.
+    pub fn visible_messages(&self) -> &[Message] {
+        if self.expanded || self.messages.len() <= self.max_visible {
+            &self.messages
+        } else {
+            // Show the last N messages (most recent)
+            let start = self.messages.len() - self.max_visible;
+            &self.messages[start..]
+        }
+    }
+}
+
+/// Display item - either a Claude group or a system message group.
 #[derive(Debug, Clone)]
 pub enum DisplayItem {
     /// A group of tool/assistant messages
     Group(MessageGroup),
-    /// A standalone system message (not grouped)
-    System(Message),
+    /// A group of system/log messages
+    SystemGroup(SystemGroup),
 }
 
 impl DisplayItem {
@@ -89,7 +161,7 @@ impl DisplayItem {
     pub fn iteration(&self) -> u32 {
         match self {
             DisplayItem::Group(g) => g.iteration,
-            DisplayItem::System(m) => m.iteration,
+            DisplayItem::SystemGroup(g) => g.iteration,
         }
     }
 }
@@ -223,6 +295,8 @@ pub struct App {
     pub display_items: Vec<DisplayItem>,
     /// Current group being built (accumulates tool uses).
     current_group: Option<MessageGroup>,
+    /// Current system group being built (accumulates system messages).
+    current_system_group: Option<SystemGroup>,
     /// Current vertical scroll offset.
     pub scroll_offset: u16,
     /// Currently selected group/item index (for expand/collapse navigation).
@@ -257,6 +331,7 @@ impl Default for App {
             messages: Vec::new(),
             display_items: Vec::new(),
             current_group: None,
+            current_system_group: None,
             scroll_offset: 0,
             selected_group: None,
             viewing_iteration: 0,
@@ -324,12 +399,16 @@ impl App {
                 self.toggle_selected_group();
             }
             AppEvent::ClaudeOutput(content) => {
+                // Finalize any pending system group first
+                self.finalize_system_group();
                 // Add assistant message to current group
                 let msg = Message::new("assistant", content.clone(), self.current_iteration);
                 self.messages.push(msg.clone());
                 self.add_to_current_group(msg);
             }
             AppEvent::ToolMessage { tool_name, content } => {
+                // Finalize any pending system group first
+                self.finalize_system_group();
                 // Add tool message to current group
                 let msg = Message::with_role(
                     MessageRole::Tool(tool_name),
@@ -343,8 +422,9 @@ impl App {
                 self.context_usage = ratio.clamp(0.0, 1.0);
             }
             AppEvent::IterationStart { iteration } => {
-                // Finalize current group before starting new iteration
+                // Finalize current groups before starting new iteration
                 self.finalize_current_group();
+                self.finalize_system_group();
                 self.current_iteration = iteration;
                 self.viewing_iteration = iteration;
                 self.scroll_offset = 0;
@@ -354,23 +434,21 @@ impl App {
                 self.current_group = Some(MessageGroup::new(iteration));
             }
             AppEvent::IterationComplete { tasks_done } => {
-                // Finalize current group
+                // Finalize current groups
                 self.finalize_current_group();
+                self.finalize_system_group();
                 self.current_task = tasks_done;
                 self.viewing_iteration = self.current_iteration;
                 self.selected_message = None;
                 self.selected_group = None;
             }
             AppEvent::LogMessage(content) => {
-                // System messages go outside groups
+                // Finalize Claude group first (system messages interrupt Claude output)
                 self.finalize_current_group();
+                // Add to current system group
                 let msg = Message::new("system", content.clone(), self.current_iteration);
                 self.messages.push(msg.clone());
-                self.display_items.push(DisplayItem::System(msg));
-                // Re-start a group for any subsequent tool messages
-                self.current_group = Some(MessageGroup::new(self.current_iteration));
-                // Enforce rolling limit for system messages
-                self.enforce_system_rolling_limit();
+                self.add_to_system_group(msg);
             }
             AppEvent::Render => {
                 // Render events don't change state, just trigger redraw
@@ -397,6 +475,25 @@ impl App {
         }
     }
 
+    /// Add a message to the current system group, creating one if needed.
+    fn add_to_system_group(&mut self, msg: Message) {
+        if self.current_system_group.is_none() {
+            self.current_system_group = Some(SystemGroup::new(self.current_iteration));
+        }
+        if let Some(ref mut group) = self.current_system_group {
+            group.push(msg);
+        }
+    }
+
+    /// Finalize the current system group and add it to display_items.
+    fn finalize_system_group(&mut self) {
+        if let Some(group) = self.current_system_group.take() {
+            if !group.is_empty() {
+                self.display_items.push(DisplayItem::SystemGroup(group));
+            }
+        }
+    }
+
     /// Get display items for the currently viewed iteration.
     pub fn display_items_for_viewing(&self) -> Vec<&DisplayItem> {
         let items: Vec<&DisplayItem> = self.display_items
@@ -413,6 +510,15 @@ impl App {
     pub fn current_group_for_viewing(&self) -> Option<&MessageGroup> {
         if self.viewing_iteration == self.current_iteration {
             self.current_group.as_ref()
+        } else {
+            None
+        }
+    }
+
+    /// Check if there's an in-progress system group for the viewing iteration.
+    pub fn current_system_group_for_viewing(&self) -> Option<&SystemGroup> {
+        if self.viewing_iteration == self.current_iteration {
+            self.current_system_group.as_ref()
         } else {
             None
         }
@@ -535,18 +641,23 @@ impl App {
         };
     }
 
-    /// Get the count of display items for the viewing iteration (including current group).
+    /// Get the count of display items for the viewing iteration (including current groups).
     fn display_item_count_for_viewing(&self) -> usize {
         let count = self.display_items
             .iter()
             .filter(|item| item.iteration() == self.viewing_iteration)
             .count();
         // Add 1 for current in-progress group if viewing current iteration
-        if self.viewing_iteration == self.current_iteration && self.current_group.is_some() {
-            count + 1
-        } else {
-            count
+        let mut extra = 0;
+        if self.viewing_iteration == self.current_iteration {
+            if self.current_group.is_some() {
+                extra += 1;
+            }
+            if self.current_system_group.is_some() {
+                extra += 1;
+            }
         }
+        count + extra
     }
 
     /// Select next group/item in the current iteration.
@@ -589,13 +700,23 @@ impl App {
 
             if sel_idx < items_for_iter.len() {
                 let item_idx = items_for_iter[sel_idx];
-                if let DisplayItem::Group(ref mut group) = self.display_items[item_idx] {
-                    group.toggle_expanded();
+                match &mut self.display_items[item_idx] {
+                    DisplayItem::Group(ref mut group) => group.toggle_expanded(),
+                    DisplayItem::SystemGroup(ref mut group) => group.toggle_expanded(),
                 }
-            } else if sel_idx == items_for_iter.len() {
-                // Selected the current in-progress group
-                if let Some(ref mut group) = self.current_group {
-                    group.toggle_expanded();
+            } else {
+                // Handle current in-progress groups
+                let in_progress_offset = sel_idx - items_for_iter.len();
+                if in_progress_offset == 0 && self.current_group.is_some() {
+                    if let Some(ref mut group) = self.current_group {
+                        group.toggle_expanded();
+                    }
+                } else if (in_progress_offset == 0 && self.current_group.is_none())
+                    || (in_progress_offset == 1 && self.current_group.is_some())
+                {
+                    if let Some(ref mut group) = self.current_system_group {
+                        group.toggle_expanded();
+                    }
                 }
             }
         }

@@ -94,11 +94,12 @@ impl WorkspaceBuilder {
         }
 
         // Write config
+        // Note: Config file uses flat TOML (no section header)
         let config_dir = path.join(".rslph");
         std::fs::create_dir_all(&config_dir).expect("Failed to create config dir");
         let config_content = self
             .config
-            .unwrap_or_else(|| "[rslph]\nclaude_path = \"claude\"\n".to_string());
+            .unwrap_or_else(|| "claude_path = \"claude\"\n".to_string());
         std::fs::write(config_dir.join("config.toml"), &config_content)
             .expect("Failed to write config");
 

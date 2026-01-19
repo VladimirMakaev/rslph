@@ -10,6 +10,7 @@ use crate::tui::terminal::{init_terminal, restore_terminal};
 use crate::tui::ui::render;
 
 use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
 /// Run the TUI event loop.
 ///
@@ -17,6 +18,7 @@ use tokio::sync::mpsc;
 ///
 /// * `app` - Initial app state
 /// * `recent_count` - Number of recent messages to display (from config)
+/// * `cancel_token` - Token to cancel the build loop when user quits
 ///
 /// # Returns
 ///
@@ -24,10 +26,11 @@ use tokio::sync::mpsc;
 /// * `Err` - Terminal or I/O error
 ///
 /// Note: This function returns immediately after starting the TUI.
-/// The actual event loop runs in the returned future.
+/// The actual event loop runs in a spawned task.
 pub async fn run_tui(
     mut app: App,
     recent_count: usize,
+    cancel_token: CancellationToken,
 ) -> Result<mpsc::UnboundedSender<SubprocessEvent>, RslphError> {
     let mut terminal = init_terminal()
         .map_err(|e| RslphError::Subprocess(format!("Terminal init failed: {}", e)))?;
@@ -52,6 +55,8 @@ pub async fn run_tui(
             // Wait for next event
             if let Some(event) = event_handler.next().await {
                 if handle_event(&mut app, event, viewport_height) {
+                    // User requested quit - cancel the build loop
+                    cancel_token.cancel();
                     break;
                 }
             } else {
@@ -60,6 +65,7 @@ pub async fn run_tui(
             }
 
             if app.should_quit {
+                cancel_token.cancel();
                 break;
             }
         }

@@ -269,19 +269,15 @@ fn run_dry_run(ctx: &BuildContext) -> color_eyre::Result<()> {
 
 /// Run build with TUI mode enabled.
 ///
-/// Initializes the TUI and runs the build loop with visual feedback.
-///
-/// Note: Full subprocess integration (streaming Claude output to TUI channel)
-/// requires deeper refactoring of iteration.rs. This establishes the integration
-/// point. A follow-up improvement would refactor run_single_iteration to accept
-/// a channel sender.
+/// Initializes the TUI and runs the build loop concurrently with visual feedback.
+/// The build loop runs in the background and sends events to the TUI via channels.
 async fn run_build_with_tui(
     progress_path: PathBuf,
     progress: ProgressFile,
     config: &Config,
-    _cancel_token: CancellationToken,
+    cancel_token: CancellationToken,
 ) -> color_eyre::Result<()> {
-    use crate::tui::{run_tui_blocking, App};
+    use crate::tui::{run_tui, App, SubprocessEvent};
 
     // Initialize app state from progress
     let mut app = App::new(
@@ -291,19 +287,148 @@ async fn run_build_with_tui(
     );
     app.current_task = progress.completed_tasks() as u32;
     app.total_tasks = progress.total_tasks() as u32;
-    app.log_path = Some(progress_path);
+    app.log_path = Some(progress_path.clone());
     app.current_iteration = 0;
     app.viewing_iteration = 0;
 
     // Get recent message count from config
     let recent_count = config.tui_recent_messages;
 
-    // Run TUI blocking loop
-    // Note: This currently just displays the TUI with initial state.
-    // Full integration would spawn build loop and forward events to TUI.
-    run_tui_blocking(app, recent_count).await?;
+    // Start TUI and get subprocess event sender
+    // Pass a clone of cancel_token so TUI can cancel the build on quit
+    let subprocess_tx = run_tui(app, recent_count, cancel_token.clone()).await?;
 
-    Ok(())
+    // Create build context
+    let mut ctx = BuildContext::new(
+        progress_path.clone(),
+        progress,
+        config.clone(),
+        cancel_token.clone(),
+        false, // once_mode - TUI always runs full loop
+        false, // dry_run - already handled before this function
+    );
+
+    // Create a channel for build loop to send updates to TUI
+    // The subprocess_tx is an UnboundedSender<SubprocessEvent>
+    let tui_tx = subprocess_tx.clone();
+
+    // Run build loop, forwarding events to TUI
+    let mut state = BuildState::Starting;
+    let result = loop {
+        state = match state {
+            BuildState::Starting => {
+                ctx.current_iteration = 1;
+                ctx.iteration_start = Some(std::time::Instant::now());
+
+                // Send iteration start to TUI
+                let _ = tui_tx.send(SubprocessEvent::Output(format!(
+                    "--- Iteration {} ---",
+                    ctx.current_iteration
+                )));
+
+                BuildState::Running { iteration: 1 }
+            }
+
+            BuildState::Running { iteration } => {
+                match run_single_iteration(&mut ctx).await {
+                    Ok(IterationResult::Continue { tasks_completed }) => {
+                        BuildState::IterationComplete {
+                            iteration,
+                            tasks_completed,
+                        }
+                    }
+                    Ok(IterationResult::Done(reason)) => BuildState::Done { reason },
+                    Err(RslphError::Cancelled) => BuildState::Done {
+                        reason: DoneReason::UserCancelled,
+                    },
+                    Err(e) => BuildState::Failed {
+                        error: e.to_string(),
+                    },
+                }
+            }
+
+            BuildState::IterationComplete {
+                iteration,
+                tasks_completed,
+            } => {
+                // Log iteration result
+                let duration = ctx
+                    .iteration_start
+                    .map(|s| s.elapsed())
+                    .unwrap_or_default();
+
+                // Send iteration complete to TUI
+                let _ = tui_tx.send(SubprocessEvent::IterationDone {
+                    tasks_done: tasks_completed,
+                });
+
+                let _ = tui_tx.send(SubprocessEvent::Output(format!(
+                    "Iteration {} complete: {} task(s) in {:.1}s",
+                    iteration,
+                    tasks_completed,
+                    duration.as_secs_f64()
+                )));
+
+                // Log to progress file
+                log_iteration(&mut ctx, iteration, tasks_completed)?;
+
+                // Check termination conditions
+                if iteration >= ctx.max_iterations {
+                    let _ = tui_tx.send(SubprocessEvent::Output(format!(
+                        "Max iterations ({}) reached",
+                        ctx.max_iterations
+                    )));
+                    BuildState::Done {
+                        reason: DoneReason::MaxIterationsReached,
+                    }
+                } else if cancel_token.is_cancelled() {
+                    BuildState::Done {
+                        reason: DoneReason::UserCancelled,
+                    }
+                } else {
+                    ctx.current_iteration = iteration + 1;
+                    ctx.iteration_start = Some(std::time::Instant::now());
+
+                    let _ = tui_tx.send(SubprocessEvent::Output(format!(
+                        "\n--- Iteration {} ---",
+                        iteration + 1
+                    )));
+
+                    BuildState::Running {
+                        iteration: iteration + 1,
+                    }
+                }
+            }
+
+            BuildState::Done { reason } => {
+                let _ = tui_tx.send(SubprocessEvent::Output(format!(
+                    "\nBuild complete: {}",
+                    reason
+                )));
+                break Ok(());
+            }
+
+            BuildState::Failed { error } => {
+                let _ = tui_tx.send(SubprocessEvent::Output(format!(
+                    "\nBuild failed: {}",
+                    error
+                )));
+                break Err(color_eyre::eyre::eyre!("Build failed: {}", error));
+            }
+        };
+
+        // Check for cancellation between state transitions
+        if cancel_token.is_cancelled() && !matches!(state, BuildState::Done { .. }) {
+            state = BuildState::Done {
+                reason: DoneReason::UserCancelled,
+            };
+        }
+
+        // Small yield to let TUI render
+        tokio::task::yield_now().await;
+    };
+
+    result
 }
 
 /// Print completion message based on done reason.

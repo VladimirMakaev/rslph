@@ -5,14 +5,13 @@
 See: .planning/PROJECT.md (updated 2026-01-19)
 
 **Core value:** Autonomous task execution with fresh context per iteration and accumulated learnings
-**Current focus:** v1.1 - Testing Enhancement (COMPLETE)
+**Current focus:** All milestones complete (v1.0, v1.1)
 
 ## Current Position
 
-Phase: 7.1 of 7.1 (TUI Testing with ratatui-testlib) - COMPLETE
-Plan: 1 of 1 in current phase (07.1-01 complete)
-Status: v1.1 milestone complete
-Last activity: 2026-01-19 - Completed 07.1-01-PLAN.md (TUI Snapshot Tests)
+Phase: All phases complete
+Status: Ready for next milestone
+Last activity: 2026-01-19 - v1.1 Testing Enhancement milestone complete
 
 Progress: [██████████] 100% v1.0 | [██████████] 100% v1.1
 
@@ -28,6 +27,7 @@ Progress: [██████████] 100% v1.0 | [████████
 - Total plans completed: 6
 - Average duration: 4m 53s
 - Total execution time: 29m 18s
+- Shipped: 2026-01-19 (same day)
 
 **By Phase (v1.0):**
 
@@ -53,24 +53,14 @@ Progress: [██████████] 100% v1.0 | [████████
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-- **ALL-RUST-E2E**: Phase 7 uses all-Rust approach (no Python). Fake Claude is a Rust test binary, workspace fixtures in Rust, share types with main crate.
-- **TEST-MAIN-RS**: Use main.rs as integration test entry point (not mod.rs) for proper Rust test discovery in tests/e2e/.
-- **FAKE-CLAUDE-LIB**: Named fake_claude_lib/ instead of fake_claude/ to avoid Rust module ambiguity with fake_claude.rs binary.
-- **E2E-TEST-LOCATION**: Unit tests for fake_claude_lib placed in e2e test crate (not fake_claude binary) because harness=false prevents test discovery.
-- **BINARY-HASH-DISCOVERY**: get_fake_claude_path() scans deps/ directory for fake_claude-HASH binaries to handle Cargo's hash-suffixed test binaries.
-- **FLAT-CONFIG-TOML**: Config files use flat TOML format (no section header like [rslph]). Fixed in 07-05.
-- **TESTBACKEND-SNAPSHOTS**: Use TestBackend with 80x24 fixed dimensions and insta assert_snapshot for TUI visual regression tests.
+All decisions are archived in milestone roadmap files:
+- `.planning/milestones/v1.0-ROADMAP.md`
+- `.planning/milestones/v1.1-ROADMAP.md`
 
 ### Pending Todos
 
 - **CLAUDE-INTERNET-FLAG**: Remove `--internet` workaround flag from Claude CLI invocations once the underlying issue causing Claude CLI to hang without it is resolved. See `src/planning/command.rs`.
 - **CLAUDE-CLI-OUTPUT-FLAGS**: Research Claude CLI `--output-format stream-json` and `--json-schema` flags for correct usage.
-
-### Roadmap Evolution
-
-- Phase 7.1 inserted after Phase 7: TUI Testing with ratatui-testlib (addresses deferred TUI-TESTLIB todo) - COMPLETE
 
 ### Blockers/Concerns
 
@@ -78,6 +68,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-19T23:25Z
-Stopped at: Completed 07.1-01-PLAN.md (Phase 7.1 complete)
+Last session: 2026-01-19T23:55Z
+Stopped at: v1.1 milestone complete
 Resume file: None

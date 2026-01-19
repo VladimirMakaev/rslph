@@ -1,5 +1,32 @@
 # Project Milestones: rslph
 
+## v1.1 Testing Enhancement (Shipped: 2026-01-19)
+
+**Delivered:** Comprehensive E2E testing infrastructure with fake Claude simulation for deterministic testing, plus TUI snapshot tests using TestBackend and insta.
+
+**Phases completed:** 7-7.1 (6 plans total)
+
+**Key accomplishments:**
+
+- Fake Claude binary with deterministic stream-json responses
+- ScenarioBuilder fluent API for configuring test scenarios
+- WorkspaceBuilder with fluent API for test fixture setup
+- Tool call simulation (Read, Write, Edit, Bash)
+- 26 E2E tests (infrastructure + integration + edge cases)
+- TUI snapshot testing with TestBackend + insta (8 tests, 7 snapshots)
+
+**Stats:**
+
+- 2,349 lines of Rust added
+- 2 phases, 6 plans
+- 1 day from start to ship (2026-01-19)
+
+**Git range:** `docs(07)` → `chore: complete v1.1`
+
+**What's next:** TBD
+
+---
+
 ## v1.0 MVP (Shipped: 2026-01-19)
 
 **Delivered:** Complete autonomous AI coding agent with CLI/TUI that reads plans, breaks them into tasks, and iteratively executes them using Claude with fresh context per iteration.

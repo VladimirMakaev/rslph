@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-01-19)
 
 **Core value:** Autonomous task execution with fresh context per iteration and accumulated learnings
-**Current focus:** v1.1 - E2E Testing Framework (Phase 7 COMPLETE)
+**Current focus:** v1.1 - TUI Testing (Phase 7.1 COMPLETE)
 
 ## Current Position
 
-Phase: 7 of 9 (E2E Testing Framework) - COMPLETE
-Plan: 5 of 5 in current phase (07-01, 07-02, 07-03, 07-04, 07-05 complete)
-Status: Phase 7 complete
-Last activity: 2026-01-19 - Completed 07-05-PLAN.md (True E2E Integration Tests)
+Phase: 7.1 of 9 (TUI Testing with ratatui-testlib) - COMPLETE
+Plan: 1 of 1 in current phase (07.1-01 complete)
+Status: Phase 7.1 complete
+Last activity: 2026-01-19 - Completed 07.1-01-PLAN.md (TUI Snapshot Tests)
 
-Progress: [██████████] 100% v1.0 | [███░░░░░░░] 33% v1.1
+Progress: [██████████] 100% v1.0 | [████░░░░░░] 40% v1.1
 
 ## Performance Metrics
 
@@ -25,9 +25,9 @@ Progress: [██████████] 100% v1.0 | [███░░░░░
 - Shipped: 2026-01-19 (3 days from start)
 
 **v1.1 Velocity:**
-- Total plans completed: 5
-- Average duration: 5m 12s
-- Total execution time: 26m
+- Total plans completed: 6
+- Average duration: 4m 53s
+- Total execution time: 29m 18s
 
 **By Phase (v1.0):**
 
@@ -45,6 +45,7 @@ Progress: [██████████] 100% v1.0 | [███░░░░░
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 07-e2e-testing-framework | 5/5 | 26m | 5m 12s |
+| 07.1-tui-testing | 1/1 | 3m 18s | 3m 18s |
 
 *Updated after each plan completion*
 
@@ -60,12 +61,16 @@ Recent decisions affecting current work:
 - **E2E-TEST-LOCATION**: Unit tests for fake_claude_lib placed in e2e test crate (not fake_claude binary) because harness=false prevents test discovery.
 - **BINARY-HASH-DISCOVERY**: get_fake_claude_path() scans deps/ directory for fake_claude-HASH binaries to handle Cargo's hash-suffixed test binaries.
 - **FLAT-CONFIG-TOML**: Config files use flat TOML format (no section header like [rslph]). Fixed in 07-05.
+- **TESTBACKEND-SNAPSHOTS**: Use TestBackend with 80x24 fixed dimensions and insta assert_snapshot for TUI visual regression tests.
 
 ### Pending Todos
 
 - **CLAUDE-INTERNET-FLAG**: Remove `--internet` workaround flag from Claude CLI invocations once the underlying issue causing Claude CLI to hang without it is resolved. See `src/planning/command.rs`.
 - **CLAUDE-CLI-OUTPUT-FLAGS**: Research Claude CLI `--output-format stream-json` and `--json-schema` flags for correct usage.
-- **TUI-TESTLIB**: ratatui-testlib (v0.1.0) needs API verification before TUI E2E tests. Deferred from Phase 7 Plan 04.
+
+### Roadmap Evolution
+
+- Phase 7.1 inserted after Phase 7: TUI Testing with ratatui-testlib (addresses deferred TUI-TESTLIB todo) - COMPLETE
 
 ### Blockers/Concerns
 
@@ -73,6 +78,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-19T22:22Z
-Stopped at: Completed 07-05-PLAN.md (Phase 7 complete)
+Last session: 2026-01-19T23:25Z
+Stopped at: Completed 07.1-01-PLAN.md (Phase 7.1 complete)
 Resume file: None

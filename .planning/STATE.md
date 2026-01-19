@@ -11,8 +11,8 @@ See: .planning/PROJECT.md (updated 2026-01-19)
 
 Phase: 7 of 9 (E2E Testing Framework)
 Plan: 0 of 4 in current phase
-Status: Ready to plan
-Last activity: 2026-01-19 - v1.0 milestone complete
+Status: Planned, ready to execute
+Last activity: 2026-01-19 - Phase 7 planned (4 plans in 3 waves)
 
 Progress: [██████████] 100% v1.0 | [░░░░░░░░░░] 0% v1.1
 
@@ -42,12 +42,14 @@ Progress: [██████████] 100% v1.0 | [░░░░░░░░
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work: None (fresh milestone)
+Recent decisions affecting current work:
+- **ALL-RUST-E2E**: Phase 7 uses all-Rust approach (no Python). Fake Claude is a Rust test binary, workspace fixtures in Rust, share types with main crate.
 
 ### Pending Todos
 
 - **CLAUDE-INTERNET-FLAG**: Remove `--internet` workaround flag from Claude CLI invocations once the underlying issue causing Claude CLI to hang without it is resolved. See `src/planning/command.rs`.
 - **CLAUDE-CLI-OUTPUT-FLAGS**: Research Claude CLI `--output-format stream-json` and `--json-schema` flags for correct usage.
+- **TUI-TESTLIB**: ratatui-testlib (v0.1.0) needs API verification before TUI E2E tests. Deferred from Phase 7 Plan 04.
 
 ### Blockers/Concerns
 
@@ -56,5 +58,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-19
-Stopped at: v1.0 milestone complete, ready to plan v1.1
+Stopped at: Phase 7 planning complete, ready to execute
 Resume file: None

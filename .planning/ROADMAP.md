@@ -27,36 +27,35 @@ See `.planning/milestones/v1.0-ROADMAP.md` for full details.
 
 ### 🚧 v1.1 Prompt Engineering (In Progress)
 
-- [ ] **Phase 7: E2E Testing Framework** - Fake Claude, scenario API, workspace fixtures
+- [ ] **Phase 7: E2E Testing Framework** - Fake Claude (Rust), scenario API, workspace fixtures
 - [ ] **Phase 8: Verification** - Test agent and independent verification
 - [ ] **Phase 9: Notifications and Polish** - Notify scripts, prompt overrides, error refinement
 
 ## Phase Details
 
 ### Phase 7: E2E Testing Framework
-**Goal**: Comprehensive testing infrastructure with fake Claude simulation for deterministic, reproducible testing of the Ralph Wiggum Loop
+**Goal**: Comprehensive all-Rust testing infrastructure with fake Claude simulation for deterministic, reproducible testing of the Ralph Wiggum Loop
 **Depends on**: Phase 6 (TUI complete)
 **Requirements**: TEST-01 through TEST-12
 
 **Success Criteria** (what must be TRUE):
-  1. Python fake-claude package exists with fluent scenario API
-  2. Fake Claude produces stream-json format matching real Claude CLI
+  1. Rust fake-claude binary exists with fluent scenario API
+  2. Fake Claude produces stream-json format matching real Claude CLI (reuses existing types)
   3. Tool calls (Read, Write, Edit, Bash) can be simulated with configurable results
   4. Progress file manipulation (mark complete, RALPH_DONE) is testable
   5. Edge cases are covered (timeout, crash, malformed output, fast output)
-  6. Workspace fixture manages temp directories with config and source files
-  7. Verifier helpers assert on task completion, file content, git commits
-  8. UAT demo scenarios exist for visual testing
-  9. Pytest integration with fixtures works
-  10. Multi-invocation support for testing retry/failure memory
+  6. Workspace fixture manages temp directories with config and source files (Rust)
+  7. Verifier helpers assert on task completion, file content, git commits (Rust)
+  8. E2E tests verify complete integration
+  9. Multi-invocation support for testing retry/failure memory
 
 **Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 07-01-PLAN.md — Core fake-claude package with stream-json generators
-- [ ] 07-02-PLAN.md — Workspace fixtures and pytest infrastructure
-- [ ] 07-03-PLAN.md — Edge case scenarios and multi-invocation support
-- [ ] 07-04-PLAN.md — Verifier helpers and UAT demo scenarios
+- [ ] 07-01-PLAN.md — Core fake-claude infrastructure with stream-json output
+- [ ] 07-02-PLAN.md — Workspace fixtures and verifier helpers
+- [ ] 07-03-PLAN.md — Tool calls, edge cases, multi-invocation support
+- [ ] 07-04-PLAN.md — E2E integration tests
 
 ### Phase 8: Verification
 **Goal**: Test agent runs independently to verify build results

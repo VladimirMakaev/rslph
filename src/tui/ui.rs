@@ -10,8 +10,8 @@ use ratatui::{
 };
 
 use super::app::App;
-use super::widgets::output_view::render_output;
 use super::widgets::status_bar::render_header;
+use super::widgets::thread_view::render_thread;
 
 /// Render the entire TUI interface.
 ///
@@ -19,7 +19,13 @@ use super::widgets::status_bar::render_header;
 /// - Header (2 lines): Status bar with iteration/task count and context bar
 /// - Body (fills remaining): Output area for Claude messages
 /// - Footer (1 line): Key binding hints and log path
-pub fn render(frame: &mut Frame, app: &App) {
+///
+/// # Arguments
+///
+/// * `frame` - The frame to render to
+/// * `app` - Application state
+/// * `recent_count` - Number of recent messages to display
+pub fn render(frame: &mut Frame, app: &App, recent_count: usize) {
     let [header, body, footer] = Layout::vertical([
         Constraint::Length(2),  // 2-line header
         Constraint::Fill(1),    // Main output area
@@ -28,7 +34,7 @@ pub fn render(frame: &mut Frame, app: &App) {
     .areas(frame.area());
 
     render_header(frame, header, app);
-    render_body(frame, body, app);
+    render_body(frame, body, app, recent_count);
     render_footer(frame, footer, app);
 
     // Show pause overlay if paused
@@ -37,8 +43,8 @@ pub fn render(frame: &mut Frame, app: &App) {
     }
 }
 
-/// Render the main body area with output view.
-fn render_body(frame: &mut Frame, area: Rect, app: &App) {
+/// Render the main body area with thread view.
+fn render_body(frame: &mut Frame, area: Rect, app: &App, recent_count: usize) {
     // Add a subtle border at the top
     let block = Block::default()
         .borders(Borders::TOP)
@@ -47,7 +53,8 @@ fn render_body(frame: &mut Frame, area: Rect, app: &App) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    render_output(frame, inner, app);
+    // Use thread_view for styled message display
+    render_thread(frame, inner, app, recent_count);
 }
 
 /// Render the footer with key binding hints and log path.

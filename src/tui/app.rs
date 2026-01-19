@@ -193,7 +193,7 @@ impl App {
     }
 
     /// Calculate the content height for a given iteration.
-    fn content_height_for_iteration(&self, iteration: u32) -> u16 {
+    pub fn content_height_for_iteration(&self, iteration: u32) -> u16 {
         self.messages
             .iter()
             .filter(|m| m.iteration == iteration)

@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-01-17)
 
 **Core value:** Autonomous task execution with fresh context per iteration and accumulated learnings
-**Current focus:** Phase 6 - TUI Interface
+**Current focus:** Phase 6 - TUI Interface (Complete)
 
 ## Current Position
 
 Phase: 6 of 8 (TUI Interface)
-Plan: 3 of 4 in current phase
-Status: In progress
-Last activity: 2026-01-19 - Completed 06-03-PLAN.md
+Plan: 4 of 4 in current phase (COMPLETE)
+Status: Phase complete
+Last activity: 2026-01-19 - Completed 06-04-PLAN.md
 
-Progress: [█████████░] 93%
+Progress: [██████████] 100% (Phase 6 complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 15
-- Average duration: 5m 40s
-- Total execution time: 1.35 hours
+- Total plans completed: 16
+- Average duration: 5m 31s
+- Total execution time: 1.47 hours
 
 **By Phase:**
 
@@ -32,10 +32,10 @@ Progress: [█████████░] 93%
 | 03-planning-command | 2/2 | 16m | 8m |
 | 04-core-build-loop | 4/4 | 22m 41s | 5m 40s |
 | 05-vcs-integration | 1/1 | 4m | 4m |
-| 06-tui-interface | 3/4 | 9m 4s | 3m 1s |
+| 06-tui-interface | 4/4 | 17m 4s | 4m 16s |
 
 **Recent Trend:**
-- Last 5 plans: 05-01 (4m), 06-01 (2m 27s), 06-02 (2m 18s), 06-03 (4m 19s)
+- Last 5 plans: 06-01 (2m 27s), 06-02 (2m 18s), 06-03 (4m 19s), 06-04 (8m)
 - Trend: Consistent
 
 *Updated after each plan completion*
@@ -79,6 +79,9 @@ Recent decisions affecting current work:
 - **TUI-UNBOUNDED-CHANNEL**: Use unbounded channels for event handling to avoid backpressure with fast Claude output
 - **OUTPUT-ROLE-PREFIX**: Format messages as 'role: content' with indentation for multiline
 - **SCROLL-CLAMP-VIEWPORT**: Use viewport_height and content_height for scroll bounds
+- **TUI-LOG-ROUTING**: Route logs through TUI channel when active to prevent stderr corruption
+- **BUILDCONTEXT-TUI-TX**: Add optional tui_tx sender to BuildContext for log routing
+- **LOG-AS-SYSTEM-MESSAGE**: Display log messages as 'system' role in thread view
 
 ### Pending Todos
 
@@ -91,6 +94,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-19 01:43 UTC
-Stopped at: Completed 06-03-PLAN.md (Live Output View & Streaming)
+Last session: 2026-01-19 04:00 UTC
+Stopped at: Completed 06-04-PLAN.md (Thread View, Keybindings, & Integration)
 Resume file: None

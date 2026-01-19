@@ -1,0 +1,28 @@
+---
+source: tests/e2e/tui_tests.rs
+expression: terminal.backend()
+---
+"rslph                                             test-project (claude-sonnet-4)"
+"Iter 1/5 | Task 0/0 |                             0%                            "
+"────────────────────────────────────────────────────────────────────────────────"
+"Claude (Iteration 1)                                                            "
+"   Claude: Some output message.                                                 "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"j/k:scroll  Tab:select  Enter:toggle  {/}:iteration  p:pause  Ctrl+C:quit       "

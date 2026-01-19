@@ -119,13 +119,13 @@ Plans:
   5. Conversation threads are collapsible with configurable recent count
   6. Keyboard navigation works (scroll, expand/collapse, quit)
   7. Link/path to full log is accessible
-**Plans**: TBD
+**Plans**: 4 plans in 3 waves
 
 Plans:
-- [ ] 06-01: Terminal setup, panic hooks, raw mode
-- [ ] 06-02: Status bar and progress widgets
-- [ ] 06-03: Live output view with scrolling
-- [ ] 06-04: Collapsible threads and keyboard navigation
+- [ ] 06-01-PLAN.md — Terminal setup, panic hooks, app state, event handler [Wave 1]
+- [ ] 06-02-PLAN.md — Status bar header and progress bar widgets [Wave 2, depends on 06-01]
+- [ ] 06-03-PLAN.md — Live output view with scrolling and ClaudeRunner channel integration [Wave 2, depends on 06-01]
+- [ ] 06-04-PLAN.md — Thread view, keyboard navigation, build command integration [Wave 3, depends on 06-02, 06-03]
 
 ### Phase 7: Verification
 **Goal**: Test agent runs independently to verify build results
@@ -168,6 +168,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 3. Planning Command | 2/2 | Complete | 2026-01-18 |
 | 4. Core Build Loop | 4/4 | Complete | 2026-01-18 |
 | 5. VCS Integration | 2/2 | Complete | 2026-01-18 |
-| 6. TUI Interface | 0/4 | Not started | - |
+| 6. TUI Interface | 0/4 | Ready to execute | - |
 | 7. Verification | 0/1 | Not started | - |
 | 8. Notifications and Polish | 0/2 | Not started | - |

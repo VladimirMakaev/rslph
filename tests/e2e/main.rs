@@ -12,6 +12,9 @@ mod scenario_tests;
 mod test_basic_loop;
 mod test_edge_cases;
 
+// True E2E integration tests (Plan 07-05)
+mod test_rslph_integration;
+
 // Include fake_claude_lib for scenario builder access
 #[path = "../fake_claude_lib/mod.rs"]
 mod fake_claude_lib;

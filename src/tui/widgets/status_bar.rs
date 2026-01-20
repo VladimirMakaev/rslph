@@ -2,7 +2,7 @@
 //!
 //! Renders the 2-line header showing:
 //! - Line 1: "rslph" branding on left, "project (model)" on right
-//! - Line 2: Iteration/task counts and context usage bar
+//! - Line 2: Iteration/task counts, token usage, and context usage bar
 
 use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
@@ -11,6 +11,7 @@ use ratatui::{
     Frame,
 };
 
+use crate::build::tokens::format_tokens;
 use crate::tui::app::App;
 use crate::tui::widgets::progress_bar::render_context_bar;
 
@@ -39,12 +40,19 @@ fn render_branding_line(frame: &mut Frame, area: Rect, app: &App) {
     );
 }
 
-/// Render the second line: iteration/task counts and context bar.
+/// Render the second line: iteration/task counts, token usage, and context bar.
 fn render_status_line(frame: &mut Frame, area: Rect, app: &App) {
-    // Format the status text
+    // Format the status text with token counts (per CONTEXT.md decision - abbreviated format)
     let status_text = format!(
-        "Iter {}/{} | Task {}/{} | ",
-        app.current_iteration, app.max_iterations, app.current_task, app.total_tasks
+        "Iter {}/{} | Task {}/{} | In: {} | Out: {} | CacheW: {} | CacheR: {} | ",
+        app.current_iteration,
+        app.max_iterations,
+        app.current_task,
+        app.total_tasks,
+        format_tokens(app.total_tokens.input_tokens),
+        format_tokens(app.total_tokens.output_tokens),
+        format_tokens(app.total_tokens.cache_creation_input_tokens),
+        format_tokens(app.total_tokens.cache_read_input_tokens),
     );
 
     // Calculate widths - status text on left, context bar fills remaining

@@ -82,10 +82,10 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TOK-01 | Phase 8 | Pending |
-| TOK-02 | Phase 8 | Pending |
-| TOK-03 | Phase 8 | Pending |
-| TOK-04 | Phase 8 | Pending |
+| TOK-01 | Phase 8 | Complete |
+| TOK-02 | Phase 8 | Complete |
+| TOK-03 | Phase 8 | Complete |
+| TOK-04 | Phase 8 | Complete |
 | EVAL-01 | Phase 9 | Pending |
 | EVAL-02 | Phase 10 | Pending |
 | EVAL-03 | Phase 10 | Pending |

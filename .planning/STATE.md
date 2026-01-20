@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 8 - Token Tracking
-Plan: —
-Status: Ready for planning
-Last activity: 2026-01-20 — Roadmap created for v1.2
+Plan: 02 of ? (Token Display)
+Status: In progress
+Last activity: 2026-01-20 — Completed 08-02-PLAN.md
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [░░░░░░░░░░] 0% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#░░░░░░░░░] 10% v1.2
 
 ## Phase Summary (v1.2)
 
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
-| 8 - Token Tracking | Users can observe token consumption | TOK-01, TOK-02, TOK-03, TOK-04 | Pending |
+| 8 - Token Tracking | Users can observe token consumption | TOK-01, TOK-02, TOK-03, TOK-04 | In Progress |
 | 9 - Eval Foundation | Controlled benchmarks in isolation | EVAL-01, EVAL-04, EVAL-05 | Pending |
 | 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | Pending |
 | 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Pending |
@@ -40,6 +40,11 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [░░░░░░�
 - Total execution time: 29m 18s
 - Shipped: 2026-01-19 (same day)
 
+**v1.2 Velocity:**
+- Total plans completed: 1
+- Average duration: 5m 16s
+- Total execution time: 5m 16s
+
 **By Phase (v1.0):**
 
 | Phase | Plans | Total | Avg/Plan |
@@ -58,6 +63,12 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [░░░░░░�
 | 07-e2e-testing-framework | 5/5 | 26m | 5m 12s |
 | 07.1-tui-testing | 1/1 | 3m 18s | 3m 18s |
 
+**By Phase (v1.2):**
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 08-token-tracking | 1/? | 5m 16s | 5m 16s |
+
 *Updated after each plan completion*
 
 ## Accumulated Context
@@ -67,6 +78,12 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [░░░░░░�
 All decisions are archived in milestone roadmap files:
 - `.planning/milestones/v1.0-ROADMAP.md`
 - `.planning/milestones/v1.1-ROADMAP.md`
+
+**v1.2 Decisions (Phase 8):**
+
+| ID | Decision | Choice |
+|----|----------|--------|
+| token-display-format | Status bar token format | "In: X \| Out: Y \| CacheW: Z \| CacheR: W" |
 
 ### Pending Todos
 
@@ -79,6 +96,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-20
-Stopped at: Roadmap created for v1.2
+Last session: 2026-01-20 02:14 UTC
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None

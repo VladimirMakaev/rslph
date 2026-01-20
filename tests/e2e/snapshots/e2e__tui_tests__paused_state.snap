@@ -3,7 +3,7 @@ source: tests/e2e/tui_tests.rs
 expression: terminal.backend()
 ---
 "rslph                                             test-project (claude-sonnet-4)"
-"Iter 1/5 | Task 0/0 |                             0%                            "
+"Iter 1/5 | Task 0/0 | In: 0 | Out: 0 | CacheW: 0 | CacheR: 0 |        0%        "
 "────────────────────────────────────────────────────────────────────────────────"
 "Claude (Iteration 1)                                                            "
 "   Claude: I've read the main.rs file. It contains a simpl...                   "

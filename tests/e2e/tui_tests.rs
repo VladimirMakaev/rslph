@@ -226,3 +226,119 @@ fn test_context_usage_display() {
 
     assert_snapshot!(terminal.backend());
 }
+
+// ============================================================================
+// Token Display Tests (Task 3 - Plan 08-03)
+// ============================================================================
+
+/// Test that status bar displays token usage values.
+///
+/// Verifies the status bar shows "In: X | Out: Y | CacheW: Z | CacheR: W" format
+/// with deterministic token values for reproducible snapshots.
+#[test]
+fn test_status_bar_displays_tokens() {
+    let mut terminal = test_terminal();
+    let mut app = App::new(10, "claude-opus-4-5", "test-project");
+
+    // Start iteration
+    app.update(AppEvent::IterationStart { iteration: 3 });
+    app.update(AppEvent::ClaudeOutput("Testing token display.".to_string()));
+
+    // Set task progress
+    app.current_task = 2;
+    app.total_tasks = 5;
+
+    // Set deterministic token values for snapshot
+    // Values chosen to test human_format abbreviations (5.2k, 10.9k, etc.)
+    app.update(AppEvent::TokenUsage {
+        input_tokens: 5200,
+        output_tokens: 10900,
+        cache_creation_input_tokens: 2100,
+        cache_read_input_tokens: 1500,
+    });
+
+    terminal
+        .draw(|frame| render(frame, &app, 10))
+        .unwrap();
+
+    // Snapshot should show token values in abbreviated format
+    assert_snapshot!(terminal.backend());
+}
+
+/// Test status bar with zero tokens (initial state).
+///
+/// Verifies the status bar shows "In: 0 | Out: 0 | CacheW: 0 | CacheR: 0"
+/// when no token usage has been reported.
+#[test]
+fn test_status_bar_zero_tokens() {
+    let mut terminal = test_terminal();
+    let app = App::new(10, "claude-opus-4-5", "test-project");
+    // Default app has zero tokens
+
+    terminal
+        .draw(|frame| render(frame, &app, 10))
+        .unwrap();
+
+    // Snapshot should show zero token values
+    assert_snapshot!(terminal.backend());
+}
+
+/// Test status bar with large token values (millions).
+///
+/// Verifies the human_format library correctly abbreviates large numbers.
+#[test]
+fn test_status_bar_large_tokens() {
+    let mut terminal = test_terminal();
+    let mut app = App::new(10, "claude-opus-4-5", "test-project");
+
+    // Start iteration
+    app.update(AppEvent::IterationStart { iteration: 1 });
+
+    // Set large token values (millions)
+    app.update(AppEvent::TokenUsage {
+        input_tokens: 1_234_567,
+        output_tokens: 567_890,
+        cache_creation_input_tokens: 123_456,
+        cache_read_input_tokens: 789_012,
+    });
+
+    terminal
+        .draw(|frame| render(frame, &app, 10))
+        .unwrap();
+
+    // Snapshot should show abbreviated values (e.g., 1.2M, 567.9k)
+    assert_snapshot!(terminal.backend());
+}
+
+/// Test that token values update correctly across iterations.
+#[test]
+fn test_token_values_across_iterations() {
+    let mut terminal = test_terminal();
+    let mut app = App::new(10, "claude-opus-4-5", "test-project");
+
+    // First iteration with some tokens
+    app.update(AppEvent::IterationStart { iteration: 1 });
+    app.update(AppEvent::TokenUsage {
+        input_tokens: 1000,
+        output_tokens: 500,
+        cache_creation_input_tokens: 0,
+        cache_read_input_tokens: 0,
+    });
+    app.update(AppEvent::IterationComplete { tasks_done: 1 });
+
+    // Second iteration with more tokens (values update)
+    app.update(AppEvent::IterationStart { iteration: 2 });
+    app.update(AppEvent::TokenUsage {
+        input_tokens: 3500,
+        output_tokens: 1800,
+        cache_creation_input_tokens: 500,
+        cache_read_input_tokens: 1200,
+    });
+
+    terminal
+        .draw(|frame| render(frame, &app, 10))
+        .unwrap();
+
+    // Snapshot shows updated token values from second iteration
+    assert_snapshot!(terminal.backend());
+}

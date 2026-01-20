@@ -310,9 +310,14 @@ fn test_status_bar_large_tokens() {
     assert_snapshot!(terminal.backend());
 }
 
-/// Test that token values update correctly across iterations.
+/// Test that token values ACCUMULATE correctly across iterations.
+///
+/// This verifies the += accumulation behavior (not = overwrite).
+/// Iteration 1: 1000 in, 500 out
+/// Iteration 2: +2500 in, +1300 out (additional)
+/// Expected total: 3500 in, 1800 out, 500 cacheW, 1200 cacheR
 #[test]
-fn test_token_values_across_iterations() {
+fn test_token_accumulation_across_iterations() {
     let mut terminal = test_terminal();
     let mut app = App::new(10, "claude-opus-4-5", "test-project");
 
@@ -326,11 +331,11 @@ fn test_token_values_across_iterations() {
     });
     app.update(AppEvent::IterationComplete { tasks_done: 1 });
 
-    // Second iteration with more tokens (values update)
+    // Second iteration with MORE tokens (these ADD to iteration 1)
     app.update(AppEvent::IterationStart { iteration: 2 });
     app.update(AppEvent::TokenUsage {
-        input_tokens: 3500,
-        output_tokens: 1800,
+        input_tokens: 2500,  // Total now: 1000 + 2500 = 3500
+        output_tokens: 1300, // Total now: 500 + 1300 = 1800
         cache_creation_input_tokens: 500,
         cache_read_input_tokens: 1200,
     });
@@ -339,6 +344,6 @@ fn test_token_values_across_iterations() {
         .draw(|frame| render(frame, &app, 10))
         .unwrap();
 
-    // Snapshot shows updated token values from second iteration
+    // Snapshot should show CUMULATIVE values: 3.5k in, 1.8k out
     assert_snapshot!(terminal.backend());
 }

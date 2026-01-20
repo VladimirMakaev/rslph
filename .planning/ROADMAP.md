@@ -34,12 +34,13 @@ Current milestone: v1.2 "Context Engineering" — Build an evaluation framework 
 3. Token counts survive iteration boundaries via BuildState persistence
 4. Plan command reports token consumption for planning phase
 
-**Plans:** 3 plans
+**Plans:** 4 plans
 
 Plans:
 - [x] 08-01-PLAN.md — Core token tracking infrastructure (types, accumulation, event routing)
 - [x] 08-02-PLAN.md — TUI display and plan command token reporting
 - [x] 08-03-PLAN.md — E2E and TUI tests with configurable fake Claude tokens
+- [ ] 08-04-PLAN.md — Gap closure: fix token accumulation bug and add snapshot tests
 
 ---
 
@@ -148,7 +149,7 @@ Plans:
 | 6. TUI Interface | v1.0 | 4/4 | Complete | 2026-01-19 |
 | 7. E2E Testing Framework | v1.1 | 5/5 | Complete | 2026-01-19 |
 | 7.1 TUI Testing | v1.1 | 1/1 | Complete | 2026-01-19 |
-| 8. Token Tracking | v1.2 | 3/3 | Complete | 2026-01-20 |
+| 8. Token Tracking | v1.2 | 3/4 | In Progress | — |
 | 9. Eval Command Foundation | v1.2 | 0/? | Pending | — |
 | 10. Eval Projects and Testing | v1.2 | 0/? | Pending | — |
 | 11. Prompt Engineering | v1.2 | 0/? | Pending | — |

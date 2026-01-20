@@ -6,6 +6,6 @@ pub mod config;
 pub mod scenario;
 pub mod stream_json;
 
-pub use config::{FakeClaudeConfig, InvocationConfig};
+pub use config::{FakeClaudeConfig, InvocationConfig, TokenConfig};
 pub use scenario::{FakeClaudeHandle, ScenarioBuilder};
 pub use stream_json::StreamEventOutput;

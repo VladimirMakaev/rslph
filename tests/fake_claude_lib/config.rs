@@ -8,6 +8,28 @@ use std::path::PathBuf;
 
 use super::stream_json::StreamEventOutput;
 
+/// Token usage configuration for an invocation.
+///
+/// Allows tests to specify deterministic token values for reproducible results.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TokenConfig {
+    pub input_tokens: u64,
+    pub output_tokens: u64,
+    pub cache_creation_input_tokens: u64,
+    pub cache_read_input_tokens: u64,
+}
+
+impl Default for TokenConfig {
+    fn default() -> Self {
+        Self {
+            input_tokens: 100,
+            output_tokens: 50,
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: 0,
+        }
+    }
+}
+
 /// Configuration for the fake Claude binary.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FakeClaudeConfig {
@@ -39,4 +61,8 @@ pub struct InvocationConfig {
     /// Exit code to return (defaults to 0).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exit_code: Option<i32>,
+
+    /// Token configuration for this invocation's responses.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token_config: Option<TokenConfig>,
 }

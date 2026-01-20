@@ -6,7 +6,7 @@ use serde_json::json;
 use std::path::PathBuf;
 use tempfile::TempDir;
 
-use super::config::{FakeClaudeConfig, InvocationConfig};
+use super::config::{FakeClaudeConfig, InvocationConfig, TokenConfig};
 use super::stream_json::StreamEventOutput;
 
 /// Builder for configuring fake Claude scenarios.
@@ -34,22 +34,57 @@ impl ScenarioBuilder {
     /// Add a text response to the current invocation.
     ///
     /// This adds a system init event followed by the assistant text response.
+    /// Uses configured token values if `with_token_usage` was called, otherwise defaults.
     pub fn respond_with_text(mut self, text: &str) -> Self {
         // Add system init event first (like real Claude CLI)
         self.current_invocation
             .events
             .push(StreamEventOutput::system_init());
 
-        // Add assistant text response
-        self.current_invocation
-            .events
-            .push(StreamEventOutput::assistant_text(text));
+        // Use configured tokens or default
+        let event = if let Some(ref tokens) = self.current_invocation.token_config {
+            StreamEventOutput::assistant_text_with_tokens(text, tokens)
+        } else {
+            StreamEventOutput::assistant_text(text)
+        };
+        self.current_invocation.events.push(event);
 
-        // Add result event
-        self.current_invocation
-            .events
-            .push(StreamEventOutput::result(0.001));
+        // Add result event with same token config
+        let result_event = if let Some(ref tokens) = self.current_invocation.token_config {
+            StreamEventOutput::result_with_tokens(0.001, tokens)
+        } else {
+            StreamEventOutput::result(0.001)
+        };
+        self.current_invocation.events.push(result_event);
 
+        self
+    }
+
+    /// Set token usage for the current invocation's responses.
+    ///
+    /// All assistant and result events in this invocation will use these token values.
+    /// Must be called before `respond_with_text` or other response methods.
+    ///
+    /// # Example
+    /// ```
+    /// let handle = ScenarioBuilder::new()
+    ///     .with_token_usage(5000, 1500, 2000, 1000)
+    ///     .respond_with_text("Response with custom tokens")
+    ///     .build();
+    /// ```
+    pub fn with_token_usage(
+        mut self,
+        input_tokens: u64,
+        output_tokens: u64,
+        cache_creation: u64,
+        cache_read: u64,
+    ) -> Self {
+        self.current_invocation.token_config = Some(TokenConfig {
+            input_tokens,
+            output_tokens,
+            cache_creation_input_tokens: cache_creation,
+            cache_read_input_tokens: cache_read,
+        });
         self
     }
 
@@ -72,59 +107,76 @@ impl ScenarioBuilder {
     }
 
     /// Add Read tool use to current invocation.
+    /// Uses configured token values if `with_token_usage` was called.
     pub fn uses_read(mut self, path: &str) -> Self {
-        let event = StreamEventOutput::tool_use(
-            "Read",
-            json!({
-                "file_path": path
-            }),
-        );
+        let input = json!({
+            "file_path": path
+        });
+        let event = if let Some(ref tokens) = self.current_invocation.token_config {
+            StreamEventOutput::tool_use_with_tokens("Read", input, tokens)
+        } else {
+            StreamEventOutput::tool_use("Read", input)
+        };
         self.current_invocation.events.push(event);
         self
     }
 
     /// Add Write tool use to current invocation.
+    /// Uses configured token values if `with_token_usage` was called.
     pub fn uses_write(mut self, path: &str, content: &str) -> Self {
-        let event = StreamEventOutput::tool_use(
-            "Write",
-            json!({
-                "file_path": path,
-                "content": content
-            }),
-        );
+        let input = json!({
+            "file_path": path,
+            "content": content
+        });
+        let event = if let Some(ref tokens) = self.current_invocation.token_config {
+            StreamEventOutput::tool_use_with_tokens("Write", input, tokens)
+        } else {
+            StreamEventOutput::tool_use("Write", input)
+        };
         self.current_invocation.events.push(event);
         self
     }
 
     /// Add Edit tool use to current invocation.
+    /// Uses configured token values if `with_token_usage` was called.
     pub fn uses_edit(mut self, path: &str, old_string: &str, new_string: &str) -> Self {
-        let event = StreamEventOutput::tool_use(
-            "Edit",
-            json!({
-                "file_path": path,
-                "old_string": old_string,
-                "new_string": new_string
-            }),
-        );
+        let input = json!({
+            "file_path": path,
+            "old_string": old_string,
+            "new_string": new_string
+        });
+        let event = if let Some(ref tokens) = self.current_invocation.token_config {
+            StreamEventOutput::tool_use_with_tokens("Edit", input, tokens)
+        } else {
+            StreamEventOutput::tool_use("Edit", input)
+        };
         self.current_invocation.events.push(event);
         self
     }
 
     /// Add Bash tool use to current invocation.
+    /// Uses configured token values if `with_token_usage` was called.
     pub fn uses_bash(mut self, command: &str) -> Self {
-        let event = StreamEventOutput::tool_use(
-            "Bash",
-            json!({
-                "command": command
-            }),
-        );
+        let input = json!({
+            "command": command
+        });
+        let event = if let Some(ref tokens) = self.current_invocation.token_config {
+            StreamEventOutput::tool_use_with_tokens("Bash", input, tokens)
+        } else {
+            StreamEventOutput::tool_use("Bash", input)
+        };
         self.current_invocation.events.push(event);
         self
     }
 
     /// Add generic tool use (for less common tools or custom testing).
+    /// Uses configured token values if `with_token_usage` was called.
     pub fn uses_tool(mut self, name: &str, input: serde_json::Value) -> Self {
-        let event = StreamEventOutput::tool_use(name, input);
+        let event = if let Some(ref tokens) = self.current_invocation.token_config {
+            StreamEventOutput::tool_use_with_tokens(name, input, tokens)
+        } else {
+            StreamEventOutput::tool_use(name, input)
+        };
         self.current_invocation.events.push(event);
         self
     }

@@ -7,6 +7,8 @@
 use serde::{Deserialize, Serialize};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+use super::config::TokenConfig;
+
 /// Global counter for generating unique tool IDs.
 static TOOL_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -120,6 +122,26 @@ pub struct UsageOutput {
     pub cache_read_input_tokens: Option<u64>,
 }
 
+impl UsageOutput {
+    /// Create UsageOutput from TokenConfig.
+    pub fn from_config(config: &TokenConfig) -> Self {
+        Self {
+            input_tokens: config.input_tokens,
+            output_tokens: config.output_tokens,
+            cache_creation_input_tokens: if config.cache_creation_input_tokens > 0 {
+                Some(config.cache_creation_input_tokens)
+            } else {
+                None
+            },
+            cache_read_input_tokens: if config.cache_read_input_tokens > 0 {
+                Some(config.cache_read_input_tokens)
+            } else {
+                None
+            },
+        }
+    }
+}
+
 impl ContentBlockOutput {
     /// Create a text content block.
     pub fn text(text: &str) -> Self {
@@ -173,6 +195,13 @@ impl ContentBlockOutput {
 impl StreamEventOutput {
     /// Create an assistant text response event.
     pub fn assistant_text(text: &str) -> Self {
+        Self::assistant_text_with_tokens(text, &TokenConfig::default())
+    }
+
+    /// Create an assistant text response with custom token usage.
+    ///
+    /// Allows tests to specify deterministic token values for reproducible results.
+    pub fn assistant_text_with_tokens(text: &str, tokens: &TokenConfig) -> Self {
         let content_block = ContentBlockOutput {
             block_type: "text".to_string(),
             text: Some(text.to_string()),
@@ -190,12 +219,7 @@ impl StreamEventOutput {
                 content: MessageContentOutput::Blocks(vec![content_block]),
                 model: Some("claude-opus-4-5-20251101".to_string()),
                 stop_reason: Some("end_turn".to_string()),
-                usage: Some(UsageOutput {
-                    input_tokens: 100,
-                    output_tokens: 50,
-                    cache_creation_input_tokens: None,
-                    cache_read_input_tokens: None,
-                }),
+                usage: Some(UsageOutput::from_config(tokens)),
             }),
             uuid: Some(uuid_v4_simple()),
             timestamp: Some(chrono::Utc::now().to_rfc3339()),
@@ -214,7 +238,11 @@ impl StreamEventOutput {
 
     /// Create a result/summary event.
     pub fn result(cost_usd: f64) -> Self {
-        // The result event type is "result" in the real Claude CLI
+        Self::result_with_tokens(cost_usd, &TokenConfig::default())
+    }
+
+    /// Create a result/summary event with custom token usage.
+    pub fn result_with_tokens(cost_usd: f64, tokens: &TokenConfig) -> Self {
         Self {
             event_type: "result".to_string(),
             message: Some(MessageOutput {
@@ -223,12 +251,7 @@ impl StreamEventOutput {
                 content: MessageContentOutput::Text(format!("Cost: ${:.4}", cost_usd)),
                 model: None,
                 stop_reason: None,
-                usage: Some(UsageOutput {
-                    input_tokens: 100,
-                    output_tokens: 50,
-                    cache_creation_input_tokens: None,
-                    cache_read_input_tokens: None,
-                }),
+                usage: Some(UsageOutput::from_config(tokens)),
             }),
             uuid: Some(uuid_v4_simple()),
             timestamp: Some(chrono::Utc::now().to_rfc3339()),
@@ -246,8 +269,27 @@ impl StreamEventOutput {
         )
     }
 
+    /// Create a tool_use assistant event with custom token usage.
+    pub fn tool_use_with_tokens(name: &str, input: serde_json::Value, tokens: &TokenConfig) -> Self {
+        let id = next_tool_id();
+        Self::assistant_with_blocks_and_tokens(
+            vec![ContentBlockOutput::tool_use(&id, name, input)],
+            Some("tool_use"),
+            tokens,
+        )
+    }
+
     /// Create an assistant event with multiple content blocks.
     pub fn assistant_with_blocks(blocks: Vec<ContentBlockOutput>, stop_reason: Option<&str>) -> Self {
+        Self::assistant_with_blocks_and_tokens(blocks, stop_reason, &TokenConfig::default())
+    }
+
+    /// Create an assistant event with multiple content blocks and custom tokens.
+    pub fn assistant_with_blocks_and_tokens(
+        blocks: Vec<ContentBlockOutput>,
+        stop_reason: Option<&str>,
+        tokens: &TokenConfig,
+    ) -> Self {
         Self {
             event_type: "assistant".to_string(),
             message: Some(MessageOutput {
@@ -256,12 +298,7 @@ impl StreamEventOutput {
                 content: MessageContentOutput::Blocks(blocks),
                 model: Some("claude-opus-4-5-20251101".to_string()),
                 stop_reason: stop_reason.map(|s| s.to_string()),
-                usage: Some(UsageOutput {
-                    input_tokens: 100,
-                    output_tokens: 50,
-                    cache_creation_input_tokens: None,
-                    cache_read_input_tokens: None,
-                }),
+                usage: Some(UsageOutput::from_config(tokens)),
             }),
             uuid: Some(uuid_v4_simple()),
             timestamp: Some(chrono::Utc::now().to_rfc3339()),

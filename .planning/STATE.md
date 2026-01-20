@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 8 - Token Tracking
-Plan: 01 of ? (Core Infrastructure) - COMPLETE
-Status: Plan 01 verified complete
-Last activity: 2026-01-20 — Verified 08-01-PLAN.md complete
+Plan: 03 of ? (Token Tracking Tests) - COMPLETE
+Status: Plan 03 verified complete
+Last activity: 2026-01-20 — Completed 08-03-PLAN.md (Token Tracking Tests)
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#░░░░░░░░░] 10% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [###░░░░░░░] 30% v1.2
 
 ## Phase Summary (v1.2)
 
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
-| 8 - Token Tracking | Users can observe token consumption | TOK-01, TOK-02, TOK-03, TOK-04 | In Progress |
+| 8 - Token Tracking | Users can observe token consumption | TOK-01, TOK-02, TOK-03, TOK-04 | In Progress (3 plans complete) |
 | 9 - Eval Foundation | Controlled benchmarks in isolation | EVAL-01, EVAL-04, EVAL-05 | Pending |
 | 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | Pending |
 | 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Pending |
@@ -41,9 +41,9 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#░░░░░░
 - Shipped: 2026-01-19 (same day)
 
 **v1.2 Velocity:**
-- Total plans completed: 1
-- Average duration: 5m 16s
-- Total execution time: 5m 16s
+- Total plans completed: 3
+- Average duration: 5m 20s
+- Total execution time: 16m
 
 **By Phase (v1.0):**
 
@@ -67,7 +67,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#░░░░░░
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 08-token-tracking | 1/? | 5m 16s | 5m 16s |
+| 08-token-tracking | 3/? | 16m | 5m 20s |
 
 *Updated after each plan completion*
 
@@ -87,6 +87,7 @@ All decisions are archived in milestone roadmap files:
 | token-formatting-lib | Number formatting library | human_format crate for SI suffixes (5.2k, 1.2M) |
 | token-accumulation | Token accumulation approach | Per-iteration from final StreamResponse usage |
 | token-field-tracking | Fields to track | All 4: input, output, cache_creation, cache_read |
+| token-config-location | Fake Claude token config | TokenConfig in fake_claude_lib with ScenarioBuilder integration |
 
 ### Pending Todos
 
@@ -99,6 +100,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-20 02:30 UTC
-Stopped at: Verified 08-01-PLAN.md complete (SUMMARY created)
+Last session: 2026-01-20 02:23 UTC
+Stopped at: Completed 08-03-PLAN.md (Token Tracking Tests)
 Resume file: None

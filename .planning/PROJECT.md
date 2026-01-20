@@ -6,8 +6,8 @@ A Rust CLI application implementing the Ralph Wiggum Loop — an autonomous AI c
 
 ## Current State
 
-**Version:** v1.0 "MVP" (shipped 2026-01-19)
-**Lines of code:** 8,762 Rust
+**Version:** v1.1 "Testing Enhancement" (shipped 2026-01-19)
+**Lines of code:** ~11,000 Rust
 **Tech stack:** Rust, ratatui (TUI), figment (config), clap (CLI), tokio (async)
 
 **What works:**
@@ -15,6 +15,20 @@ A Rust CLI application implementing the Ralph Wiggum Loop — an autonomous AI c
 - `rslph build progress.md` — iterates autonomously with fresh context, auto-commits
 - Rich TUI with status bar, live output, collapsible threads, keyboard navigation
 - Git and Sapling VCS support with auto-detection
+- Fake Claude binary for deterministic E2E testing
+- ScenarioBuilder/WorkspaceBuilder fluent APIs for test fixtures
+- 26 E2E tests + TUI snapshot testing
+
+## Current Milestone: v1.2 Context Engineering
+
+**Goal:** Build an evaluation framework to measure agent performance and improve the context engineering (prompts, iteration structure, test-driven flow) that drives autonomous execution.
+
+**Target features:**
+- Token consumption tracking in plan/build commands (via stream-json parsing)
+- `rslph eval` command for running controlled benchmarks
+- Built-in eval projects with hidden test suites
+- Test-driven iteration flow (write failing tests → implement → refactor)
+- Research and adopt GSD's prompt engineering patterns
 
 ## Core Value
 
@@ -22,7 +36,7 @@ Autonomous task execution with fresh context per iteration and accumulated learn
 
 ## Requirements
 
-### Validated (v1.0)
+### Validated (v1.0, v1.1)
 
 - ✓ `rslph plan <plan>` command with basic and adaptive modes — v1.0
 - ✓ `rslph build <plan>` command with autonomous iteration — v1.0
@@ -32,10 +46,19 @@ Autonomous task execution with fresh context per iteration and accumulated learn
 - ✓ Rich TUI with status bar, live output, collapsible threads — v1.0
 - ✓ TOML config with layered precedence (defaults < file < env < CLI) — v1.0
 - ✓ Ctrl+C graceful handling and timeout support — v1.0
+- ✓ E2E Testing Framework with fake Claude simulation — v1.1
+- ✓ TUI snapshot testing with TestBackend + insta — v1.1
 
-### Active (v1.1)
+### Active (v1.2)
 
-- [ ] E2E Testing Framework with fake Claude simulation
+- [ ] Token consumption tracking in plan/build via stream-json
+- [ ] `rslph eval` command for controlled benchmarks
+- [ ] Built-in eval projects with hidden test suites
+- [ ] Test-driven iteration flow (failing tests → implement → refactor)
+- [ ] GSD-inspired prompt engineering patterns
+
+### Future
+
 - [ ] Verification agent (separate from build loop)
 - [ ] Notification system (completion, failure, intervals)
 - [ ] User-overridable prompts via config file paths
@@ -82,4 +105,4 @@ Autonomous task execution with fresh context per iteration and accumulated learn
 - **STREAM-JSON-RESEARCH**: Need to research Claude CLI `--output-format stream-json` and `--json-schema` flags for correct usage
 
 ---
-*Last updated: 2026-01-19 after v1.0 MVP milestone*
+*Last updated: 2026-01-20 — v1.2 Context Engineering milestone started*

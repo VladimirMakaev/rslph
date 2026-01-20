@@ -2,18 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-19)
+See: .planning/PROJECT.md (updated 2026-01-20)
 
 **Core value:** Autonomous task execution with fresh context per iteration and accumulated learnings
-**Current focus:** All milestones complete (v1.0, v1.1)
+**Current focus:** v1.2 Context Engineering — eval system + test-driven flow
 
 ## Current Position
 
-Phase: All phases complete
-Status: Ready for next milestone
-Last activity: 2026-01-19 - v1.1 Testing Enhancement milestone complete
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-01-20 — Milestone v1.2 started
 
-Progress: [██████████] 100% v1.0 | [██████████] 100% v1.1
+Progress: [██████████] 100% v1.0 | [██████████] 100% v1.1 | [░░░░░░░░░░] 0% v1.2
 
 ## Performance Metrics
 

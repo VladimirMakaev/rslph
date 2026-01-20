@@ -26,6 +26,13 @@ pub enum SubprocessEvent {
     ToolUse { tool_name: String, content: String },
     /// Updated context usage ratio.
     Usage(f64),
+    /// Token usage update from stream event.
+    TokenUsage {
+        input_tokens: u64,
+        output_tokens: u64,
+        cache_creation_input_tokens: u64,
+        cache_read_input_tokens: u64,
+    },
     /// New iteration is starting (sets current_iteration).
     IterationStart { iteration: u32 },
     /// Iteration completed.
@@ -42,6 +49,17 @@ impl From<SubprocessEvent> for AppEvent {
                 AppEvent::ToolMessage { tool_name, content }
             }
             SubprocessEvent::Usage(ratio) => AppEvent::ContextUsage(ratio),
+            SubprocessEvent::TokenUsage {
+                input_tokens,
+                output_tokens,
+                cache_creation_input_tokens,
+                cache_read_input_tokens,
+            } => AppEvent::TokenUsage {
+                input_tokens,
+                output_tokens,
+                cache_creation_input_tokens,
+                cache_read_input_tokens,
+            },
             SubprocessEvent::IterationStart { iteration } => {
                 AppEvent::IterationStart { iteration }
             }
@@ -231,6 +249,23 @@ mod tests {
         let usage = SubprocessEvent::Usage(0.75);
         let app_event: AppEvent = usage.into();
         assert!(matches!(app_event, AppEvent::ContextUsage(r) if (r - 0.75).abs() < f64::EPSILON));
+
+        let token_usage = SubprocessEvent::TokenUsage {
+            input_tokens: 5000,
+            output_tokens: 1500,
+            cache_creation_input_tokens: 2000,
+            cache_read_input_tokens: 1000,
+        };
+        let app_event: AppEvent = token_usage.into();
+        assert!(matches!(
+            app_event,
+            AppEvent::TokenUsage {
+                input_tokens: 5000,
+                output_tokens: 1500,
+                cache_creation_input_tokens: 2000,
+                cache_read_input_tokens: 1000,
+            }
+        ));
 
         let done = SubprocessEvent::IterationDone { tasks_done: 5 };
         let app_event: AppEvent = done.into();

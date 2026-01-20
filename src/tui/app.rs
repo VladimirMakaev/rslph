@@ -6,6 +6,8 @@
 use std::fmt;
 use std::path::PathBuf;
 
+use crate::build::tokens::TokenUsage;
+
 /// A group of consecutive tool uses under a common header.
 ///
 /// This provides Claude CLI-like grouped display where consecutive
@@ -312,6 +314,10 @@ pub struct App {
     /// Maximum system messages to keep expanded (rolling limit).
     pub max_system_expanded: usize,
 
+    // Token tracking state
+    /// Cumulative token usage across all iterations.
+    pub total_tokens: TokenUsage,
+
     // Backwards compatibility - keep for existing code
     /// Currently selected message index (deprecated, use selected_group).
     pub selected_message: Option<usize>,
@@ -338,6 +344,7 @@ impl Default for App {
             is_paused: false,
             should_quit: false,
             max_system_expanded: 5,
+            total_tokens: TokenUsage::default(),
             selected_message: None,
         }
     }
@@ -420,6 +427,19 @@ impl App {
             }
             AppEvent::ContextUsage(ratio) => {
                 self.context_usage = ratio.clamp(0.0, 1.0);
+            }
+            AppEvent::TokenUsage {
+                input_tokens,
+                output_tokens,
+                cache_creation_input_tokens,
+                cache_read_input_tokens,
+            } => {
+                // Token events from stream contain cumulative values per message
+                // We overwrite with the latest values
+                self.total_tokens.input_tokens = input_tokens;
+                self.total_tokens.output_tokens = output_tokens;
+                self.total_tokens.cache_creation_input_tokens = cache_creation_input_tokens;
+                self.total_tokens.cache_read_input_tokens = cache_read_input_tokens;
             }
             AppEvent::IterationStart { iteration } => {
                 // Finalize current groups before starting new iteration
@@ -780,6 +800,13 @@ pub enum AppEvent {
     ToolMessage { tool_name: String, content: String },
     /// Updated context usage ratio (0.0 to 1.0).
     ContextUsage(f64),
+    /// Token usage update from build loop.
+    TokenUsage {
+        input_tokens: u64,
+        output_tokens: u64,
+        cache_creation_input_tokens: u64,
+        cache_read_input_tokens: u64,
+    },
     /// New iteration is starting.
     IterationStart {
         /// The iteration number (1-indexed).
@@ -868,6 +895,23 @@ mod tests {
     }
 
     #[test]
+    fn test_app_update_token_usage() {
+        let mut app = App::default();
+
+        app.update(AppEvent::TokenUsage {
+            input_tokens: 5000,
+            output_tokens: 1500,
+            cache_creation_input_tokens: 2000,
+            cache_read_input_tokens: 1000,
+        });
+
+        assert_eq!(app.total_tokens.input_tokens, 5000);
+        assert_eq!(app.total_tokens.output_tokens, 1500);
+        assert_eq!(app.total_tokens.cache_creation_input_tokens, 2000);
+        assert_eq!(app.total_tokens.cache_read_input_tokens, 1000);
+    }
+
+    #[test]
     fn test_app_update_claude_output() {
         let mut app = App::default();
         app.current_iteration = 1;
@@ -935,6 +979,12 @@ mod tests {
         let _ = AppEvent::ClaudeOutput("test".to_string());
         let _ = AppEvent::ToolMessage { tool_name: "Read".to_string(), content: "file".to_string() };
         let _ = AppEvent::ContextUsage(0.5);
+        let _ = AppEvent::TokenUsage {
+            input_tokens: 100,
+            output_tokens: 50,
+            cache_creation_input_tokens: 20,
+            cache_read_input_tokens: 10,
+        };
         let _ = AppEvent::IterationComplete { tasks_done: 3 };
         let _ = AppEvent::LogMessage("log".to_string());
         let _ = AppEvent::Render;

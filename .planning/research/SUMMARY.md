@@ -1,285 +1,195 @@
-# Research Summary
+# Research Summary: v1.2 Context Engineering
 
-**Project:** Ralph (rslph) - Rust CLI/TUI Autonomous Coding Agent
-**Synthesized:** 2026-01-17
-
----
-
-## Stack Recommendation
-
-**Core stack (HIGH confidence):**
-
-| Component | Technology | Rationale |
-|-----------|------------|-----------|
-| TUI Framework | ratatui 0.30 | De facto Rust TUI standard since 2023; immediate-mode rendering fits async event loop |
-| Terminal Backend | crossterm 0.29 | Pure Rust, cross-platform; event-stream feature enables async keyboard handling |
-| Async Runtime | tokio 1.49 | Industry standard; native process module critical for Claude CLI subprocess streaming |
-| CLI Parser | clap 4.5 | Derive macros, subcommand support, env variable fallbacks |
-| Configuration | figment + toml + serde | Layered config merging (file < env < CLI) with type-safe deserialization |
-| Error Handling | color-eyre + thiserror | Colorized error reports for TUI apps; domain error definitions via derive |
-| Logging | tracing | Async-aware structured logging; file output keeps terminal free for TUI |
-| Paths | directories 6.0 | Platform-appropriate config/data directories (XDG on Linux, proper macOS/Windows paths) |
-
-**Key version constraints:**
-- tokio must include `process` feature for subprocess management
-- crossterm must include `event-stream` feature for async input
-- ratatui 0.30 is current stable with all needed widgets
+**Project:** rslph v1.2 "Context Engineering"
+**Domain:** Eval system, token tracking, test-driven agent loops
+**Researched:** 2026-01-20
+**Confidence:** HIGH
 
 ---
 
-## Table Stakes Features
+## Executive Summary
 
-These are non-negotiable for user adoption:
+The v1.2 Context Engineering milestone is architecturally straightforward. The existing codebase already contains 90% of the infrastructure needed: the `Usage` struct in `stream_json.rs` captures all token fields, `std::time::Instant` is already used for timing, and the `tempfile` crate is present as a dev-dependency. The primary work is wiring existing capabilities together, not building new infrastructure.
 
-**Core Loop Execution:**
-- Autonomous iteration loop with configurable max iterations
-- Progress persistence (resume after interruption)
-- Completion detection (RALPH_DONE marker or similar)
-- Max iteration limits (safety against runaway costs)
-- Git auto-commit per iteration (rollback safety)
+The recommended approach is to layer token tracking into the existing iteration loop, then build the eval command as an orchestrator that reuses the existing plan and build commands. GSD patterns (structured XML tasks, deviation rules, goal-backward verification) should be adopted incrementally to improve agent steering. The eval system should use embedded projects via `include_str!` for portability.
 
-**Configuration:**
-- TOML config file support
-- CLI flag overrides (CLI > env > file > defaults)
-- Environment variables (RALPH_* prefix)
-- Custom prompt paths (PROMPT_plan.md, PROMPT_build.md)
-
-**User Experience:**
-- Real-time output streaming from Claude subprocess
-- Status display (iteration count, current task)
-- Ctrl+C graceful shutdown (save state, clean exit)
-- Single iteration mode (--once for human review)
-
-**Task Management:**
-- Progress file parsing (markdown format with checkboxes)
-- Priority ordering (work on highest priority first)
-- Acceptance criteria per task
+Key risks center on eval non-determinism and test data contamination. Run multiple trials with statistical acceptance criteria, store hidden tests outside the project directory, and verify test file integrity after each run. The prompt engineering pitfall of "lost in middle" instruction decay can be mitigated by placing critical constraints at both the start and end of prompts.
 
 ---
 
-## Key Differentiators
+## Key Findings
 
-Features that set Ralph apart from simpler implementations:
+### Stack Additions
 
-**TUI Interface (HIGH value, HIGH effort):**
-- Rich TUI with status bar, context usage, scrollable output
-- Collapsible conversation threads for long runs
-- Keyboard navigation (vim-like bindings)
-- Multi-pane layout (tasks, output, progress)
+**Minimal changes required:**
 
-**Advanced Loop Control:**
-- Verification integration (run tests between iterations)
-- Circuit breaker (stop after repeated failures)
-- Sleep intervals (rate limiting, cost management)
-- Checkpoint/rollback to specific iterations
+| Change | Rationale |
+|--------|-----------|
+| Promote `tempfile = "3"` from dev-deps to deps | Eval command needs temp directories at runtime |
 
-**Lifecycle Hooks:**
-- onComplete hook for notifications
-- Configurable notify script with context
+Everything else exists: `serde_json` for JSON output, `std::time::Instant/Duration` for timing, `chrono` for timestamps. Token tracking infrastructure is already implemented in `StreamResponse` and `Usage` structs.
 
----
+**What NOT to add:**
+- No benchmarking crates (criterion, hyperfine) - simple `Instant::elapsed()` suffices
+- No database (sqlite, sled) - JSON files are adequate for v1.x
+- No metrics/tracing crates - capture at run end, write to JSON
 
-## Architecture Highlights
+### Feature Table Stakes
 
-**Pattern:** Component Architecture with Message Passing (TEA-inspired)
+**Must-have (table stakes):**
+- Token consumption tracking per iteration
+- Controlled project execution in isolated workspaces
+- Hidden test suite separate from visible tests
+- Pass/fail and partial credit tracking
+- Run comparison (JSON storage)
+- Multiple built-in eval projects (2-3 minimum)
 
-**Core Design Decisions:**
+**Should-have (differentiators):**
+- Prompt A/B testing support
+- Iteration-level metrics (not just final result)
+- Failure mode categorization
+- Cost efficiency ratio (success per token)
 
-1. **Async-first subprocess management:** Claude CLI streams output continuously while TUI remains responsive. tokio::process::Command with piped stdout/stderr, streamed line-by-line through mpsc channels.
+**Defer to post-v1.2:**
+- TDD iteration flow (significant iteration structure change)
+- Checkpoint protocol (adds complexity)
+- Full GSD-style verification agent
 
-2. **Event coordination via select!:** Main loop uses `tokio::select!` to multiplex terminal keyboard input, subprocess output events, and render ticks (~60fps interval).
+### Architecture Approach
 
-3. **Single owner of state:** One task owns AppState, receives events through channels. No shared mutable state with Arc/Mutex.
+The eval command orchestrates existing commands rather than duplicating logic. `EvalRunner` creates a temp workspace, extracts embedded project files, runs plan+build, then executes hidden tests. Token tracking hooks into `StreamEvent` parsing in the iteration loop via a new `IterationTokens` accumulator in `BuildContext`.
 
-4. **Atomic progress file writes:** Write to temp file, fsync, rename. Critical for crash safety.
+**New modules:**
+- `src/tokens.rs` - `TokenUsage`, `IterationTokens`, `EvalTokenStats`
+- `src/eval/` - `command.rs`, `runner.rs`, `result.rs`, `project.rs`, `builtin.rs`, `prompts.rs`
+- `evals/` - Embedded eval projects (fizzbuzz, etc.)
 
-**Component Boundaries:**
-```
-CLI Parser -> Config Manager -> App Core
-                                   |
-                    +----------+---+---+----------+
-                    |          |       |          |
-              Subprocess   Progress    TUI    Prompts
-               Manager       File    Renderer  (embedded)
+**Modifications:**
+- `build/iteration.rs` - Token accumulation
+- `build/state.rs` - Add `iteration_tokens: Vec<IterationTokens>`
+- `cli.rs` - Add `Commands::Eval`
+
+### GSD Patterns to Adopt
+
+From GSD skill file analysis, adopt these patterns:
+
+| Pattern | Priority | Quick Win? |
+|---------|----------|------------|
+| Deviation rules in build prompt | High | Yes - low complexity, immediate improvement |
+| Substantive completion summaries | Medium | Yes - just prompt text |
+| Structured XML task format | High | No - requires progress file changes |
+| Goal-backward verification | High | No - requires verification agent |
+| TDD iteration structure | High | No - significant iteration changes |
+
+**Quick win prompt additions:**
+```markdown
+## Deviation Handling
+1. BUGS: Fix immediately, note in Recent Attempts
+2. MISSING DEPS: Install and continue
+3. BLOCKING ISSUES: Work around and document
+4. MAJOR CHANGES: Document decision, proceed with best judgment
 ```
 
-**Module Structure:**
-- `cli/` - clap definitions, command dispatch
-- `config/` - TOML loading, type definitions
-- `app/` - state machine, actions, event loop
-- `subprocess/` - spawn, stream, events
-- `progress/` - parse/write progress.md
-- `tui/` - terminal, renderer, widgets
+### Watch Out For
+
+**Critical pitfalls:**
+
+1. **Non-deterministic eval results** - Run 3-5 trials per benchmark, report mean and variance, use temperature=0
+2. **Data contamination / benchmark leakage** - Store hidden tests OUTSIDE project directory, never in Claude's working path
+3. **Reward hacking / test modification** - Hash test files before/after, fail if modified
+4. **Usage data only on final events** - Capture usage from multiple event types, handle partial data on timeout
+5. **Fake Claude binary event mismatch** - Periodically verify fake output matches real Claude CLI format
+
+**Phase-mapped prevention:**
+
+| Phase | Must Address |
+|-------|--------------|
+| Eval framework design | Non-determinism, data contamination, test integrity |
+| Token tracking | Usage capture robustness, cache token accounting |
+| Eval project bundling | Version mismatch, path assumptions, state leakage |
+| Prompt engineering | Instruction decay, TDD ambiguity, format drift |
 
 ---
 
-## Critical Pitfalls to Avoid
+## Recommended Phase Order
 
-**Phase 1 (Foundation) - Address Before Building:**
+Based on dependency analysis and research findings:
 
-| Pitfall | Consequence | Prevention |
-|---------|-------------|------------|
-| Terminal state corruption on panic | User terminal unusable | Custom panic hook restores terminal BEFORE any TUI code |
-| Pipe buffer deadlock | Hang when Claude produces large output | Stream output concurrently, never wait-then-read |
-| Zombie process accumulation | Resource exhaustion over iterations | Always wait() on every Child, use kill_on_drop |
-| Config precedence wrong | CLI flags ignored | Correct order: defaults < file < env < explicit CLI |
-| Progress file corruption on crash | Lost progress | Atomic write: temp file -> fsync -> rename |
+### Phase 1: Token Tracking Foundation
+**Rationale:** Prerequisite for eval metrics - must exist before eval command can record meaningful data
+**Delivers:** Per-iteration token accumulation, display in iteration log
+**Implements:**
+- `src/tokens.rs` with `TokenUsage`, `IterationTokens`
+- Modification to `build/iteration.rs` for token accumulation
+- Extension to `BuildContext` with `iteration_tokens` field
+**Avoids:** Cache token misattribution (pitfall 3.3), cumulative vs per-iteration confusion (pitfall 3.2)
 
-**Phase 2 (Core Loop) - Address During Implementation:**
+### Phase 2: Eval Infrastructure
+**Rationale:** Core scaffolding before any eval projects - provides the framework
+**Delivers:** `rslph eval` command shell, `EvalRunner` orchestration, `EvalResult` structure
+**Implements:**
+- `src/eval/mod.rs` module structure
+- `src/eval/command.rs` entry point
+- `src/eval/runner.rs` workspace and orchestration
+- `src/eval/result.rs` with `TestResults`
+- CLI integration (`Commands::Eval`)
+**Avoids:** Workspace state leakage (pitfall 4.2) via fresh TempDir per run
 
-| Pitfall | Consequence | Prevention |
-|---------|-------------|------------|
-| Infinite loop / stuck agent | Token costs spiral, no progress | Hard iteration limits, loop detection, progress assertions |
-| No circuit breaker | Repeated failures waste resources | Max retry count, exponential backoff, failure classification |
-| Concurrent access to progress file | Corrupted state from parallel runs | File locking with flock/fs2, single-instance enforcement |
+### Phase 3: Built-in Eval Projects
+**Rationale:** Need at least 2-3 eval projects to validate the framework
+**Delivers:** Embedded eval projects (fizzbuzz, cli-todo), project extraction, hidden test execution
+**Implements:**
+- `evals/` directory with project files
+- `src/eval/builtin.rs` with `include_str!` embedding
+- `src/eval/project.rs` for extraction
+- Promote `tempfile` to regular dependency
+**Avoids:** Embedded test data version mismatch (pitfall 4.1), path assumptions (pitfall 4.3)
 
-**Phase 3 (Polish) - Address When Relevant:**
+### Phase 4: Eval Prompt Engineering
+**Rationale:** Improve agent steering for eval runs after infrastructure is stable
+**Delivers:** Test-driven prompts, deviation rules, substantive summary enforcement
+**Implements:**
+- `src/eval/prompts.rs` with `get_eval_build_prompt()`
+- Deviation handling instructions
+- Test-driven iteration guidance
+**Avoids:** Instruction decay (pitfall 5.1), TDD ambiguity (pitfall 5.2)
 
-| Pitfall | Consequence | Prevention |
-|---------|-------------|------------|
-| Unicode width miscalculation | Layout corruption with CJK/emoji | Use unicode-width crate, test with non-ASCII |
-| Resize event race conditions | Crash or garbled output | Handle Resize events explicitly, guard against zero dimensions |
+### Phase 5: Results and Comparison
+**Rationale:** Polish phase - make eval results useful
+**Delivers:** JSON output, run comparison, partial credit metrics
+**Implements:**
+- JSON serialization of `EvalResult`
+- Historical run storage
+- Comparison views
+**Avoids:** Success metric conflation (pitfall 1.4)
+
+### Phase Ordering Rationale
+
+- **Token tracking first:** All subsequent phases depend on having token metrics
+- **Infrastructure before projects:** Framework must exist to test eval projects
+- **Projects before prompts:** Need working evals to validate prompt improvements
+- **Results last:** Polish after core functionality works
 
 ---
 
-## Recommended Build Order
+## Research Flags
 
-### Phase 1: Foundation (No TUI)
+**Phases likely needing deeper research during planning:**
+- **Phase 4 (Prompt Engineering):** GSD patterns need adaptation for rslph's specific structure; test TDD prompt variations
 
-**Goal:** Subprocess spawning and config work correctly without any visual interface.
-
-**Order:** Config -> CLI -> Progress -> Subprocess
-
-1. **Config types + loader**
-   - AppConfig struct with serde(default)
-   - TOML loading from standard paths
-   - Validation (paths exist, etc.)
-   - *Avoid:* Serde default gotchas, unknown field silent failure
-
-2. **CLI parser**
-   - clap derive structs
-   - plan/build subcommands
-   - Config merging (CLI overrides file)
-   - *Avoid:* Config precedence errors
-
-3. **Progress file parser/writer**
-   - Parse markdown format
-   - Extract task checkboxes
-   - Atomic write implementation
-   - *Avoid:* Crash corruption, schema rigidity
-
-4. **Subprocess manager**
-   - Spawn Claude CLI with piped output
-   - Stream stdout/stderr to channel
-   - Handle exit codes
-   - *Avoid:* Pipe deadlock, zombie processes, stdin not closed
-
-**Validation:** Can run `ralph build` headlessly, spawn Claude, capture output, update progress file.
-
-**Research flag:** Standard patterns, no additional research needed.
-
-### Phase 2: App Core (State Machine + Build Loop)
-
-**Goal:** Complete iteration loop logic, completion detection, iteration limits.
-
-**Order:** State -> Actions -> Runner -> Iteration Loop
-
-5. **App state definitions**
-   - AppState, AppMode enums
-   - Task tracking
-   - Output buffer (ring buffer, bounded)
-
-6. **Actions and state transitions**
-   - Action enum (Quit, NextIteration, etc.)
-   - Reducer pattern for state updates
-   - Completion detection (RALPH_DONE marker)
-
-7. **Event loop runner**
-   - tokio::select! coordination
-   - Subprocess event handling
-   - Iteration control logic
-   - *Avoid:* Infinite loops, no circuit breaker
-
-8. **Build command implementation**
-   - Read progress file
-   - Find next incomplete task
-   - Spawn Claude with context
-   - Update progress on completion
-   - *Avoid:* Context truncation, tool hallucination
-
-**Validation:** Can run full iteration loop, auto-commit, detect completion, respect max iterations.
-
-**Research flag:** Consider `/gsd:research-phase` for completion detection patterns if complex.
-
-### Phase 3: TUI (Visual Layer)
-
-**Goal:** Professional terminal interface with live output streaming.
-
-**Order:** Terminal -> Widgets -> Renderer -> Integration
-
-9. **Terminal setup**
-   - Raw mode, alternate screen
-   - Panic hook for cleanup
-   - *Avoid:* Terminal state corruption
-
-10. **Individual widgets**
-    - Status bar (iteration, task, model)
-    - Progress bar (context usage)
-    - Output view (scrollable)
-    - Thread list (collapsible)
-
-11. **Main renderer**
-    - Layout composition
-    - Render from AppState
-    - ~60fps render interval
-
-12. **Event integration**
-    - Keyboard handling in select! loop
-    - Scroll, toggle, quit actions
-    - *Avoid:* Async blocking, resize race conditions
-
-**Validation:** Full TUI with live output, keyboard navigation, graceful quit.
-
-**Research flag:** Standard ratatui patterns, but complex - reference async-template.
-
-### Phase 4: Polish
-
-**Goal:** Embedded prompts, notifications, error refinement.
-
-13. **Embedded prompts**
-    - include_str! for PROMPT_plan.md, PROMPT_build.md
-    - Override paths in config
-
-14. **Notification system**
-    - notify_script execution on completion
-    - Pass context (success/failure, task count)
-
-15. **Error handling refinement**
-    - Replace unwraps
-    - User-friendly messages
-    - color-eyre integration
-
-**Research flag:** No additional research needed.
+**Phases with well-documented patterns:**
+- **Phase 1 (Token Tracking):** Straightforward - hook into existing `StreamEvent` parsing
+- **Phase 2 (Eval Infrastructure):** Follows existing command patterns exactly
+- **Phase 3 (Built-in Projects):** Standard `include_str!` embedding
 
 ---
 
 ## Open Questions
 
-Questions to resolve during requirements phase:
-
-1. **Progress file format:** Research covered markdown with checkboxes. Is a structured format (TOML/JSON) better for programmatic updates? Trade-off: human readability vs parsing reliability.
-
-2. **Completion detection specifics:** What exact marker does Ralph look for? RALPH_DONE? `<promise>COMPLETE</promise>`? Configurable pattern?
-
-3. **Git integration scope:** Auto-commit only? Auto-stage? Commit message format? Should Ralph create branches?
-
-4. **Multi-agent support:** Research identified parallel agents as a differentiator but HIGH complexity. Is this v1 scope or future?
-
-5. **Claude CLI invocation details:** What exact arguments? `claude --prompt FILE`? `claude --print`? How does Ralph pass context?
-
-6. **Verification integration:** Run tests automatically between iterations? Configurable command? Parse test output?
-
-7. **Context usage tracking:** How to obtain token count from Claude CLI for progress bar? API response? Estimate from output length?
+1. **Hidden test storage location:** Store outside project dir, but where exactly? `~/.rslph/eval-data/`? Embedded in binary separately?
+2. **Temperature=0 support:** Does Claude CLI support forcing deterministic output? Verify flag availability.
+3. **Multiple trial execution:** Should `rslph eval` run multiple trials automatically, or require wrapper script?
+4. **Eval project versioning:** How to track which version of eval projects produced which results?
 
 ---
 
@@ -287,41 +197,40 @@ Questions to resolve during requirements phase:
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All technologies verified via official docs; canonical 2025/2026 Rust CLI/TUI stack |
-| Features | HIGH | Cross-referenced multiple autonomous coding tools; clear table stakes vs differentiators |
-| Architecture | HIGH | Patterns from ratatui async-template, tokio best practices |
-| Pitfalls | HIGH for TUI/subprocess (official docs), MEDIUM for AI agent patterns (community sources) |
+| Stack | HIGH | Verified existing codebase has 90% of needed infrastructure |
+| Features | HIGH | Based on GSD analysis and SWE-bench patterns |
+| Architecture | HIGH | Direct codebase analysis, clear integration points |
+| Pitfalls | HIGH | Validated by research papers and existing test infrastructure |
 
-**Gaps:**
-- Claude CLI exact invocation pattern not documented in research
-- Token/cost tracking method unclear
-- Verification integration specifics TBD
+**Overall confidence:** HIGH
+
+The v1.2 milestone is well-scoped with minimal external dependencies. The primary work is integration and prompt engineering, not new infrastructure.
+
+### Gaps to Address
+
+- **Cache token pricing:** Exact rates for cache_creation vs cache_read need verification from Anthropic docs
+- **Real Claude output verification:** Fake Claude binary should be periodically validated against real CLI output
+- **Statistical acceptance criteria:** Define specific thresholds (e.g., "pass if mean > 80% with variance < 10%")
 
 ---
 
 ## Sources
 
-**Stack Research:**
-- [ratatui 0.30 docs](https://docs.rs/ratatui/)
-- [crossterm 0.29 docs](https://docs.rs/crossterm/)
-- [tokio 1.49 docs](https://docs.rs/tokio/)
-- [clap 4.5 docs](https://docs.rs/clap/)
-- [figment docs](https://docs.rs/figment/)
-- [ratatui async-template](https://github.com/ratatui/async-template)
+### Primary (HIGH confidence)
+- Existing codebase: `src/subprocess/stream_json.rs`, `src/build/`, `tests/e2e/`
+- GSD skill files: `~/.claude/get-shit-done/` (TDD, verification, execution patterns)
+- Rust stdlib: `std::time::Instant`, `std::time::Duration`
 
-**Feature Research:**
-- [kylemclaren/ralph reference implementation](https://github.com/kylemclaren/ralph)
-- [Ralph Wiggum Loop Gist](https://gist.github.com/Mburdo/ce99c9b08601aaf771efaabf1260d4c0)
-- [Aider documentation](https://aider.chat/)
-- [OpenCode TUI patterns](https://github.com/opencode-ai/opencode)
+### Secondary (MEDIUM confidence)
+- [HumanEval Benchmark structure](https://klu.ai/glossary/humaneval-benchmark)
+- [SWE-bench evaluation patterns](https://epoch.ai/blog/what-skills-does-swe-bench-verified-evaluate)
+- [tempfile crate docs](https://docs.rs/tempfile/latest/tempfile/)
 
-**Architecture Research:**
-- [Ratatui Application Patterns](https://ratatui.rs/concepts/application-patterns/)
-- [Tokio Channels Tutorial](https://tokio.rs/tokio/tutorial/channels)
-- [tokio-process-stream](https://lib.rs/crates/tokio-process-stream)
+### Tertiary (LOW confidence - needs validation)
+- [Defeating Non-Determinism in LLMs](https://www.flowhunt.io/blog/defeating-non-determinism-in-llms/)
+- [Data Contamination in Benchmarks](https://thegrigorian.medium.com/when-benchmarks-lie-why-contamination-breaks-llm-evaluation-1fa335706f32)
 
-**Pitfalls Research:**
-- [Ratatui Panic Hooks](https://ratatui.rs/recipes/apps/panic-hooks/)
-- [Rust std::process::Child docs](https://doc.rust-lang.org/std/process/struct.Child.html)
-- [Vectara: Awesome Agent Failures](https://github.com/vectara/awesome-agent-failures)
-- [Portkey: LLM App Resilience](https://portkey.ai/blog/retries-fallbacks-and-circuit-breakers-in-llm-apps/)
+---
+
+*Research completed: 2026-01-20*
+*Ready for roadmap: yes*

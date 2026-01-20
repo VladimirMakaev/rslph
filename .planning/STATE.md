@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 8 - Token Tracking
-Plan: 02 of ? (Token Display)
-Status: In progress
-Last activity: 2026-01-20 — Completed 08-02-PLAN.md
+Plan: 01 of ? (Core Infrastructure) - COMPLETE
+Status: Plan 01 verified complete
+Last activity: 2026-01-20 — Verified 08-01-PLAN.md complete
 
 Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#░░░░░░░░░] 10% v1.2
 
@@ -84,6 +84,9 @@ All decisions are archived in milestone roadmap files:
 | ID | Decision | Choice |
 |----|----------|--------|
 | token-display-format | Status bar token format | "In: X \| Out: Y \| CacheW: Z \| CacheR: W" |
+| token-formatting-lib | Number formatting library | human_format crate for SI suffixes (5.2k, 1.2M) |
+| token-accumulation | Token accumulation approach | Per-iteration from final StreamResponse usage |
+| token-field-tracking | Fields to track | All 4: input, output, cache_creation, cache_read |
 
 ### Pending Todos
 
@@ -96,6 +99,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-20 02:14 UTC
-Stopped at: Completed 08-02-PLAN.md
+Last session: 2026-01-20 02:30 UTC
+Stopped at: Verified 08-01-PLAN.md complete (SUMMARY created)
 Resume file: None

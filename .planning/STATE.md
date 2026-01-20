@@ -12,9 +12,9 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 Phase: 9 - Eval Command Foundation
 Plan: —
 Status: Ready for planning
-Last activity: 2026-01-20 — Completed Phase 8 Token Tracking
+Last activity: 2026-01-20 — Completed 08-04-PLAN.md (token accumulation bug fix)
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##░░░░░░░░] 20% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [###░░░░░░░] 25% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -41,9 +41,9 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##░░░░░�
 - Shipped: 2026-01-19 (same day)
 
 **v1.2 Velocity:**
-- Total plans completed: 3
-- Average duration: 5m 20s
-- Total execution time: 16m
+- Total plans completed: 4
+- Average duration: 4m 30s
+- Total execution time: 18m
 
 **By Phase (v1.0):**
 
@@ -67,7 +67,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##░░░░░�
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 08-token-tracking | 3/3 | 16m | 5m 20s |
+| 08-token-tracking | 4/4 | 18m | 4m 30s |
 
 *Updated after each plan completion*
 
@@ -85,7 +85,7 @@ All decisions are archived in milestone roadmap files:
 |----|----------|--------|
 | token-display-format | Status bar token format | "In: X \| Out: Y \| CacheW: Z \| CacheR: W" |
 | token-formatting-lib | Number formatting library | human_format crate for SI suffixes (5.2k, 1.2M) |
-| token-accumulation | Token accumulation approach | Per-iteration from final StreamResponse usage |
+| token-accumulation | Token accumulation approach | Use += to accumulate across all messages and iterations |
 | token-field-tracking | Fields to track | All 4: input, output, cache_creation, cache_read |
 | token-config-location | Fake Claude token config | TokenConfig in fake_claude_lib with ScenarioBuilder integration |
 
@@ -101,5 +101,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-20
-Stopped at: Completed Phase 8 Token Tracking
+Stopped at: Completed 08-04-PLAN.md (token accumulation bug fix)
 Resume file: None

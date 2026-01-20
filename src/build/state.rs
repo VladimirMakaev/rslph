@@ -11,6 +11,8 @@ use crate::progress::ProgressFile;
 use crate::tui::SubprocessEvent;
 use crate::vcs::{create_vcs, Vcs};
 
+use super::tokens::{IterationTokens, TokenUsage};
+
 /// Build loop states for the state machine.
 #[derive(Debug, Clone, PartialEq)]
 pub enum BuildState {
@@ -108,6 +110,12 @@ pub struct BuildContext {
     /// TUI event sender for routing logs when TUI is active.
     /// If None, logs go to stderr.
     pub tui_tx: Option<mpsc::UnboundedSender<SubprocessEvent>>,
+    /// Per-iteration token usage history.
+    pub iteration_tokens: Vec<IterationTokens>,
+    /// Cumulative token usage across all iterations.
+    pub total_tokens: TokenUsage,
+    /// Current iteration's token usage (reset each iteration).
+    pub current_iteration_tokens: TokenUsage,
 }
 
 impl BuildContext {
@@ -164,6 +172,9 @@ impl BuildContext {
             vcs,
             project_name: project_name.clone(),
             tui_tx,
+            iteration_tokens: Vec::new(),
+            total_tokens: TokenUsage::default(),
+            current_iteration_tokens: TokenUsage::default(),
         };
 
         // Log initialization info

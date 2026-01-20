@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
+use crate::build::tokens::format_tokens;
 use crate::config::Config;
 use crate::error::RslphError;
 use crate::planning::{
@@ -110,8 +111,20 @@ async fn run_basic_planning(
         eprintln!("[TRACE] Model: {}", model);
     }
     eprintln!(
-        "[TRACE] Tokens: {} in / {} out",
-        stream_response.input_tokens, stream_response.output_tokens
+        "[TRACE] Tokens: {} in / {} out / {} cache_write / {} cache_read",
+        stream_response.input_tokens,
+        stream_response.output_tokens,
+        stream_response.cache_creation_input_tokens,
+        stream_response.cache_read_input_tokens
+    );
+
+    // Display token summary for user
+    println!(
+        "Tokens used: In: {} | Out: {} | CacheW: {} | CacheR: {}",
+        format_tokens(stream_response.input_tokens),
+        format_tokens(stream_response.output_tokens),
+        format_tokens(stream_response.cache_creation_input_tokens),
+        format_tokens(stream_response.cache_read_input_tokens),
     );
 
     // Step 8: Parse response into ProgressFile
@@ -330,6 +343,15 @@ pub async fn run_adaptive_planning(
         }
     }
     let response_text = stream_response.text;
+
+    // Display token summary for user
+    println!(
+        "Tokens used: In: {} | Out: {} | CacheW: {} | CacheR: {}",
+        format_tokens(stream_response.input_tokens),
+        format_tokens(stream_response.output_tokens),
+        format_tokens(stream_response.cache_creation_input_tokens),
+        format_tokens(stream_response.cache_read_input_tokens),
+    );
 
     // Parse response into ProgressFile
     let mut progress_file = ProgressFile::parse(&response_text)?;

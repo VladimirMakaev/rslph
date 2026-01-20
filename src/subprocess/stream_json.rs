@@ -293,6 +293,12 @@ pub struct StreamResponse {
     /// Total output tokens generated.
     pub output_tokens: u64,
 
+    /// Cache creation input tokens.
+    pub cache_creation_input_tokens: u64,
+
+    /// Cache read input tokens.
+    pub cache_read_input_tokens: u64,
+
     /// Model used.
     pub model: Option<String>,
 
@@ -325,6 +331,9 @@ impl StreamResponse {
                 if let Some(usage) = &message.usage {
                     self.input_tokens = usage.input_tokens;
                     self.output_tokens = usage.output_tokens;
+                    self.cache_creation_input_tokens =
+                        usage.cache_creation_input_tokens.unwrap_or(0);
+                    self.cache_read_input_tokens = usage.cache_read_input_tokens.unwrap_or(0);
                 }
             }
         }

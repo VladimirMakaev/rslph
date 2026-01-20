@@ -14,6 +14,7 @@ use crate::subprocess::{format_tool_summary, ClaudeRunner, OutputLine, StreamEve
 use crate::tui::SubprocessEvent;
 
 use super::state::{BuildContext, DoneReason, IterationResult};
+use super::tokens::IterationTokens;
 
 /// Format commit message for an iteration.
 fn format_iteration_commit(project_name: &str, iteration: u32, tasks_completed: u32) -> String {
@@ -54,6 +55,14 @@ fn parse_and_stream_line(
 
         // Send context usage if available
         if let Some(usage) = event.usage() {
+            // Send token usage event for TUI display
+            let _ = tui_tx.send(SubprocessEvent::TokenUsage {
+                input_tokens: usage.input_tokens,
+                output_tokens: usage.output_tokens,
+                cache_creation_input_tokens: usage.cache_creation_input_tokens.unwrap_or(0),
+                cache_read_input_tokens: usage.cache_read_input_tokens.unwrap_or(0),
+            });
+
             // Estimate context usage as output_tokens / 200k (rough estimate)
             // A more accurate approach would track input+output vs max context
             let ratio = (usage.input_tokens + usage.output_tokens) as f64 / 200_000.0;
@@ -243,9 +252,26 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
         ctx.log(&format!("[TRACE] Model: {}", model));
     }
     ctx.log(&format!(
-        "[TRACE] Tokens: {} in / {} out",
-        stream_response.input_tokens, stream_response.output_tokens
+        "[TRACE] Tokens: {} in / {} out / {} cache_write / {} cache_read",
+        stream_response.input_tokens,
+        stream_response.output_tokens,
+        stream_response.cache_creation_input_tokens,
+        stream_response.cache_read_input_tokens
     ));
+
+    // Accumulate tokens from this iteration
+    let iteration_tokens = IterationTokens {
+        iteration: ctx.current_iteration,
+        input_tokens: stream_response.input_tokens,
+        output_tokens: stream_response.output_tokens,
+        cache_creation_input_tokens: stream_response.cache_creation_input_tokens,
+        cache_read_input_tokens: stream_response.cache_read_input_tokens,
+    };
+    ctx.iteration_tokens.push(iteration_tokens);
+    ctx.total_tokens.input_tokens += stream_response.input_tokens;
+    ctx.total_tokens.output_tokens += stream_response.output_tokens;
+    ctx.total_tokens.cache_creation_input_tokens += stream_response.cache_creation_input_tokens;
+    ctx.total_tokens.cache_read_input_tokens += stream_response.cache_read_input_tokens;
 
     // Step 8: Parse response into ProgressFile
     let updated_progress = match ProgressFile::parse(&response_text) {

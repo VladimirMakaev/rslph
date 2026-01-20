@@ -47,7 +47,7 @@
 |----|-------------|----------|
 | PROMPT-01 | Add deviation handling rules to build prompt | Must |
 | PROMPT-02 | Add substantive completion summary format | Must |
-| PROMPT-03 | TDD iteration flow (write tests → implement → refactor) | Must |
+| PROMPT-03 | TDD iteration flow (write tests -> implement -> refactor) | Must |
 | PROMPT-04 | Configurable TDD mode (enable/disable via config flag) | Must |
 | PROMPT-05 | Research and adopt GSD patterns (phases, research structure) | Should |
 
@@ -80,32 +80,30 @@
 
 ## Requirement Traceability
 
-*Filled by roadmapper during phase creation*
-
-| Requirement | Phase |
-|-------------|-------|
-| TOK-01 | — |
-| TOK-02 | — |
-| TOK-03 | — |
-| TOK-04 | — |
-| EVAL-01 | — |
-| EVAL-02 | — |
-| EVAL-03 | — |
-| EVAL-04 | — |
-| EVAL-05 | — |
-| EVAL-06 | — |
-| EVAL-07 | — |
-| EVAL-08 | — |
-| EVAL-09 | — |
-| PROJ-01 | — |
-| PROJ-02 | — |
-| PROJ-03 | — |
-| PROJ-04 | — |
-| PROMPT-01 | — |
-| PROMPT-02 | — |
-| PROMPT-03 | — |
-| PROMPT-04 | — |
-| PROMPT-05 | — |
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| TOK-01 | Phase 8 | Pending |
+| TOK-02 | Phase 8 | Pending |
+| TOK-03 | Phase 8 | Pending |
+| TOK-04 | Phase 8 | Pending |
+| EVAL-01 | Phase 9 | Pending |
+| EVAL-02 | Phase 10 | Pending |
+| EVAL-03 | Phase 10 | Pending |
+| EVAL-04 | Phase 9 | Pending |
+| EVAL-05 | Phase 9 | Pending |
+| EVAL-06 | Phase 12 | Pending |
+| EVAL-07 | Phase 12 | Pending |
+| EVAL-08 | Phase 12 | Pending |
+| EVAL-09 | Phase 12 | Pending |
+| PROJ-01 | Phase 10 | Pending |
+| PROJ-02 | Phase 10 | Pending |
+| PROJ-03 | Phase 10 | Pending |
+| PROJ-04 | Phase 10 | Pending |
+| PROMPT-01 | Phase 11 | Pending |
+| PROMPT-02 | Phase 11 | Pending |
+| PROMPT-03 | Phase 11 | Pending |
+| PROMPT-04 | Phase 11 | Pending |
+| PROMPT-05 | Phase 11 | Pending |
 
 ---
 
@@ -119,4 +117,4 @@
 
 ---
 
-*18 requirements | 4 categories | Ready for roadmap*
+*22 requirements | 4 categories | Roadmap complete*

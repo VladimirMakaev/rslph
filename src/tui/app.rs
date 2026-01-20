@@ -434,12 +434,11 @@ impl App {
                 cache_creation_input_tokens,
                 cache_read_input_tokens,
             } => {
-                // Token events from stream contain cumulative values per message
-                // We overwrite with the latest values
-                self.total_tokens.input_tokens = input_tokens;
-                self.total_tokens.output_tokens = output_tokens;
-                self.total_tokens.cache_creation_input_tokens = cache_creation_input_tokens;
-                self.total_tokens.cache_read_input_tokens = cache_read_input_tokens;
+                // Token events contain per-message values; we accumulate across all messages and iterations
+                self.total_tokens.input_tokens += input_tokens;
+                self.total_tokens.output_tokens += output_tokens;
+                self.total_tokens.cache_creation_input_tokens += cache_creation_input_tokens;
+                self.total_tokens.cache_read_input_tokens += cache_read_input_tokens;
             }
             AppEvent::IterationStart { iteration } => {
                 // Finalize current groups before starting new iteration
@@ -895,20 +894,35 @@ mod tests {
     }
 
     #[test]
-    fn test_app_update_token_usage() {
+    fn test_app_update_token_usage_accumulates() {
         let mut app = App::default();
 
+        // First token event
         app.update(AppEvent::TokenUsage {
-            input_tokens: 5000,
-            output_tokens: 1500,
-            cache_creation_input_tokens: 2000,
-            cache_read_input_tokens: 1000,
+            input_tokens: 1000,
+            output_tokens: 500,
+            cache_creation_input_tokens: 200,
+            cache_read_input_tokens: 100,
         });
 
-        assert_eq!(app.total_tokens.input_tokens, 5000);
-        assert_eq!(app.total_tokens.output_tokens, 1500);
-        assert_eq!(app.total_tokens.cache_creation_input_tokens, 2000);
-        assert_eq!(app.total_tokens.cache_read_input_tokens, 1000);
+        assert_eq!(app.total_tokens.input_tokens, 1000);
+        assert_eq!(app.total_tokens.output_tokens, 500);
+        assert_eq!(app.total_tokens.cache_creation_input_tokens, 200);
+        assert_eq!(app.total_tokens.cache_read_input_tokens, 100);
+
+        // Second token event - should ACCUMULATE, not overwrite
+        app.update(AppEvent::TokenUsage {
+            input_tokens: 2500,
+            output_tokens: 1300,
+            cache_creation_input_tokens: 300,
+            cache_read_input_tokens: 200,
+        });
+
+        // Verify accumulated values (1000+2500, 500+1300, 200+300, 100+200)
+        assert_eq!(app.total_tokens.input_tokens, 3500);
+        assert_eq!(app.total_tokens.output_tokens, 1800);
+        assert_eq!(app.total_tokens.cache_creation_input_tokens, 500);
+        assert_eq!(app.total_tokens.cache_read_input_tokens, 300);
     }
 
     #[test]

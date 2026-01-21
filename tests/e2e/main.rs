@@ -21,6 +21,9 @@ mod test_token_tracking;
 // TUI snapshot tests (Plan 07.1-01)
 mod tui_tests;
 
+// Eval command tests (Plan 09-03)
+mod eval_command;
+
 // Include fake_claude_lib for scenario builder access
 #[path = "../fake_claude_lib/mod.rs"]
 mod fake_claude_lib;

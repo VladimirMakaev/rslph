@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 10 - Eval Projects and Testing
-Plan: 01 of 4
+Plan: 02 of 4
 Status: In progress
-Last activity: 2026-01-20 — Completed 10-01-PLAN.md (Built-in Eval Projects)
+Last activity: 2026-01-20 — Completed 10-02-PLAN.md (Test Runner Implementation)
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [######░░░░] 60% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#######░░░] 65% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -22,7 +22,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [######░░░░]
 |-------|------|--------------|--------|
 | 8 - Token Tracking | Users can observe token consumption | TOK-01, TOK-02, TOK-03, TOK-04 | Complete ✓ |
 | 9 - Eval Foundation | Controlled benchmarks in isolation | EVAL-01, EVAL-04, EVAL-05 | Complete ✓ |
-| 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | In progress (1/4) |
+| 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | In progress (2/4) |
 | 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Pending |
 | 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Pending |
 
@@ -41,9 +41,9 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [######░░░░]
 - Shipped: 2026-01-19 (same day)
 
 **v1.2 Velocity:**
-- Total plans completed: 8
-- Average duration: 3m 52s
-- Total execution time: 31m 1s
+- Total plans completed: 9
+- Average duration: 3m 39s
+- Total execution time: 32m 51s
 
 **By Phase (v1.0):**
 
@@ -69,7 +69,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [######░░░░]
 |-------|-------|-------|----------|
 | 08-token-tracking | 4/4 | 18m | 4m 30s |
 | 09-eval-command-foundation | 3/3 | 9m 46s | 3m 15s |
-| 10-eval-projects-and-testing | 1/4 | 3m 15s | 3m 15s |
+| 10-eval-projects-and-testing | 2/4 | 5m 5s | 2m 33s |
 
 *Updated after each plan completion*
 
@@ -108,6 +108,9 @@ All decisions are archived in milestone roadmap files:
 |----|----------|--------|
 | include-dir-paths | File path handling | include_dir stores files with project prefix (e.g., "calculator/tests.jsonl") |
 | test-data-separation | Hidden test data | extract_project_files excludes tests.jsonl; get_test_data provides access |
+| test-runner-sync | Test execution pattern | Use std::process::Command (sync) not tokio since tests run post-build |
+| output-comparison | Whitespace handling | Trim both expected and actual output for comparison |
+| jsonl-error-handling | Parse error strategy | Skip malformed lines via filter_map, don't fail on parse errors |
 
 ### Pending Todos
 
@@ -121,5 +124,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-20
-Stopped at: Completed 10-01-PLAN.md (Built-in Eval Projects)
+Stopped at: Completed 10-02-PLAN.md (Test Runner Implementation)
 Resume file: None

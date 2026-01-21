@@ -9,19 +9,19 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 
 ## Current Position
 
-Phase: 9 - Eval Command Foundation
-Plan: 03 of 3
-Status: Phase complete
-Last activity: 2026-01-20 — Completed 09-03-PLAN.md (eval E2E tests)
+Phase: 10 - Eval Projects and Testing
+Plan: —
+Status: Ready for planning
+Last activity: 2026-01-20 — Completed Phase 9 (Eval Command Foundation)
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [######░░░░] 60% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#####░░░░░] 50% v1.2
 
 ## Phase Summary (v1.2)
 
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
-| 8 - Token Tracking | Users can observe token consumption | TOK-01, TOK-02, TOK-03, TOK-04 | Complete |
-| 9 - Eval Foundation | Controlled benchmarks in isolation | EVAL-01, EVAL-04, EVAL-05 | Complete |
+| 8 - Token Tracking | Users can observe token consumption | TOK-01, TOK-02, TOK-03, TOK-04 | Complete ✓ |
+| 9 - Eval Foundation | Controlled benchmarks in isolation | EVAL-01, EVAL-04, EVAL-05 | Complete ✓ |
 | 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | Pending |
 | 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Pending |
 | 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Pending |
@@ -113,5 +113,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-20
-Stopped at: Completed 09-03-PLAN.md (eval E2E tests) - Phase 9 complete
+Stopped at: Completed Phase 9 (Eval Command Foundation)
 Resume file: None

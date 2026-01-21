@@ -86,11 +86,11 @@
 | TOK-02 | Phase 8 | Complete |
 | TOK-03 | Phase 8 | Complete |
 | TOK-04 | Phase 8 | Complete |
-| EVAL-01 | Phase 9 | Pending |
+| EVAL-01 | Phase 9 | Complete |
 | EVAL-02 | Phase 10 | Pending |
 | EVAL-03 | Phase 10 | Pending |
-| EVAL-04 | Phase 9 | Pending |
-| EVAL-05 | Phase 9 | Pending |
+| EVAL-04 | Phase 9 | Complete |
+| EVAL-05 | Phase 9 | Complete |
 | EVAL-06 | Phase 12 | Pending |
 | EVAL-07 | Phase 12 | Pending |
 | EVAL-08 | Phase 12 | Pending |

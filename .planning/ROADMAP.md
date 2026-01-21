@@ -66,9 +66,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — Core eval module and CLI subcommand
-- [ ] 09-02-PLAN.md — Eval command implementation (orchestrate plan+build)
-- [ ] 09-03-PLAN.md — E2E tests and verification
+- [x] 09-01-PLAN.md — Core eval module and CLI subcommand
+- [x] 09-02-PLAN.md — Eval command implementation (orchestrate plan+build)
+- [x] 09-03-PLAN.md — E2E tests and verification
 
 ---
 
@@ -157,7 +157,7 @@ Plans:
 | 7. E2E Testing Framework | v1.1 | 5/5 | Complete | 2026-01-19 |
 | 7.1 TUI Testing | v1.1 | 1/1 | Complete | 2026-01-19 |
 | 8. Token Tracking | v1.2 | 4/4 | Complete | 2026-01-20 |
-| 9. Eval Command Foundation | v1.2 | 0/3 | Planned | — |
+| 9. Eval Command Foundation | v1.2 | 3/3 | Complete | 2026-01-20 |
 | 10. Eval Projects and Testing | v1.2 | 0/? | Pending | — |
 | 11. Prompt Engineering | v1.2 | 0/? | Pending | — |
 | 12. Multi-Trial Results | v1.2 | 0/? | Pending | — |

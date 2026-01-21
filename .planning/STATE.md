@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 9 - Eval Command Foundation
-Plan: —
-Status: Ready for planning
-Last activity: 2026-01-20 — Completed 08-04-PLAN.md (token accumulation bug fix)
+Plan: 01 of 3
+Status: In progress
+Last activity: 2026-01-20 — Completed 09-01-PLAN.md (eval module and CLI)
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [###░░░░░░░] 25% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [####░░░░░░] 33% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -41,9 +41,9 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [###░░░░░�
 - Shipped: 2026-01-19 (same day)
 
 **v1.2 Velocity:**
-- Total plans completed: 4
-- Average duration: 4m 30s
-- Total execution time: 18m
+- Total plans completed: 5
+- Average duration: 4m 3s
+- Total execution time: 20m 16s
 
 **By Phase (v1.0):**
 
@@ -68,6 +68,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [###░░░░░�
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 08-token-tracking | 4/4 | 18m | 4m 30s |
+| 09-eval-command-foundation | 1/3 | 2m 16s | 2m 16s |
 
 *Updated after each plan completion*
 
@@ -89,6 +90,13 @@ All decisions are archived in milestone roadmap files:
 | token-field-tracking | Fields to track | All 4: input, output, cache_creation, cache_read |
 | token-config-location | Fake Claude token config | TokenConfig in fake_claude_lib with ScenarioBuilder integration |
 
+**v1.2 Decisions (Phase 9):**
+
+| ID | Decision | Choice |
+|----|----------|--------|
+| eval-module-structure | Eval module pattern | Mirrors build module: mod.rs exports types, command.rs contains handler |
+| eval-stub-approach | Initial implementation | Stub returns placeholder EvalResult for incremental development |
+
 ### Pending Todos
 
 - **CLAUDE-INTERNET-FLAG**: Remove `--internet` workaround flag from Claude CLI invocations once the underlying issue causing Claude CLI to hang without it is resolved. See `src/planning/command.rs`.
@@ -101,5 +109,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-20
-Stopped at: Completed 08-04-PLAN.md (token accumulation bug fix)
+Stopped at: Completed 09-01-PLAN.md (eval module and CLI)
 Resume file: None

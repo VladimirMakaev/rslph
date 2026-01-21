@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio_util::sync::CancellationToken;
 
-use crate::build::tokens::format_tokens;
+use crate::build::tokens::{format_tokens, TokenUsage};
 use crate::config::Config;
 use crate::error::RslphError;
 use crate::planning::{
@@ -33,7 +33,7 @@ use crate::subprocess::{ClaudeRunner, OutputLine, StreamResponse};
 ///
 /// # Returns
 ///
-/// Path to the generated progress file.
+/// Tuple of (path to generated progress file, token usage).
 pub async fn run_plan_command(
     input: &str,
     adaptive: bool,
@@ -41,7 +41,7 @@ pub async fn run_plan_command(
     working_dir: &Path,
     cancel_token: CancellationToken,
     timeout: Duration,
-) -> color_eyre::Result<PathBuf> {
+) -> color_eyre::Result<(PathBuf, TokenUsage)> {
     // If adaptive mode, run the adaptive planning flow
     if adaptive {
         return run_adaptive_planning(input, config, working_dir, cancel_token, timeout).await;
@@ -58,7 +58,7 @@ async fn run_basic_planning(
     working_dir: &Path,
     cancel_token: CancellationToken,
     timeout: Duration,
-) -> color_eyre::Result<PathBuf> {
+) -> color_eyre::Result<(PathBuf, TokenUsage)> {
     // Step 1: Detect project stack for testing strategy
     let stack = detect_stack(working_dir);
 
@@ -151,7 +151,15 @@ async fn run_basic_planning(
 
     eprintln!("[TRACE] Wrote progress file to: {}", output_path.display());
 
-    Ok(output_path)
+    // Step 10: Create TokenUsage from stream_response
+    let tokens = TokenUsage {
+        input_tokens: stream_response.input_tokens,
+        output_tokens: stream_response.output_tokens,
+        cache_creation_input_tokens: stream_response.cache_creation_input_tokens,
+        cache_read_input_tokens: stream_response.cache_read_input_tokens,
+    };
+
+    Ok((output_path, tokens))
 }
 
 /// Run subprocess with tracing to stderr for each line of output.
@@ -222,7 +230,7 @@ pub async fn run_adaptive_planning(
     working_dir: &Path,
     cancel_token: CancellationToken,
     timeout: Duration,
-) -> color_eyre::Result<PathBuf> {
+) -> color_eyre::Result<(PathBuf, TokenUsage)> {
     // Step 1: Detect project stack
     let stack = detect_stack(working_dir);
     println!("Detected stack:\n{}", stack.to_summary());
@@ -375,7 +383,15 @@ pub async fn run_adaptive_planning(
     let output_path = working_dir.join("progress.md");
     progress_file.write(&output_path)?;
 
-    Ok(output_path)
+    // Create TokenUsage from stream_response
+    let tokens = TokenUsage {
+        input_tokens: stream_response.input_tokens,
+        output_tokens: stream_response.output_tokens,
+        cache_creation_input_tokens: stream_response.cache_creation_input_tokens,
+        cache_read_input_tokens: stream_response.cache_read_input_tokens,
+    };
+
+    Ok((output_path, tokens))
 }
 
 /// Run Claude CLI in headless mode with a system prompt and return the response.
@@ -533,9 +549,12 @@ mod tests {
         assert!(result.is_ok(), "Command should complete: {:?}", result);
 
         // Verify progress.md was created
-        let output_path = result.unwrap();
+        let (output_path, tokens) = result.unwrap();
         assert!(output_path.exists(), "Progress file should exist");
         assert!(output_path.ends_with("progress.md"));
+        // Verify tokens are returned (will be zero from echo mock)
+        assert_eq!(tokens.input_tokens, 0);
+        assert_eq!(tokens.output_tokens, 0);
     }
 
     #[tokio::test]

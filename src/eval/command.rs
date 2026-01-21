@@ -238,3 +238,103 @@ fn detect_eval_prompt(working_dir: &PathBuf) -> color_eyre::Result<String> {
         "No prompt file found. Expected prompt.txt, README.md, or PROMPT.md in project root"
     ))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_copy_dir_recursive() {
+        let src_dir = TempDir::new().expect("src temp dir");
+        let dst_dir = TempDir::new().expect("dst temp dir");
+
+        // Create source structure
+        std::fs::write(src_dir.path().join("file.txt"), "content").expect("write file");
+        std::fs::create_dir(src_dir.path().join("subdir")).expect("create subdir");
+        std::fs::write(src_dir.path().join("subdir/nested.txt"), "nested").expect("write nested");
+
+        // Create .git directory that should be skipped
+        std::fs::create_dir(src_dir.path().join(".git")).expect("create .git");
+        std::fs::write(src_dir.path().join(".git/config"), "git stuff").expect("write git config");
+
+        // Copy
+        copy_dir_recursive(
+            &src_dir.path().to_path_buf(),
+            &dst_dir.path().to_path_buf(),
+        )
+        .expect("copy");
+
+        // Verify
+        assert!(dst_dir.path().join("file.txt").exists());
+        assert!(dst_dir.path().join("subdir/nested.txt").exists());
+        assert!(
+            !dst_dir.path().join(".git").exists(),
+            ".git should be skipped"
+        );
+    }
+
+    #[test]
+    fn test_detect_eval_prompt_priority() {
+        let dir = TempDir::new().expect("temp dir");
+
+        // No prompt file
+        let result = detect_eval_prompt(&dir.path().to_path_buf());
+        assert!(result.is_err());
+
+        // Add README.md
+        std::fs::write(dir.path().join("README.md"), "readme content").expect("write readme");
+        let result = detect_eval_prompt(&dir.path().to_path_buf());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "readme content");
+
+        // Add prompt.txt (should take priority)
+        std::fs::write(dir.path().join("prompt.txt"), "prompt content").expect("write prompt");
+        let result = detect_eval_prompt(&dir.path().to_path_buf());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "prompt content");
+    }
+
+    #[test]
+    fn test_init_git_repo() {
+        let dir = TempDir::new().expect("temp dir");
+        let path = dir.path().to_path_buf();
+
+        init_git_repo(&path).expect("init git");
+
+        assert!(path.join(".git").exists(), ".git directory should exist");
+    }
+
+    #[test]
+    fn test_detect_eval_prompt_with_prompt_md() {
+        let dir = TempDir::new().expect("temp dir");
+
+        // Add PROMPT.md (priority 3)
+        std::fs::write(dir.path().join("PROMPT.md"), "prompt md content").expect("write prompt md");
+        let result = detect_eval_prompt(&dir.path().to_path_buf());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "prompt md content");
+
+        // Add README.md (should take priority over PROMPT.md)
+        std::fs::write(dir.path().join("README.md"), "readme content").expect("write readme");
+        let result = detect_eval_prompt(&dir.path().to_path_buf());
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "readme content");
+    }
+
+    #[test]
+    fn test_copy_dir_recursive_empty_src() {
+        let src_dir = TempDir::new().expect("src temp dir");
+        let dst_dir = TempDir::new().expect("dst temp dir");
+
+        // Copy empty directory
+        copy_dir_recursive(
+            &src_dir.path().to_path_buf(),
+            &dst_dir.path().to_path_buf(),
+        )
+        .expect("copy");
+
+        // Verify destination exists and is empty
+        assert!(dst_dir.path().exists());
+    }
+}

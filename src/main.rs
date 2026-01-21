@@ -3,6 +3,7 @@ use std::time::Duration;
 use clap::Parser;
 use rslph::build::run_build_command;
 use rslph::cli::{Cli, Commands};
+use rslph::eval::run_eval_command;
 use rslph::planning::run_plan_command;
 use rslph::subprocess::setup_ctrl_c_handler;
 
@@ -67,6 +68,32 @@ async fn main() -> color_eyre::Result<()> {
                 }
                 Err(e) => {
                     eprintln!("Build failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Commands::Eval { project, keep, no_tui } => {
+            // Set up Ctrl+C handling
+            let cancel_token = setup_ctrl_c_handler();
+
+            println!("Evaluating: {}", project);
+            if keep {
+                println!("Mode: keep temp directory (--keep)");
+            }
+            if no_tui {
+                println!("Mode: headless (--no-tui)");
+            }
+
+            match run_eval_command(project, keep, no_tui, &config, cancel_token).await {
+                Ok(result) => {
+                    println!("Eval completed in {:.1}s", result.elapsed_secs);
+                    println!("Iterations: {}", result.iterations);
+                    if let Some(workspace) = result.workspace_path {
+                        println!("Workspace preserved at: {}", workspace.display());
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Eval failed: {}", e);
                     std::process::exit(1);
                 }
             }

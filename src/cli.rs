@@ -54,6 +54,20 @@ pub enum Commands {
         #[arg(long)]
         no_tui: bool,
     },
+
+    /// Run evaluation in isolated environment (EVAL-01)
+    Eval {
+        /// Project directory or name to evaluate
+        project: String,
+
+        /// Keep temp directory after completion
+        #[arg(long)]
+        keep: bool,
+
+        /// Disable TUI output
+        #[arg(long)]
+        no_tui: bool,
+    },
 }
 
 impl Cli {
@@ -208,5 +222,31 @@ mod tests {
         .expect("Should parse");
 
         assert_eq!(cli.config, Some(PathBuf::from("/custom/config.toml")));
+    }
+
+    #[test]
+    fn test_parse_eval_command() {
+        let cli = Cli::try_parse_from(["rslph", "eval", "calculator"]).expect("Should parse");
+        match cli.command {
+            Commands::Eval { project, keep, no_tui } => {
+                assert_eq!(project, "calculator");
+                assert!(!keep);
+                assert!(!no_tui);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_eval_with_keep() {
+        let cli = Cli::try_parse_from(["rslph", "eval", "calculator", "--keep"]).expect("Should parse");
+        match cli.command {
+            Commands::Eval { project, keep, no_tui } => {
+                assert_eq!(project, "calculator");
+                assert!(keep);
+                assert!(!no_tui);
+            }
+            _ => panic!("Expected Eval command"),
+        }
     }
 }

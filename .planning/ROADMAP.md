@@ -155,8 +155,17 @@ Plans:
 1. User runs `rslph eval calculator --trials 5` and sees 5 independent runs execute
 2. User sees statistical summary (mean pass rate, variance, min/max) after trials complete
 3. Results are saved to JSON file (e.g., `eval-results-calculator-2026-01-20.json`)
-4. User can compare two result files with `rslph eval compare file1.json file2.json`
+4. User can compare two result files with `rslph compare file1.json file2.json`
 5. Comparison shows deltas in pass rate, token consumption, and execution time
+
+**Plans:** 5 plans
+
+Plans:
+- [ ] 12-01-PLAN.md — Add --trials CLI flag and statistics module
+- [ ] 12-02-PLAN.md — Multi-trial loop and statistics aggregation
+- [ ] 12-03-PLAN.md — Multi-trial JSON result serialization
+- [ ] 12-04-PLAN.md — Compare command with delta display
+- [ ] 12-05-PLAN.md — E2E tests for multi-trial and compare features
 
 ---
 
@@ -176,7 +185,7 @@ Plans:
 | 9. Eval Command Foundation | v1.2 | 3/3 | Complete | 2026-01-20 |
 | 10. Eval Projects and Testing | v1.2 | 4/4 | Complete | 2026-01-20 |
 | 11. Prompt Engineering | v1.2 | 4/4 | Complete | 2026-01-21 |
-| 12. Multi-Trial Results | v1.2 | 0/? | Pending | — |
+| 12. Multi-Trial Results | v1.2 | 0/5 | Planned | — |
 
 ---
 
@@ -218,4 +227,4 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full details.
 
 ---
 
-*Last updated: 2026-01-21 — Phase 11 complete*
+*Last updated: 2026-01-21 — Phase 12 planned*

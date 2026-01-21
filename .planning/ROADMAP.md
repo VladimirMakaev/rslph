@@ -130,10 +130,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 11-01-PLAN.md — Add PromptMode enum, strum dependency, update config
-- [ ] 11-02-PLAN.md — Create GSD mode prompts (deviation handling, summaries, must-haves)
-- [ ] 11-03-PLAN.md — Create GSD-TDD mode prompts (TDD flow with escape hatch)
-- [ ] 11-04-PLAN.md — Basic mode prompts and CLI integration
+- [x] 11-01-PLAN.md — Add PromptMode enum, strum dependency, update config
+- [x] 11-02-PLAN.md — Create GSD mode prompts (deviation handling, summaries, must-haves)
+- [x] 11-03-PLAN.md — Create GSD-TDD mode prompts (TDD flow with escape hatch)
+- [x] 11-04-PLAN.md — Basic mode prompts and CLI integration
 
 ---
 
@@ -175,7 +175,7 @@ Plans:
 | 8. Token Tracking | v1.2 | 4/4 | Complete | 2026-01-20 |
 | 9. Eval Command Foundation | v1.2 | 3/3 | Complete | 2026-01-20 |
 | 10. Eval Projects and Testing | v1.2 | 4/4 | Complete | 2026-01-20 |
-| 11. Prompt Engineering | v1.2 | 0/4 | Planned | — |
+| 11. Prompt Engineering | v1.2 | 4/4 | Complete | 2026-01-21 |
 | 12. Multi-Trial Results | v1.2 | 0/? | Pending | — |
 
 ---
@@ -218,4 +218,4 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full details.
 
 ---
 
-*Last updated: 2026-01-21*
+*Last updated: 2026-01-21 — Phase 11 complete*

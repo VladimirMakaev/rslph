@@ -95,6 +95,14 @@ Plans:
 4. User can list available eval projects with `rslph eval --list`
 5. Hidden test data is NOT visible to the agent during build (verified by location outside project dir)
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — Project registry and calculator eval project with include_dir embedding
+- [ ] 10-02-PLAN.md — Stdin/stdout test runner implementation
+- [ ] 10-03-PLAN.md — Integrate test runner into eval command and add --list flag
+- [ ] 10-04-PLAN.md — FizzBuzz eval project and E2E tests
+
 ---
 
 ### Phase 11: Prompt Engineering
@@ -158,7 +166,7 @@ Plans:
 | 7.1 TUI Testing | v1.1 | 1/1 | Complete | 2026-01-19 |
 | 8. Token Tracking | v1.2 | 4/4 | Complete | 2026-01-20 |
 | 9. Eval Command Foundation | v1.2 | 3/3 | Complete | 2026-01-20 |
-| 10. Eval Projects and Testing | v1.2 | 0/? | Pending | — |
+| 10. Eval Projects and Testing | v1.2 | 0/4 | Planned | — |
 | 11. Prompt Engineering | v1.2 | 0/? | Pending | — |
 | 12. Multi-Trial Results | v1.2 | 0/? | Pending | — |
 

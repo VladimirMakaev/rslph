@@ -347,3 +347,104 @@ fn test_token_accumulation_across_iterations() {
     // Snapshot should show CUMULATIVE values: 3.5k in, 1.8k out
     assert_snapshot!(terminal.backend());
 }
+
+// ============================================================================
+// Eval-like Build Flow Tests (Plan 10-UAT)
+// ============================================================================
+
+/// Test TUI display during a calculator-like build flow.
+///
+/// Simulates what users would see during the build phase of an eval,
+/// with tool use messages and completion output.
+#[test]
+fn test_eval_build_flow_display() {
+    let mut terminal = test_terminal();
+    let mut app = App::new(5, "claude-sonnet-4", "calculator-eval");
+
+    // Start iteration (simulating build phase of eval)
+    app.update(AppEvent::IterationStart { iteration: 1 });
+
+    // Claude creates the calculator file
+    app.update(AppEvent::ToolMessage {
+        tool_name: "Write".to_string(),
+        content: "main.py\n#!/usr/bin/env python3\nimport sys\nexpr = input().strip()\nresult = eval(expr)\nprint(int(result) if isinstance(result, float) and result.is_integer() else result)".to_string(),
+    });
+
+    // Claude makes it executable
+    app.update(AppEvent::ToolMessage {
+        tool_name: "Bash".to_string(),
+        content: "chmod +x main.py\n(exit 0)".to_string(),
+    });
+
+    // Claude's completion message
+    app.update(AppEvent::ClaudeOutput(
+        "I've created a Python calculator that reads expressions from stdin and outputs the result.".to_string(),
+    ));
+
+    // Token usage for this iteration
+    app.update(AppEvent::TokenUsage {
+        input_tokens: 3500,
+        output_tokens: 850,
+        cache_creation_input_tokens: 200,
+        cache_read_input_tokens: 0,
+    });
+
+    terminal
+        .draw(|frame| render(frame, &app, 10))
+        .unwrap();
+
+    assert_snapshot!(terminal.backend());
+}
+
+/// Test TUI display with multiple iterations (simulating complex eval build).
+#[test]
+fn test_eval_multi_iteration_display() {
+    let mut terminal = test_terminal();
+    let mut app = App::new(5, "claude-sonnet-4", "calculator-eval");
+
+    // Iteration 1: Initial implementation attempt
+    app.update(AppEvent::IterationStart { iteration: 1 });
+    app.update(AppEvent::ToolMessage {
+        tool_name: "Write".to_string(),
+        content: "main.py\n# First attempt".to_string(),
+    });
+    app.update(AppEvent::ClaudeOutput("Created initial calculator.".to_string()));
+    app.update(AppEvent::TokenUsage {
+        input_tokens: 2000,
+        output_tokens: 500,
+        cache_creation_input_tokens: 100,
+        cache_read_input_tokens: 0,
+    });
+    app.update(AppEvent::IterationComplete { tasks_done: 0 });
+
+    // Iteration 2: Fix and complete
+    app.update(AppEvent::IterationStart { iteration: 2 });
+    app.update(AppEvent::ToolMessage {
+        tool_name: "Read".to_string(),
+        content: "main.py\n# Reading to verify".to_string(),
+    });
+    app.update(AppEvent::ToolMessage {
+        tool_name: "Write".to_string(),
+        content: "main.py\n# Fixed version with integer division".to_string(),
+    });
+    app.update(AppEvent::ClaudeOutput(
+        "Fixed the calculator to handle integer division correctly.".to_string(),
+    ));
+    app.update(AppEvent::TokenUsage {
+        input_tokens: 2500,
+        output_tokens: 600,
+        cache_creation_input_tokens: 0,
+        cache_read_input_tokens: 100,
+    });
+
+    // Set task completion state
+    app.current_task = 1;
+    app.total_tasks = 1;
+
+    terminal
+        .draw(|frame| render(frame, &app, 10))
+        .unwrap();
+
+    // Snapshot should show iteration 2 with cumulative tokens (4.5k in, 1.1k out)
+    assert_snapshot!(terminal.backend());
+}

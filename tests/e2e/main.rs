@@ -24,6 +24,9 @@ mod tui_tests;
 // Eval command tests (Plan 09-03)
 mod eval_command;
 
+// Eval integration tests with fake Claude (Plan 10-UAT)
+mod test_eval_integration;
+
 // Include fake_claude_lib for scenario builder access
 #[path = "../fake_claude_lib/mod.rs"]
 mod fake_claude_lib;

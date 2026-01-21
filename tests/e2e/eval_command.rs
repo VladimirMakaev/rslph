@@ -42,7 +42,7 @@ fn test_eval_missing_project() {
 
     cmd.assert()
         .failure()
-        .stderr(predicate::str::contains("does not exist"));
+        .stderr(predicate::str::contains("is neither a built-in project nor a valid path"));
 }
 
 #[test]

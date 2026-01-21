@@ -8,7 +8,7 @@ mod projects;
 mod test_runner;
 
 pub use command::run_eval_command;
-pub use projects::{get_project, is_builtin, list_projects};
+pub use projects::{extract_project_files, get_project, get_test_data, is_builtin, list_projects};
 pub use test_runner::{load_test_cases, TestCase, TestResult, TestResults, TestRunner};
 
 use std::path::PathBuf;
@@ -27,4 +27,6 @@ pub struct EvalResult {
     pub iterations: u32,
     /// Path to preserved workspace (if --keep was used)
     pub workspace_path: Option<PathBuf>,
+    /// Test results for built-in projects (EVAL-02, EVAL-03)
+    pub test_results: Option<TestResults>,
 }

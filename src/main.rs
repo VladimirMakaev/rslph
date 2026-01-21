@@ -100,6 +100,14 @@ async fn main() -> color_eyre::Result<()> {
                         format_tokens(result.total_tokens.cache_creation_input_tokens),
                         format_tokens(result.total_tokens.cache_read_input_tokens),
                     );
+                    if let Some(ref test_results) = result.test_results {
+                        println!(
+                            "Tests: {}/{} passed ({:.1}%)",
+                            test_results.passed,
+                            test_results.total,
+                            test_results.pass_rate()
+                        );
+                    }
                     if let Some(path) = result.workspace_path {
                         println!("Workspace: {}", path.display());
                     }

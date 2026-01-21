@@ -57,8 +57,9 @@ pub enum Commands {
 
     /// Run evaluation in isolated environment (EVAL-01)
     Eval {
-        /// Project directory or name to evaluate
-        project: String,
+        /// Project directory or name to evaluate (optional with --list)
+        #[arg(required_unless_present = "list")]
+        project: Option<String>,
 
         /// Keep temp directory after completion
         #[arg(long)]
@@ -67,6 +68,10 @@ pub enum Commands {
         /// Disable TUI output
         #[arg(long)]
         no_tui: bool,
+
+        /// List available built-in projects
+        #[arg(long)]
+        list: bool,
     },
 }
 
@@ -228,10 +233,11 @@ mod tests {
     fn test_parse_eval_command() {
         let cli = Cli::try_parse_from(["rslph", "eval", "calculator"]).expect("Should parse");
         match cli.command {
-            Commands::Eval { project, keep, no_tui } => {
-                assert_eq!(project, "calculator");
+            Commands::Eval { project, keep, no_tui, list } => {
+                assert_eq!(project, Some("calculator".to_string()));
                 assert!(!keep);
                 assert!(!no_tui);
+                assert!(!list);
             }
             _ => panic!("Expected Eval command"),
         }
@@ -241,10 +247,25 @@ mod tests {
     fn test_parse_eval_with_keep() {
         let cli = Cli::try_parse_from(["rslph", "eval", "calculator", "--keep"]).expect("Should parse");
         match cli.command {
-            Commands::Eval { project, keep, no_tui } => {
-                assert_eq!(project, "calculator");
+            Commands::Eval { project, keep, no_tui, list } => {
+                assert_eq!(project, Some("calculator".to_string()));
                 assert!(keep);
                 assert!(!no_tui);
+                assert!(!list);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_eval_with_list() {
+        let cli = Cli::try_parse_from(["rslph", "eval", "--list"]).expect("Should parse");
+        match cli.command {
+            Commands::Eval { project, keep, no_tui, list } => {
+                assert!(project.is_none());
+                assert!(!keep);
+                assert!(!no_tui);
+                assert!(list);
             }
             _ => panic!("Expected Eval command"),
         }

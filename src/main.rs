@@ -75,7 +75,19 @@ async fn main() -> color_eyre::Result<()> {
                 }
             }
         }
-        Commands::Eval { project, keep, no_tui } => {
+        Commands::Eval { project, keep, no_tui, list } => {
+            // Handle --list flag
+            if list {
+                println!("Available built-in projects:");
+                for name in rslph::eval::list_projects() {
+                    println!("  - {}", name);
+                }
+                return Ok(());
+            }
+
+            // project is required when not listing
+            let project = project.expect("project required when not listing");
+
             // Set up Ctrl+C handling
             let cancel_token = setup_ctrl_c_handler();
 

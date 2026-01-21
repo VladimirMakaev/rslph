@@ -1,35 +1,32 @@
 //! Eval command handler.
 //!
-//! Orchestrates plan+build execution in persistent eval directories
+//! Orchestrates plan+build execution in isolated temporary directories
 //! for controlled benchmarking.
 
 use color_eyre::eyre::eyre;
-use serde::Serialize;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
+use tempfile::TempDir;
 use tokio_util::sync::CancellationToken;
 
 use crate::build::run_build_command;
 use crate::build::tokens::{format_tokens, TokenUsage};
 use crate::config::Config;
-use crate::eval::{load_test_cases, TestResults, TestRunner};
+use crate::eval::{load_test_cases, TestRunner, TestResults};
 use crate::planning::run_plan_command;
 use crate::progress::ProgressFile;
-use crate::prompts::test_discovery_prompt;
-use crate::subprocess::{ClaudeRunner, OutputLine, StreamResponse};
 
 use super::EvalResult;
 
-/// Run the eval command (EVAL-01, EVAL-05, EVAL-06).
+/// Run the eval command (EVAL-01, EVAL-05).
 ///
-/// Executes plan and build in a persistent eval directory,
-/// collecting metrics for tokens and timing. Results are saved
-/// to `result.json` in the workspace.
+/// Executes plan and build in an isolated temporary directory,
+/// collecting metrics for tokens and timing.
 ///
 /// # Arguments
 ///
 /// * `project` - Path to project directory to evaluate
-/// * `_keep` - Deprecated: workspaces are always persisted now
+/// * `keep` - If true, preserve temp directory after completion
 /// * `no_tui` - If true, disable TUI output
 /// * `config` - Application configuration
 /// * `cancel_token` - Token for graceful cancellation
@@ -40,7 +37,7 @@ use super::EvalResult;
 /// * `Err(e)` - Eval failed
 pub async fn run_eval_command(
     project: String,
-    _keep: bool, // Deprecated: always persist
+    keep: bool,
     no_tui: bool,
     config: &Config,
     cancel_token: CancellationToken,
@@ -61,7 +58,7 @@ pub async fn run_eval_command(
         (false, Some(path))
     };
 
-    // Step 2: Create persistent eval workspace in config.eval_dir
+    // Step 2: Create isolated temp directory
     let project_name = if is_builtin_project {
         project.clone()
     } else {
@@ -155,7 +152,7 @@ pub async fn run_eval_command(
 
     // Step 10: Execute hidden tests for built-in projects (EVAL-02, EVAL-03)
     let test_results = if is_builtin_project {
-        run_project_tests(&project, &working_dir, config, cancel_token).await
+        run_project_tests(&project, &working_dir)
     } else {
         None // External projects don't have hidden tests
     };
@@ -174,7 +171,7 @@ pub async fn run_eval_command(
     Ok(EvalResult {
         project,
         elapsed_secs,
-        total_tokens: total_tokens.clone(),
+        total_tokens,
         iterations,
         workspace_path,
         test_results,
@@ -269,14 +266,8 @@ fn detect_eval_prompt(working_dir: &PathBuf) -> color_eyre::Result<String> {
 /// Run hidden tests for a built-in project.
 ///
 /// Loads test cases from the embedded project and runs them against
-/// the built program, displaying results. Uses Claude to discover
-/// how to run the program, falling back to hardcoded detection.
-async fn run_project_tests(
-    project: &str,
-    working_dir: &PathBuf,
-    config: &Config,
-    cancel_token: CancellationToken,
-) -> Option<TestResults> {
+/// the built program, displaying results.
+fn run_project_tests(project: &str, working_dir: &PathBuf) -> Option<TestResults> {
     println!("\n=== TEST PHASE ===\n");
 
     // Get test data from embedded project
@@ -289,28 +280,7 @@ async fn run_project_tests(
         return None;
     }
 
-    // Try to discover run script using Claude
-    let run_script = match discover_run_script(&config.claude_path, working_dir, cancel_token)
-        .await
-    {
-        Ok(script_path) => Some(script_path),
-        Err(e) => {
-            println!("Discovery failed ({}), trying fallback detection...", e);
-            None
-        }
-    };
-
-    // If discovery succeeded, use script-based runner
-    if let Some(script_path) = run_script {
-        println!("Testing with script: {}", script_path.display());
-        let runner = TestRunner::from_script(script_path, working_dir.clone());
-        let results = runner.run_tests(&test_cases);
-
-        print_test_results(&results);
-        return Some(results);
-    }
-
-    // Fallback: Find the built program using hardcoded patterns
+    // Find the built program
     let program_path = match find_built_program(working_dir) {
         Some(path) => path,
         None => {
@@ -321,16 +291,11 @@ async fn run_project_tests(
 
     println!("Testing program: {}", program_path.display());
 
-    // Run tests with direct program execution
+    // Run tests
     let runner = TestRunner::new(program_path);
     let results = runner.run_tests(&test_cases);
 
-    print_test_results(&results);
-    Some(results)
-}
-
-/// Print test results summary.
-fn print_test_results(results: &TestResults) {
+    // Print summary
     println!(
         "Tests: {}/{} passed ({:.1}%)",
         results.passed,
@@ -347,6 +312,8 @@ fn print_test_results(results: &TestResults) {
             );
         }
     }
+
+    Some(results)
 }
 
 /// Attempt to find a runnable program in the workspace.

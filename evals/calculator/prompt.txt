@@ -1,6 +1,5 @@
 Build a simple command-line calculator.
 
-
 The program should:
 1. Read a mathematical expression from stdin
 2. Evaluate the expression
@@ -20,5 +19,3 @@ Input: "10 * 5"
 Output: "50"
 
 The program should handle integer arithmetic. You may use any programming language.
-
-The root of the project just contain `./run` script that that would build and run the application. For example a caller would: `echo "1+2" | ./run` and get "3" in the stdout.

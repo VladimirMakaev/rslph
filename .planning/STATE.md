@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 9 - Eval Command Foundation
-Plan: 01 of 3
+Plan: 02 of 3
 Status: In progress
-Last activity: 2026-01-20 — Completed 09-01-PLAN.md (eval module and CLI)
+Last activity: 2026-01-20 — Completed 09-02-PLAN.md (eval command implementation)
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [####░░░░░░] 33% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#####░░░░░] 50% v1.2
 
 ## Phase Summary (v1.2)
 
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
-| 8 - Token Tracking | Users can observe token consumption | TOK-01, TOK-02, TOK-03, TOK-04 | Complete ✓ |
-| 9 - Eval Foundation | Controlled benchmarks in isolation | EVAL-01, EVAL-04, EVAL-05 | Pending |
+| 8 - Token Tracking | Users can observe token consumption | TOK-01, TOK-02, TOK-03, TOK-04 | Complete |
+| 9 - Eval Foundation | Controlled benchmarks in isolation | EVAL-01, EVAL-04, EVAL-05 | In Progress |
 | 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | Pending |
 | 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Pending |
 | 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Pending |
@@ -41,9 +41,9 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [####░░░░░
 - Shipped: 2026-01-19 (same day)
 
 **v1.2 Velocity:**
-- Total plans completed: 5
-- Average duration: 4m 3s
-- Total execution time: 20m 16s
+- Total plans completed: 6
+- Average duration: 4m 8s
+- Total execution time: 24m 46s
 
 **By Phase (v1.0):**
 
@@ -68,7 +68,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [####░░░░░
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 08-token-tracking | 4/4 | 18m | 4m 30s |
-| 09-eval-command-foundation | 1/3 | 2m 16s | 2m 16s |
+| 09-eval-command-foundation | 2/3 | 6m 46s | 3m 23s |
 
 *Updated after each plan completion*
 
@@ -96,6 +96,9 @@ All decisions are archived in milestone roadmap files:
 |----|----------|--------|
 | eval-module-structure | Eval module pattern | Mirrors build module: mod.rs exports types, command.rs contains handler |
 | eval-stub-approach | Initial implementation | Stub returns placeholder EvalResult for incremental development |
+| eval-token-return-types | Plan/Build return types | run_plan_command returns (PathBuf, TokenUsage), run_build_command returns TokenUsage |
+| eval-token-aggregation | Token aggregation | total_tokens = plan_tokens + build_tokens |
+| eval-prompt-detection | Prompt file priority | prompt.txt > README.md > PROMPT.md |
 
 ### Pending Todos
 
@@ -109,5 +112,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-20
-Stopped at: Completed 09-01-PLAN.md (eval module and CLI)
+Stopped at: Completed 09-02-PLAN.md (eval command implementation)
 Resume file: None

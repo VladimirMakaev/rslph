@@ -5,9 +5,11 @@
 
 mod command;
 mod projects;
+mod test_runner;
 
 pub use command::run_eval_command;
 pub use projects::{get_project, is_builtin, list_projects};
+pub use test_runner::{load_test_cases, TestCase, TestResult, TestResults, TestRunner};
 
 use std::path::PathBuf;
 use crate::build::tokens::TokenUsage;

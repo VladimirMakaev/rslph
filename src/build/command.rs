@@ -12,6 +12,7 @@ use crate::progress::ProgressFile;
 
 use super::iteration::run_single_iteration;
 use super::state::{BuildContext, BuildState, DoneReason, IterationResult};
+use super::tokens::TokenUsage;
 
 /// Run the build command.
 ///
@@ -29,7 +30,7 @@ use super::state::{BuildContext, BuildState, DoneReason, IterationResult};
 ///
 /// # Returns
 ///
-/// * `Ok(())` - Build completed successfully
+/// * `Ok(TokenUsage)` - Build completed with token usage
 /// * `Err(e)` - Build failed with error
 pub async fn run_build_command(
     progress_path: PathBuf,
@@ -38,7 +39,7 @@ pub async fn run_build_command(
     no_tui: bool,
     config: &Config,
     cancel_token: CancellationToken,
-) -> color_eyre::Result<()> {
+) -> color_eyre::Result<TokenUsage> {
     // Load initial progress file
     let progress = ProgressFile::load(&progress_path)?;
 
@@ -162,7 +163,7 @@ pub async fn run_build_command(
 
             BuildState::Done { reason } => {
                 print_completion_message(&reason, &ctx);
-                return Ok(());
+                return Ok(ctx.total_tokens.clone());
             }
 
             BuildState::Failed { error } => {
@@ -187,7 +188,7 @@ pub async fn run_build_command(
 /// - Configuration settings (max iterations, once mode)
 /// - Build prompt source and validation
 /// - Recent attempts summary
-fn run_dry_run(ctx: &BuildContext) -> color_eyre::Result<()> {
+fn run_dry_run(ctx: &BuildContext) -> color_eyre::Result<TokenUsage> {
     use crate::prompts::get_build_prompt;
 
     println!("\n=== DRY RUN MODE ===\n");
@@ -264,7 +265,7 @@ fn run_dry_run(ctx: &BuildContext) -> color_eyre::Result<()> {
     println!("\n=== END DRY RUN ===");
     println!("\nTo execute, run without --dry-run flag.");
 
-    Ok(())
+    Ok(TokenUsage::default())
 }
 
 /// Run build with TUI mode enabled.
@@ -276,7 +277,7 @@ async fn run_build_with_tui(
     progress: ProgressFile,
     config: &Config,
     cancel_token: CancellationToken,
-) -> color_eyre::Result<()> {
+) -> color_eyre::Result<TokenUsage> {
     use crate::tui::{run_tui, App, SubprocessEvent};
 
     // Initialize app state from progress
@@ -405,7 +406,7 @@ async fn run_build_with_tui(
                     "Build complete: {}",
                     reason
                 )));
-                break Ok(());
+                break Ok(ctx.total_tokens.clone());
             }
 
             BuildState::Failed { error } => {

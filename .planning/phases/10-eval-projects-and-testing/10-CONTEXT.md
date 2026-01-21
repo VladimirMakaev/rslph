@@ -19,6 +19,13 @@ Users can evaluate agent performance against built-in projects with hidden tests
 - Language agnostic — agent chooses implementation language
 - Output format: number only (just the numeric result, no expression echo)
 
+### Test coverage
+- Target: ~100 test cases for calculator project
+- Cover all supported operations with varying complexity levels
+- Mix of simple (single operation), medium (2-3 operations), and complex (nested parentheses, multiple operations)
+- Use Python3 during research/planning to validate expected outputs are correct
+- Ensure edge cases: negative numbers, zero division handling, floating-point precision
+
 ### Results presentation
 - Summary only for pass/fail counts (e.g., "Tests: 8/10 passed (80%)")
 - Live progress during test execution (dots or names as each test runs)

@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 11 - Prompt Engineering
-Plan: —
-Status: Ready for planning
-Last activity: 2026-01-20 — Completed Phase 10 (Eval Projects and Testing)
+Plan: 01 of 5
+Status: In progress
+Last activity: 2026-01-21 — Completed 11-01-PLAN.md
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [######░░░░] 60% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [######░░░░] 65% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -23,7 +23,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [######░░░░]
 | 8 - Token Tracking | Users can observe token consumption | TOK-01, TOK-02, TOK-03, TOK-04 | Complete |
 | 9 - Eval Foundation | Controlled benchmarks in isolation | EVAL-01, EVAL-04, EVAL-05 | Complete |
 | 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | Complete ✓ |
-| 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Pending |
+| 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | In Progress (1/5) |
 | 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Pending |
 
 ## Performance Metrics
@@ -117,6 +117,14 @@ All decisions are archived in milestone roadmap files:
 | e2e-test-module-structure | E2E test organization | Add tests to existing eval_command.rs rather than standalone file |
 | fizzbuzz-test-coverage | Test case range | 8 cases covering 1-20 range with progressive complexity |
 
+**v1.2 Decisions (Phase 11):**
+
+| ID | Decision | Choice |
+|----|----------|--------|
+| prompt-mode-variants | PromptMode enum variants | Basic/Gsd/GsdTdd as the three prompt modes |
+| prompt-mode-default | Default prompt mode | Basic for backward compatibility |
+| prompt-mode-serialization | String serialization format | snake_case for both strum and serde (basic, gsd, gsd_tdd) |
+
 ### Pending Todos
 
 - **CLAUDE-INTERNET-FLAG**: Remove `--internet` workaround flag from Claude CLI invocations once the underlying issue causing Claude CLI to hang without it is resolved. See `src/planning/command.rs`.
@@ -128,6 +136,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-20
-Stopped at: Completed Phase 10 (Eval Projects and Testing)
+Last session: 2026-01-21
+Stopped at: Completed 11-01-PLAN.md (PromptMode enum and Config integration)
 Resume file: None

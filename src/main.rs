@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use clap::Parser;
 use rslph::build::run_build_command;
+use rslph::build::tokens::format_tokens;
 use rslph::cli::{Cli, Commands};
 use rslph::eval::run_eval_command;
 use rslph::planning::run_plan_command;
@@ -31,7 +32,8 @@ async fn main() -> color_eyre::Result<()> {
             }
 
             match run_plan_command(&plan, adaptive, &config, &working_dir, cancel_token, timeout).await {
-                Ok(output_path) => {
+                Ok((output_path, _tokens)) => {
+                    // Tokens already printed by run_plan_command
                     println!("Success! Progress file written to: {}", output_path.display());
                 }
                 Err(e) => {
@@ -61,7 +63,8 @@ async fn main() -> color_eyre::Result<()> {
             }
 
             match run_build_command(plan, once, dry_run, no_tui, &config, cancel_token).await {
-                Ok(()) => {
+                Ok(_tokens) => {
+                    // Tokens already printed by build command
                     if !use_tui {
                         println!("Build completed successfully.");
                     }
@@ -86,10 +89,19 @@ async fn main() -> color_eyre::Result<()> {
 
             match run_eval_command(project, keep, no_tui, &config, cancel_token).await {
                 Ok(result) => {
-                    println!("Eval completed in {:.1}s", result.elapsed_secs);
+                    println!("\n=== EVAL COMPLETE ===");
+                    println!("Project: {}", result.project);
+                    println!("Time: {:.1}s", result.elapsed_secs);
                     println!("Iterations: {}", result.iterations);
-                    if let Some(workspace) = result.workspace_path {
-                        println!("Workspace preserved at: {}", workspace.display());
+                    println!(
+                        "Tokens: In: {} | Out: {} | CacheW: {} | CacheR: {}",
+                        format_tokens(result.total_tokens.input_tokens),
+                        format_tokens(result.total_tokens.output_tokens),
+                        format_tokens(result.total_tokens.cache_creation_input_tokens),
+                        format_tokens(result.total_tokens.cache_read_input_tokens),
+                    );
+                    if let Some(path) = result.workspace_path {
+                        println!("Workspace: {}", path.display());
                     }
                 }
                 Err(e) => {

@@ -136,7 +136,7 @@ pub async fn run_eval_command(
 
     // Step 10: Handle workspace cleanup
     let workspace_path = if keep {
-        let preserved = workspace.keep()?;
+        let preserved = workspace.keep();
         println!("\nWorkspace preserved at: {}", preserved.display());
         Some(preserved)
     } else {

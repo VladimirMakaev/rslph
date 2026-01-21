@@ -114,7 +114,42 @@ mod tests {
     #[test]
     fn test_is_builtin() {
         assert!(is_builtin("calculator"));
+        assert!(is_builtin("fizzbuzz"));
         assert!(!is_builtin("nonexistent"));
+    }
+
+    #[test]
+    fn test_list_projects_contains_fizzbuzz() {
+        let projects = list_projects();
+        assert!(
+            projects.contains(&"fizzbuzz"),
+            "Expected 'fizzbuzz' in project list, got: {:?}",
+            projects
+        );
+    }
+
+    #[test]
+    fn test_list_projects_contains_both() {
+        let projects = list_projects();
+        assert!(
+            projects.contains(&"calculator") && projects.contains(&"fizzbuzz"),
+            "Expected both 'calculator' and 'fizzbuzz' in project list, got: {:?}",
+            projects
+        );
+    }
+
+    #[test]
+    fn test_get_fizzbuzz_test_data() {
+        let project = get_project("fizzbuzz").expect("fizzbuzz project");
+        let test_data = get_test_data(project);
+        assert!(test_data.is_some(), "Fizzbuzz test data should exist");
+
+        let lines: Vec<_> = test_data.unwrap().lines().collect();
+        assert!(
+            lines.len() >= 8,
+            "Expected at least 8 test lines for fizzbuzz, got {}",
+            lines.len()
+        );
     }
 
     #[test]

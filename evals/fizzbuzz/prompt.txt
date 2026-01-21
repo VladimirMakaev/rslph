@@ -1,0 +1,31 @@
+Build a FizzBuzz command-line program.
+
+The program should:
+1. Read a number N from stdin
+2. For each number from 1 to N (inclusive):
+   - Print "Fizz" if divisible by 3
+   - Print "Buzz" if divisible by 5
+   - Print "FizzBuzz" if divisible by both 3 and 5
+   - Otherwise print the number itself
+3. Print each result on a separate line
+
+Example:
+Input: "15"
+Output:
+1
+2
+Fizz
+4
+Buzz
+Fizz
+7
+8
+Fizz
+Buzz
+11
+Fizz
+13
+14
+FizzBuzz
+
+The program should handle positive integers. You may use any programming language.

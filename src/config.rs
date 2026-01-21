@@ -1,4 +1,5 @@
-use directories::ProjectDirs;
+use crate::prompts::PromptMode;
+use directories::{BaseDirs, ProjectDirs};
 use figment::{
     providers::{Env, Format, Serialized, Toml},
     Figment,
@@ -56,10 +57,28 @@ pub struct Config {
 
     /// Number of recent messages to display in TUI (TUI-09)
     pub tui_recent_messages: usize,
+
+    /// Directory for persisting eval workspaces and results (EVAL-06)
+    /// Defaults to ~/.rslph/evals
+    pub eval_dir: PathBuf,
+
+    /// Timeout in seconds for each build iteration (default 600)
+    pub iteration_timeout: u64,
+
+    /// Maximum retries for timed-out iterations before failing (default 3)
+    pub timeout_retries: u32,
+
+    /// Prompt mode selection (basic, gsd, gsd_tdd)
+    pub prompt_mode: PromptMode,
 }
 
 impl Default for Config {
     fn default() -> Self {
+        // Default eval_dir to ~/.rslph/evals
+        let eval_dir = BaseDirs::new()
+            .map(|d| d.home_dir().join(".rslph").join("evals"))
+            .unwrap_or_else(|| PathBuf::from(".rslph/evals"));
+
         Self {
             claude_path: "claude".to_string(),
             max_iterations: 20,
@@ -70,6 +89,10 @@ impl Default for Config {
             notify_shell: "/bin/sh".to_string(),
             tui_enabled: true,
             tui_recent_messages: 10,
+            eval_dir,
+            iteration_timeout: 600,
+            timeout_retries: 3,
+            prompt_mode: PromptMode::default(),
         }
     }
 }
@@ -152,6 +175,14 @@ pub struct PartialConfig {
     pub tui_enabled: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tui_recent_messages: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub eval_dir: Option<PathBuf>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub iteration_timeout: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout_retries: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt_mode: Option<PromptMode>,
 }
 
 #[cfg(test)]
@@ -174,6 +205,15 @@ mod tests {
         assert_eq!(config.notify_shell, "/bin/sh");
         assert!(config.tui_enabled);
         assert_eq!(config.tui_recent_messages, 10);
+        assert_eq!(config.iteration_timeout, 600);
+        assert_eq!(config.timeout_retries, 3);
+        assert_eq!(config.prompt_mode, PromptMode::Basic);
+        // eval_dir should end with .rslph/evals
+        assert!(
+            config.eval_dir.ends_with(".rslph/evals"),
+            "eval_dir should end with .rslph/evals, got: {:?}",
+            config.eval_dir
+        );
     }
 
     #[test]
@@ -238,5 +278,11 @@ mod tests {
         // Non-existent commands should fall back to original value
         let result = resolve_command_path("nonexistent_command_xyz_12345");
         assert_eq!(result, "nonexistent_command_xyz_12345");
+    }
+
+    #[test]
+    fn test_default_prompt_mode() {
+        let config = Config::default();
+        assert_eq!(config.prompt_mode, PromptMode::Basic);
     }
 }

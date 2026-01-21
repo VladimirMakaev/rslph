@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 10 - Eval Projects and Testing
-Plan: —
-Status: Ready for planning
-Last activity: 2026-01-20 — Completed Phase 9 (Eval Command Foundation)
+Plan: 01 of 4
+Status: In progress
+Last activity: 2026-01-20 — Completed 10-01-PLAN.md (Built-in Eval Projects)
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#####░░░░░] 50% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [######░░░░] 60% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -22,7 +22,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#####░░░░�
 |-------|------|--------------|--------|
 | 8 - Token Tracking | Users can observe token consumption | TOK-01, TOK-02, TOK-03, TOK-04 | Complete ✓ |
 | 9 - Eval Foundation | Controlled benchmarks in isolation | EVAL-01, EVAL-04, EVAL-05 | Complete ✓ |
-| 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | Pending |
+| 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | In progress (1/4) |
 | 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Pending |
 | 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Pending |
 
@@ -41,9 +41,9 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#####░░░░�
 - Shipped: 2026-01-19 (same day)
 
 **v1.2 Velocity:**
-- Total plans completed: 7
-- Average duration: 3m 58s
-- Total execution time: 27m 46s
+- Total plans completed: 8
+- Average duration: 3m 52s
+- Total execution time: 31m 1s
 
 **By Phase (v1.0):**
 
@@ -69,6 +69,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#####░░░░�
 |-------|-------|-------|----------|
 | 08-token-tracking | 4/4 | 18m | 4m 30s |
 | 09-eval-command-foundation | 3/3 | 9m 46s | 3m 15s |
+| 10-eval-projects-and-testing | 1/4 | 3m 15s | 3m 15s |
 
 *Updated after each plan completion*
 
@@ -101,6 +102,13 @@ All decisions are archived in milestone roadmap files:
 | eval-prompt-detection | Prompt file priority | prompt.txt > README.md > PROMPT.md |
 | eval-test-scope | E2E test focus | CLI parsing and validation, not full execution |
 
+**v1.2 Decisions (Phase 10):**
+
+| ID | Decision | Choice |
+|----|----------|--------|
+| include-dir-paths | File path handling | include_dir stores files with project prefix (e.g., "calculator/tests.jsonl") |
+| test-data-separation | Hidden test data | extract_project_files excludes tests.jsonl; get_test_data provides access |
+
 ### Pending Todos
 
 - **CLAUDE-INTERNET-FLAG**: Remove `--internet` workaround flag from Claude CLI invocations once the underlying issue causing Claude CLI to hang without it is resolved. See `src/planning/command.rs`.
@@ -113,5 +121,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-20
-Stopped at: Completed Phase 9 (Eval Command Foundation)
+Stopped at: Completed 10-01-PLAN.md (Built-in Eval Projects)
 Resume file: None

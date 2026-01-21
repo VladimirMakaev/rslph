@@ -2,6 +2,7 @@ pub mod build;
 pub mod cli;
 pub mod config;
 pub mod error;
+pub mod eval;
 pub mod planning;
 pub mod progress;
 pub mod prompts;

@@ -3,6 +3,7 @@ use clap::{CommandFactory, Parser, Subcommand};
 use std::path::PathBuf;
 
 use crate::config::{Config, PartialConfig};
+use crate::prompts::PromptMode;
 
 #[derive(Parser, Debug)]
 #[command(name = "rslph")]
@@ -20,6 +21,10 @@ pub struct Cli {
     /// Maximum iterations (overrides config)
     #[arg(long, global = true)]
     pub max_iterations: Option<u32>,
+
+    /// Prompt mode selection (basic, gsd, gsd_tdd)
+    #[arg(long, global = true, value_parser = clap::value_parser!(PromptMode))]
+    pub mode: Option<PromptMode>,
 
     #[command(subcommand)]
     pub command: Commands,
@@ -73,6 +78,12 @@ pub enum Commands {
         #[arg(long)]
         list: bool,
     },
+
+    /// Re-run tests only on an existing eval workspace
+    Retest {
+        /// Path to eval workspace directory
+        workspace: PathBuf,
+    },
 }
 
 impl Cli {
@@ -83,6 +94,7 @@ impl Cli {
         PartialConfig {
             claude_path: self.extract_if_explicit(matches, "claude_path", &self.claude_path),
             max_iterations: self.extract_if_explicit(matches, "max_iterations", &self.max_iterations),
+            prompt_mode: self.extract_if_explicit(matches, "mode", &self.mode),
             ..Default::default()
         }
     }
@@ -268,6 +280,51 @@ mod tests {
                 assert!(list);
             }
             _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_retest_command() {
+        let cli = Cli::try_parse_from(["rslph", "retest", "/path/to/workspace"]).expect("Should parse");
+        match cli.command {
+            Commands::Retest { workspace } => {
+                assert_eq!(workspace, PathBuf::from("/path/to/workspace"));
+            }
+            _ => panic!("Expected Retest command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_with_mode_flag() {
+        let cli = Cli::try_parse_from([
+            "rslph",
+            "--mode",
+            "gsd_tdd",
+            "plan",
+            "idea.txt",
+        ])
+        .expect("Should parse");
+
+        assert_eq!(cli.mode, Some(PromptMode::GsdTdd));
+    }
+
+    #[test]
+    fn test_mode_flag_values() {
+        // Test all valid mode values
+        for (input, expected) in [
+            ("basic", PromptMode::Basic),
+            ("gsd", PromptMode::Gsd),
+            ("gsd_tdd", PromptMode::GsdTdd),
+        ] {
+            let cli = Cli::try_parse_from([
+                "rslph",
+                "--mode",
+                input,
+                "plan",
+                "idea.txt",
+            ])
+            .expect("Should parse");
+            assert_eq!(cli.mode, Some(expected));
         }
     }
 }

@@ -4,6 +4,9 @@
 
 mod defaults;
 mod loader;
+mod modes;
 
+pub use defaults::test_discovery_prompt;
 pub use loader::get_build_prompt;
 pub use loader::get_plan_prompt;
+pub use modes::PromptMode;

@@ -483,4 +483,149 @@ mod tests {
         // Verify destination exists and is empty
         assert!(dst_dir.path().exists());
     }
+
+    #[test]
+    fn test_find_built_program_cargo_project() {
+        let dir = TempDir::new().expect("temp dir");
+
+        // Create Cargo.toml
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            r#"[package]
+name = "myapp"
+version = "0.1.0"
+"#,
+        )
+        .expect("write Cargo.toml");
+
+        // Create fake binary
+        std::fs::create_dir_all(dir.path().join("target/debug")).expect("create target/debug");
+        std::fs::write(dir.path().join("target/debug/myapp"), "binary").expect("write binary");
+
+        let result = find_built_program(&dir.path().to_path_buf());
+        assert!(result.is_some(), "Should find Cargo binary");
+        assert!(
+            result.unwrap().ends_with("myapp"),
+            "Path should end with binary name"
+        );
+    }
+
+    #[test]
+    fn test_find_built_program_release_build() {
+        let dir = TempDir::new().expect("temp dir");
+
+        // Create Cargo.toml
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            r#"[package]
+name = "myrelease"
+version = "0.1.0"
+"#,
+        )
+        .expect("write Cargo.toml");
+
+        // Create only release binary (no debug)
+        std::fs::create_dir_all(dir.path().join("target/release")).expect("create target/release");
+        std::fs::write(dir.path().join("target/release/myrelease"), "binary").expect("write binary");
+
+        let result = find_built_program(&dir.path().to_path_buf());
+        assert!(result.is_some(), "Should find release binary");
+        assert!(
+            result.unwrap().to_str().unwrap().contains("release"),
+            "Path should contain 'release'"
+        );
+    }
+
+    #[test]
+    fn test_find_built_program_script() {
+        let dir = TempDir::new().expect("temp dir");
+
+        // Create main.py
+        std::fs::write(dir.path().join("main.py"), "print('hello')").expect("write main.py");
+
+        let result = find_built_program(&dir.path().to_path_buf());
+        assert!(result.is_some(), "Should find Python script");
+        assert!(
+            result.unwrap().ends_with("main.py"),
+            "Path should end with main.py"
+        );
+    }
+
+    #[test]
+    fn test_find_built_program_shell_script() {
+        let dir = TempDir::new().expect("temp dir");
+
+        // Create main.sh
+        std::fs::write(dir.path().join("main.sh"), "#!/bin/bash\necho hello").expect("write main.sh");
+
+        let result = find_built_program(&dir.path().to_path_buf());
+        assert!(result.is_some(), "Should find shell script");
+        assert!(
+            result.unwrap().ends_with("main.sh"),
+            "Path should end with main.sh"
+        );
+    }
+
+    #[test]
+    fn test_find_built_program_calculator_name() {
+        let dir = TempDir::new().expect("temp dir");
+
+        // Create "calculator" executable
+        std::fs::write(dir.path().join("calculator"), "#!/bin/bash").expect("write calculator");
+
+        let result = find_built_program(&dir.path().to_path_buf());
+        assert!(result.is_some(), "Should find calculator");
+        assert!(
+            result.unwrap().ends_with("calculator"),
+            "Path should end with calculator"
+        );
+    }
+
+    #[test]
+    fn test_find_built_program_no_match() {
+        let dir = TempDir::new().expect("temp dir");
+
+        // Create a random file that doesn't match any pattern
+        std::fs::write(dir.path().join("random.txt"), "content").expect("write");
+
+        let result = find_built_program(&dir.path().to_path_buf());
+        assert!(result.is_none(), "Should not find any program");
+    }
+
+    #[test]
+    fn test_find_built_program_cargo_debug_over_release() {
+        let dir = TempDir::new().expect("temp dir");
+
+        // Create Cargo.toml
+        std::fs::write(
+            dir.path().join("Cargo.toml"),
+            r#"[package]
+name = "myapp"
+version = "0.1.0"
+"#,
+        )
+        .expect("write Cargo.toml");
+
+        // Create both debug and release binaries
+        std::fs::create_dir_all(dir.path().join("target/debug")).expect("create target/debug");
+        std::fs::create_dir_all(dir.path().join("target/release")).expect("create target/release");
+        std::fs::write(dir.path().join("target/debug/myapp"), "debug").expect("write debug");
+        std::fs::write(dir.path().join("target/release/myapp"), "release").expect("write release");
+
+        let result = find_built_program(&dir.path().to_path_buf());
+        assert!(result.is_some(), "Should find binary");
+        // Debug should be preferred over release
+        assert!(
+            result.unwrap().to_str().unwrap().contains("debug"),
+            "Debug build should be preferred"
+        );
+    }
+
+    #[test]
+    fn test_builtin_project_detection() {
+        // Test that calculator is detected as built-in
+        assert!(crate::eval::is_builtin("calculator"));
+        assert!(!crate::eval::is_builtin("nonexistent"));
+        assert!(!crate::eval::is_builtin("/some/path"));
+    }
 }

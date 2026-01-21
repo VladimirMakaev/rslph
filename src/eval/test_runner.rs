@@ -346,4 +346,73 @@ this is not json
         // Expected is "hello", so this should pass
         assert_eq!(results.passed, 1);
     }
+
+    /// Integration test: verify test runner works with a real calculator script.
+    ///
+    /// This test creates an actual shell script calculator and runs the same
+    /// test cases used in the calculator eval project. This verifies the
+    /// complete test infrastructure works end-to-end.
+    #[test]
+    fn test_runner_with_real_calculator() {
+        use tempfile::TempDir;
+
+        // Create a temp directory with a working calculator script
+        let temp_dir = TempDir::new().expect("create temp dir");
+        let calculator_path = temp_dir.path().join("calculator");
+
+        // Shell script that evaluates simple math expressions
+        // Uses bc for reliable integer arithmetic
+        let calculator_script = r#"#!/bin/sh
+read expr
+# Replace multiplication and division symbols, evaluate with bc
+result=$(echo "$expr" | bc 2>/dev/null)
+# bc outputs result, we just print it
+echo "$result"
+"#;
+
+        std::fs::write(&calculator_path, calculator_script).expect("write script");
+
+        // Make executable
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut perms = std::fs::metadata(&calculator_path)
+                .expect("get metadata")
+                .permissions();
+            perms.set_mode(0o755);
+            std::fs::set_permissions(&calculator_path, perms).expect("set permissions");
+        }
+
+        // Load calculator test cases from embedded project
+        let test_content = r#"{"input": "2 + 2", "expected": "4"}
+{"input": "10 - 5", "expected": "5"}
+{"input": "3 * 4", "expected": "12"}
+{"input": "20 / 4", "expected": "5"}
+{"input": "100 + 200", "expected": "300"}
+{"input": "50 - 25", "expected": "25"}
+{"input": "7 * 8", "expected": "56"}
+{"input": "81 / 9", "expected": "9"}
+{"input": "1 + 1", "expected": "2"}
+{"input": "0 * 100", "expected": "0"}"#;
+
+        let test_cases = load_test_cases(test_content);
+        assert_eq!(test_cases.len(), 10, "Should load all 10 test cases");
+
+        // Run tests
+        let runner = TestRunner::new(calculator_path);
+        let results = runner.run_tests(&test_cases);
+
+        // All 10 tests should pass
+        assert_eq!(
+            results.passed, 10,
+            "All calculator tests should pass. Failed cases: {:?}",
+            results
+                .cases
+                .iter()
+                .filter(|c| !c.passed)
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(results.total, 10);
+        assert!((results.pass_rate() - 100.0).abs() < 0.001);
+    }
 }

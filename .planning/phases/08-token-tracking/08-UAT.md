@@ -1,5 +1,5 @@
 ---
-status: complete
+status: diagnosed
 phase: 08-token-tracking
 source: [08-01-SUMMARY.md, 08-02-SUMMARY.md, 08-03-SUMMARY.md]
 started: 2026-01-20T02:40:00Z
@@ -49,9 +49,14 @@ skipped: 0
   reason: "User reported: I see the header but it refreshes every time. You need to track running total. Add a TUI test for this too"
   severity: major
   test: 1
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "In src/tui/app.rs:439-442, TokenUsage handler uses = instead of += so each event overwrites previous values"
+  artifacts:
+    - path: "src/tui/app.rs"
+      issue: "AppEvent::TokenUsage handler uses assignment instead of accumulation"
+      lines: "439-442"
+  missing:
+    - "Change = to += for token accumulation"
+    - "Add TUI test for token accumulation"
   debug_session: ""
 
 - truth: "Human-readable token formatting has TUI test coverage"
@@ -59,9 +64,10 @@ skipped: 0
   reason: "User reported: If you don't have a TUI test for this you should build one"
   severity: minor
   test: 3
-  root_cause: ""
+  root_cause: "Missing TUI snapshot test that verifies k/M suffix formatting in status bar"
   artifacts: []
-  missing: []
+  missing:
+    - "Add TUI snapshot test for format_tokens with large values"
   debug_session: ""
 
 - truth: "Token counts accumulate across iterations without jumping/resetting"
@@ -69,7 +75,12 @@ skipped: 0
   reason: "User reported: The numbers are jumping I don't think they are accumulated. Write a test for this yourself and check the snapshot"
   severity: major
   test: 4
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "Same as Test 1 - assignment instead of accumulation in AppEvent::TokenUsage handler"
+  artifacts:
+    - path: "src/tui/app.rs"
+      issue: "AppEvent::TokenUsage handler uses assignment instead of accumulation"
+      lines: "439-442"
+  missing:
+    - "Change = to += for token accumulation"
+    - "Add TUI snapshot test for multi-iteration token accumulation"
   debug_session: ""

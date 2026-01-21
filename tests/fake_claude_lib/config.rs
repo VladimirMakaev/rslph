@@ -65,4 +65,9 @@ pub struct InvocationConfig {
     /// Token configuration for this invocation's responses.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token_config: Option<TokenConfig>,
+
+    /// When true, actually execute Write and Bash tool_use events.
+    /// This creates real files and runs real commands for E2E testing.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub execute_tools: Option<bool>,
 }

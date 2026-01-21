@@ -199,6 +199,16 @@ impl ScenarioBuilder {
         self
     }
 
+    /// Enable tool execution for this invocation.
+    ///
+    /// When enabled, fake Claude will actually execute Write and Bash tool_use
+    /// events, creating real files and running real commands. Use this for E2E
+    /// tests that need the fake Claude to produce real artifacts.
+    pub fn with_execute_tools(mut self) -> Self {
+        self.current_invocation.execute_tools = Some(true);
+        self
+    }
+
     /// Alias for with_delay_ms for API consistency.
     pub fn with_delay(self, delay_ms: u64) -> Self {
         self.with_delay_ms(delay_ms)

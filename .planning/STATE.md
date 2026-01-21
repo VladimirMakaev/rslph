@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 11 - Prompt Engineering
-Plan: 01 of 5
+Plan: 03 of 5
 Status: In progress
-Last activity: 2026-01-21 — Completed 11-01-PLAN.md
+Last activity: 2026-01-21 — Completed 11-03-PLAN.md
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [######░░░░] 65% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#######░░░] 70% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -23,7 +23,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [######░░░░]
 | 8 - Token Tracking | Users can observe token consumption | TOK-01, TOK-02, TOK-03, TOK-04 | Complete |
 | 9 - Eval Foundation | Controlled benchmarks in isolation | EVAL-01, EVAL-04, EVAL-05 | Complete |
 | 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | Complete ✓ |
-| 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | In Progress (1/5) |
+| 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | In Progress (3/5) |
 | 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Pending |
 
 ## Performance Metrics
@@ -41,9 +41,9 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [######░░░░]
 - Shipped: 2026-01-19 (same day)
 
 **v1.2 Velocity:**
-- Total plans completed: 11
-- Average duration: 3m 32s
-- Total execution time: 38m 51s
+- Total plans completed: 13
+- Average duration: 3m 24s
+- Total execution time: 44m 19s
 
 **By Phase (v1.0):**
 
@@ -70,6 +70,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [######░░░░]
 | 08-token-tracking | 4/4 | 18m | 4m 30s |
 | 09-eval-command-foundation | 3/3 | 9m 46s | 3m 15s |
 | 10-eval-projects-and-testing | 4/4 | 11m 5s | 2m 46s |
+| 11-prompt-engineering | 3/5 | 10m 44s | 3m 35s |
 
 *Updated after each plan completion*
 
@@ -124,6 +125,9 @@ All decisions are archived in milestone roadmap files:
 | prompt-mode-variants | PromptMode enum variants | Basic/Gsd/GsdTdd as the three prompt modes |
 | prompt-mode-default | Default prompt mode | Basic for backward compatibility |
 | prompt-mode-serialization | String serialization format | snake_case for both strum and serde (basic, gsd, gsd_tdd) |
+| tdd-state-structure | TDD state tracking format | tdd_state block in YAML frontmatter with phase, consecutive_failures, escaped fields |
+| tdd-escape-threshold | TDD escape hatch threshold | 3 consecutive failures triggers escape hatch (PROMPT-03) |
+| tdd-task-types | TDD task type variants | Three task types: test, implement, refactor for TDD phases |
 
 ### Pending Todos
 
@@ -137,5 +141,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-21
-Stopped at: Completed 11-01-PLAN.md (PromptMode enum and Config integration)
+Stopped at: Completed 11-03-PLAN.md (GSD-TDD prompts with TDD enforcement)
 Resume file: None

@@ -96,3 +96,53 @@ fn test_eval_project_with_readme() {
 
     assert!(project_dir.join("README.md").exists());
 }
+
+#[test]
+fn test_eval_list_shows_projects() {
+    let mut cmd = Command::cargo_bin("rslph").expect("binary");
+    cmd.args(["eval", "--list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("calculator"))
+        .stdout(predicate::str::contains("fizzbuzz"));
+}
+
+#[test]
+fn test_eval_unknown_project_fails() {
+    let mut cmd = Command::cargo_bin("rslph").expect("binary");
+    cmd.args(["eval", "nonexistent-project-xyz"])
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("neither a built-in project nor a valid path"));
+}
+
+#[test]
+fn test_eval_requires_project_or_list() {
+    let mut cmd = Command::cargo_bin("rslph").expect("binary");
+    cmd.arg("eval")
+        .assert()
+        .failure()
+        .stderr(predicate::str::contains("required"));
+}
+
+#[test]
+fn test_eval_list_outputs_formatted() {
+    let mut cmd = Command::cargo_bin("rslph").expect("binary");
+    cmd.args(["eval", "--list"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Available built-in projects:"))
+        .stdout(predicate::str::contains("  - calculator"))
+        .stdout(predicate::str::contains("  - fizzbuzz"));
+}
+
+#[test]
+fn test_eval_help_shows_flags() {
+    let mut cmd = Command::cargo_bin("rslph").expect("binary");
+    cmd.args(["eval", "--help"])
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("Run evaluation in isolated environment"))
+        .stdout(predicate::str::contains("--list"))
+        .stdout(predicate::str::contains("--keep"));
+}

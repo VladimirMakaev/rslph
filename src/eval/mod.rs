@@ -4,8 +4,10 @@
 //! and aggregates metrics (tokens, timing).
 
 mod command;
+mod projects;
 
 pub use command::run_eval_command;
+pub use projects::{get_project, is_builtin, list_projects};
 
 use std::path::PathBuf;
 use crate::build::tokens::TokenUsage;

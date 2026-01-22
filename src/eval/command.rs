@@ -651,6 +651,26 @@ fn convert_stat_summary(stat: &StatSummary) -> SerializableStatSummary {
     }
 }
 
+/// Load a multi-trial result from JSON file.
+///
+/// # Arguments
+///
+/// * `path` - Path to the JSON file
+///
+/// # Returns
+///
+/// * `Ok(SerializableMultiTrialResult)` - Loaded result
+/// * `Err(e)` - File not found or invalid JSON
+fn load_multi_trial_result(path: &Path) -> color_eyre::Result<SerializableMultiTrialResult> {
+    let content = std::fs::read_to_string(path)
+        .map_err(|e| eyre!("Failed to read {}: {}", path.display(), e))?;
+
+    let result: SerializableMultiTrialResult = serde_json::from_str(&content)
+        .map_err(|e| eyre!("Invalid JSON in {}: {}", path.display(), e))?;
+
+    Ok(result)
+}
+
 /// Copy directory contents recursively.
 fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
     if !dst.exists() {
@@ -1720,5 +1740,80 @@ version = "0.1.0"
         assert!(stats["total_input_tokens"]["mean"].as_f64().is_some());
         assert!(stats["total_output_tokens"]["mean"].as_f64().is_some());
         assert!(stats["iterations"]["mean"].as_f64().is_some());
+    }
+
+    #[test]
+    fn test_load_multi_trial_result() {
+        let dir = TempDir::new().expect("temp dir");
+        let result_path = dir.path().join("eval-results.json");
+
+        // Write valid multi-trial JSON
+        let json = r#"{
+            "project": "calculator",
+            "timestamp": "2026-01-22T01:00:00Z",
+            "trial_count": 2,
+            "trials": [
+                {
+                    "trial_num": 1,
+                    "elapsed_secs": 10.0,
+                    "iterations": 3,
+                    "tokens": { "input": 1000, "output": 500, "cache_creation": 100, "cache_read": 50 },
+                    "test_results": { "passed": 8, "total": 10, "pass_rate": 80.0 },
+                    "workspace_path": "/tmp/workspace1"
+                },
+                {
+                    "trial_num": 2,
+                    "elapsed_secs": 12.0,
+                    "iterations": 4,
+                    "tokens": { "input": 1200, "output": 600, "cache_creation": 120, "cache_read": 60 },
+                    "test_results": { "passed": 10, "total": 10, "pass_rate": 100.0 },
+                    "workspace_path": "/tmp/workspace2"
+                }
+            ],
+            "statistics": {
+                "pass_rate": { "mean": 0.9, "variance": 0.01, "std_dev": 0.1, "min": 0.8, "max": 1.0, "count": 2 },
+                "elapsed_secs": { "mean": 11.0, "variance": 2.0, "std_dev": 1.414, "min": 10.0, "max": 12.0, "count": 2 },
+                "total_input_tokens": { "mean": 1100.0, "variance": 20000.0, "std_dev": 141.4, "min": 1000.0, "max": 1200.0, "count": 2 },
+                "total_output_tokens": { "mean": 550.0, "variance": 5000.0, "std_dev": 70.7, "min": 500.0, "max": 600.0, "count": 2 },
+                "iterations": { "mean": 3.5, "variance": 0.5, "std_dev": 0.707, "min": 3.0, "max": 4.0, "count": 2 }
+            }
+        }"#;
+        std::fs::write(&result_path, json).expect("write");
+
+        let loaded = load_multi_trial_result(&result_path).expect("load");
+        assert_eq!(loaded.project, "calculator");
+        assert_eq!(loaded.trial_count, 2);
+        assert_eq!(loaded.trials.len(), 2);
+        assert_eq!(loaded.trials[0].trial_num, 1);
+        assert_eq!(loaded.trials[1].trial_num, 2);
+        assert!((loaded.statistics.pass_rate.mean - 0.9).abs() < 0.001);
+        assert!((loaded.statistics.elapsed_secs.mean - 11.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_load_multi_trial_result_missing_file() {
+        let dir = TempDir::new().expect("temp dir");
+        let result_path = dir.path().join("nonexistent.json");
+
+        let result = load_multi_trial_result(&result_path);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("Failed to read"), "Error: {}", err);
+        assert!(err.contains("nonexistent.json"), "Error: {}", err);
+    }
+
+    #[test]
+    fn test_load_multi_trial_result_invalid_json() {
+        let dir = TempDir::new().expect("temp dir");
+        let result_path = dir.path().join("invalid.json");
+
+        // Write invalid JSON
+        std::fs::write(&result_path, "{ not valid json }").expect("write");
+
+        let result = load_multi_trial_result(&result_path);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("Invalid JSON"), "Error: {}", err);
+        assert!(err.contains("invalid.json"), "Error: {}", err);
     }
 }

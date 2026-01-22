@@ -170,6 +170,20 @@ async fn run_single_trial_parallel(
         event: TrialEventKind::Planning,
     });
 
+    // Create progress callback that sends Building events
+    let tx_for_callback = event_tx.clone();
+    let max_iterations = config.max_iterations;
+    let progress_callback: super::command::ProgressCallback = Arc::new(move |iteration, _total| {
+        let _ = tx_for_callback.send(TrialEvent {
+            mode,
+            trial_num,
+            event: TrialEventKind::Building {
+                iteration,
+                max_iterations,
+            },
+        });
+    });
+
     // Run the trial with the specified mode
     let result = run_single_trial_with_mode(
         project_name,
@@ -178,6 +192,7 @@ async fn run_single_trial_parallel(
         no_tui,
         config,
         cancel_token,
+        Some(progress_callback),
     )
     .await;
 

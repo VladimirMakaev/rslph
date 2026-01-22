@@ -7,8 +7,13 @@ use chrono::Utc;
 use color_eyre::eyre::eyre;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tokio_util::sync::CancellationToken;
+
+/// Callback type for reporting build iteration progress.
+/// Parameters: (current_iteration, max_iterations)
+pub type ProgressCallback = Arc<dyn Fn(u32, u32) + Send + Sync>;
 
 use crate::build::run_build_command;
 use crate::build::tokens::{format_tokens, TokenUsage};
@@ -79,7 +84,7 @@ pub async fn run_eval_command(
         if trials > 1 {
             println!("\n=== TRIAL {}/{} ===\n", trial_num, trials);
         }
-        let result = run_single_trial(&project, trial_num, mode, no_tui, config, cancel_token.clone()).await?;
+        let result = run_single_trial(&project, trial_num, mode, no_tui, config, cancel_token.clone(), None).await?;
         trial_results.push(result);
     }
 
@@ -360,6 +365,7 @@ async fn run_single_trial(
     no_tui: bool,
     config: &Config,
     cancel_token: CancellationToken,
+    progress_callback: Option<ProgressCallback>,
 ) -> color_eyre::Result<EvalResult> {
     let start = Instant::now();
 
@@ -451,6 +457,7 @@ async fn run_single_trial(
         mode,
         config,
         cancel_token.clone(),
+        progress_callback,
     )
     .await?;
 
@@ -527,9 +534,10 @@ pub async fn run_single_trial_with_mode(
     no_tui: bool,
     config: &Config,
     cancel_token: CancellationToken,
+    progress_callback: Option<ProgressCallback>,
 ) -> color_eyre::Result<EvalResult> {
     // Forward to run_single_trial with the mode parameter
-    run_single_trial(project, trial_num, mode, no_tui, config, cancel_token).await
+    run_single_trial(project, trial_num, mode, no_tui, config, cancel_token, progress_callback).await
 }
 
 /// Re-run only the test phase on an existing eval workspace.

@@ -4,6 +4,7 @@
 //! and termination handling.
 
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio_util::sync::CancellationToken;
 
 use crate::config::Config;
@@ -14,6 +15,10 @@ use crate::prompts::PromptMode;
 use super::iteration::run_single_iteration;
 use super::state::{BuildContext, BuildState, DoneReason, IterationResult};
 use super::tokens::TokenUsage;
+
+/// Callback type for reporting build iteration progress.
+/// Parameters: (current_iteration, max_iterations)
+pub type ProgressCallback = Arc<dyn Fn(u32, u32) + Send + Sync>;
 
 /// Run the build command.
 ///
@@ -29,6 +34,7 @@ use super::tokens::TokenUsage;
 /// * `mode` - The prompt mode to use for this build
 /// * `config` - Application configuration
 /// * `cancel_token` - Token for graceful cancellation
+/// * `progress_callback` - Optional callback for iteration progress updates
 ///
 /// # Returns
 ///
@@ -42,6 +48,7 @@ pub async fn run_build_command(
     mode: PromptMode,
     config: &Config,
     cancel_token: CancellationToken,
+    progress_callback: Option<ProgressCallback>,
 ) -> color_eyre::Result<TokenUsage> {
     // Load initial progress file
     let progress = ProgressFile::load(&progress_path)?;
@@ -93,6 +100,10 @@ pub async fn run_build_command(
                 ctx.current_iteration = 1;
                 ctx.iteration_start = Some(std::time::Instant::now());
                 ctx.log("\n--- Iteration 1 ---");
+                // Invoke progress callback at iteration start
+                if let Some(ref cb) = progress_callback {
+                    cb(1, ctx.max_iterations);
+                }
                 BuildState::Running { iteration: 1 }
             }
 
@@ -184,6 +195,10 @@ pub async fn run_build_command(
                         ctx.current_iteration = iteration + 1;
                         ctx.iteration_start = Some(std::time::Instant::now());
                         ctx.log(&format!("\n--- Iteration {} ---", iteration + 1));
+                        // Invoke progress callback at iteration start
+                        if let Some(ref cb) = progress_callback {
+                            cb(iteration + 1, ctx.max_iterations);
+                        }
                         BuildState::Running {
                             iteration: iteration + 1,
                         }
@@ -611,6 +626,7 @@ mod tests {
             PromptMode::Basic,
             &config,
             token,
+            None,
         )
         .await;
 
@@ -634,6 +650,7 @@ mod tests {
             PromptMode::Basic,
             &config,
             token,
+            None,
         )
         .await;
 
@@ -681,6 +698,7 @@ mod tests {
             PromptMode::Basic,
             &config,
             token,
+            None,
         )
         .await;
 
@@ -720,7 +738,7 @@ mod tests {
             token_clone.cancel();
         });
 
-        let result = run_build_command(progress_path, false, false, true, PromptMode::Basic, &config, token).await;
+        let result = run_build_command(progress_path, false, false, true, PromptMode::Basic, &config, token, None).await;
 
         // Should complete with user cancelled status
         assert!(result.is_ok(), "Should handle cancellation: {:?}", result);
@@ -739,6 +757,7 @@ mod tests {
             PromptMode::Basic,
             &config,
             token,
+            None,
         )
         .await;
 
@@ -787,6 +806,7 @@ mod tests {
             PromptMode::Basic,
             &config,
             token,
+            None,
         )
         .await;
 
@@ -833,6 +853,7 @@ mod tests {
             PromptMode::Basic,
             &config,
             token,
+            None,
         )
         .await;
 
@@ -941,6 +962,7 @@ mod tests {
             PromptMode::Basic,
             &config,
             token,
+            None,
         )
         .await;
 
@@ -1038,6 +1060,7 @@ mod tests {
             PromptMode::Basic,
             &config,
             token,
+            None,
         )
         .await;
 
@@ -1105,6 +1128,7 @@ mod tests {
             PromptMode::Basic,
             &config,
             token,
+            None,
         )
         .await;
 
@@ -1164,6 +1188,7 @@ mod tests {
             PromptMode::Basic,
             &config,
             token,
+            None,
         )
         .await;
 
@@ -1274,6 +1299,7 @@ mod tests {
             PromptMode::Basic,
             &config,
             token,
+            None,
         )
         .await;
 

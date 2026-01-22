@@ -65,7 +65,7 @@ async fn main() -> color_eyre::Result<()> {
                 }
             }
 
-            match run_build_command(plan, once, dry_run, no_tui, config.prompt_mode, &config, cancel_token).await {
+            match run_build_command(plan, once, dry_run, no_tui, config.prompt_mode, &config, cancel_token, None).await {
                 Ok(_tokens) => {
                     // Tokens already printed by build command
                     if !use_tui {

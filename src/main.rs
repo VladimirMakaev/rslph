@@ -16,7 +16,7 @@ async fn main() -> color_eyre::Result<()> {
     let config = cli.load_config()?;
 
     match cli.command {
-        Commands::Plan { plan, adaptive } => {
+        Commands::Plan { plan, adaptive, tui } => {
             let working_dir = std::env::current_dir()?;
 
             // Set up Ctrl+C handling
@@ -30,8 +30,11 @@ async fn main() -> color_eyre::Result<()> {
             if adaptive {
                 println!("Mode: adaptive (with clarifying questions)");
             }
+            if tui {
+                println!("Mode: TUI (streaming output)");
+            }
 
-            match run_plan_command(&plan, adaptive, &config, &working_dir, cancel_token, timeout).await {
+            match run_plan_command(&plan, adaptive, tui, &config, &working_dir, cancel_token, timeout).await {
                 Ok((output_path, _tokens)) => {
                     // Tokens already printed by run_plan_command
                     println!("Success! Progress file written to: {}", output_path.display());

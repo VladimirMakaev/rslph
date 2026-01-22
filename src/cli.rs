@@ -40,6 +40,10 @@ pub enum Commands {
         /// Use adaptive mode with clarifying questions
         #[arg(long)]
         adaptive: bool,
+
+        /// Enable TUI mode with streaming output
+        #[arg(long)]
+        tui: bool,
     },
 
     /// Execute tasks iteratively with fresh context (CMD-02)
@@ -146,9 +150,10 @@ mod tests {
     fn test_parse_plan_command() {
         let cli = Cli::try_parse_from(["rslph", "plan", "my-idea.txt"]).expect("Should parse");
         match cli.command {
-            Commands::Plan { plan, adaptive } => {
+            Commands::Plan { plan, adaptive, tui } => {
                 assert_eq!(plan, "my-idea.txt");
                 assert!(!adaptive);
+                assert!(!tui);
             }
             _ => panic!("Expected Plan command"),
         }
@@ -196,9 +201,24 @@ mod tests {
         let cli = Cli::try_parse_from(["rslph", "plan", "idea.txt", "--adaptive"])
             .expect("Should parse");
         match cli.command {
-            Commands::Plan { plan, adaptive } => {
+            Commands::Plan { plan, adaptive, tui } => {
                 assert_eq!(plan, "idea.txt");
                 assert!(adaptive);
+                assert!(!tui);
+            }
+            _ => panic!("Expected Plan command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_plan_with_tui() {
+        let cli = Cli::try_parse_from(["rslph", "plan", "my-idea.txt", "--tui"])
+            .expect("Should parse");
+        match cli.command {
+            Commands::Plan { plan, adaptive, tui } => {
+                assert_eq!(plan, "my-idea.txt");
+                assert!(!adaptive);
+                assert!(tui);
             }
             _ => panic!("Expected Plan command"),
         }

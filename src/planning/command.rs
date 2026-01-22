@@ -26,6 +26,7 @@ use crate::subprocess::{ClaudeRunner, OutputLine, StreamResponse};
 ///
 /// * `input` - User's idea/plan description
 /// * `adaptive` - Whether to use adaptive mode with clarifying questions
+/// * `tui` - Whether to use TUI mode with streaming output
 /// * `config` - Application configuration
 /// * `working_dir` - Directory to use as working directory and output location
 /// * `cancel_token` - Token for graceful cancellation
@@ -37,11 +38,18 @@ use crate::subprocess::{ClaudeRunner, OutputLine, StreamResponse};
 pub async fn run_plan_command(
     input: &str,
     adaptive: bool,
+    tui: bool,
     config: &Config,
     working_dir: &Path,
     cancel_token: CancellationToken,
     timeout: Duration,
 ) -> color_eyre::Result<(PathBuf, TokenUsage)> {
+    // If TUI mode, run the TUI planning flow (to be implemented)
+    if tui {
+        // TUI mode will be implemented in Task 3
+        return run_basic_planning(input, config, working_dir, cancel_token, timeout).await;
+    }
+
     // If adaptive mode, run the adaptive planning flow
     if adaptive {
         return run_adaptive_planning(input, config, working_dir, cancel_token, timeout).await;
@@ -538,6 +546,7 @@ mod tests {
         let result = run_plan_command(
             "build something",
             false, // basic mode
+            false, // no TUI
             &config,
             dir.path(),
             token,
@@ -582,6 +591,7 @@ mod tests {
         let result = run_plan_command(
             "anything",
             false, // basic mode
+            false, // no TUI
             &config,
             dir.path(),
             token,
@@ -627,6 +637,7 @@ mod tests {
         let result = run_plan_command(
             "anything",
             false, // basic mode
+            false, // no TUI
             &config,
             dir.path(),
             token,
@@ -652,6 +663,7 @@ mod tests {
         let result = run_plan_command(
             "anything",
             false, // basic mode
+            false, // no TUI
             &config,
             dir.path(),
             token,

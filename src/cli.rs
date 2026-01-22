@@ -70,6 +70,10 @@ pub enum Commands {
         #[arg(long, default_value = "1")]
         trials: u32,
 
+        /// Comma-separated list of modes to evaluate (basic,gsd,gsd_tdd)
+        #[arg(long, value_delimiter = ',')]
+        modes: Option<Vec<PromptMode>>,
+
         /// Keep temp directory after completion
         #[arg(long)]
         keep: bool,
@@ -258,9 +262,10 @@ mod tests {
     fn test_parse_eval_command() {
         let cli = Cli::try_parse_from(["rslph", "eval", "calculator"]).expect("Should parse");
         match cli.command {
-            Commands::Eval { project, trials, keep, no_tui, list } => {
+            Commands::Eval { project, trials, modes, keep, no_tui, list } => {
                 assert_eq!(project, Some("calculator".to_string()));
                 assert_eq!(trials, 1); // default value
+                assert!(modes.is_none());
                 assert!(!keep);
                 assert!(!no_tui);
                 assert!(!list);
@@ -273,9 +278,10 @@ mod tests {
     fn test_parse_eval_with_trials() {
         let cli = Cli::try_parse_from(["rslph", "eval", "calculator", "--trials", "5"]).expect("Should parse");
         match cli.command {
-            Commands::Eval { project, trials, keep, no_tui, list } => {
+            Commands::Eval { project, trials, modes, keep, no_tui, list } => {
                 assert_eq!(project, Some("calculator".to_string()));
                 assert_eq!(trials, 5);
+                assert!(modes.is_none());
                 assert!(!keep);
                 assert!(!no_tui);
                 assert!(!list);
@@ -288,9 +294,10 @@ mod tests {
     fn test_parse_eval_with_keep() {
         let cli = Cli::try_parse_from(["rslph", "eval", "calculator", "--keep"]).expect("Should parse");
         match cli.command {
-            Commands::Eval { project, trials, keep, no_tui, list } => {
+            Commands::Eval { project, trials, modes, keep, no_tui, list } => {
                 assert_eq!(project, Some("calculator".to_string()));
                 assert_eq!(trials, 1);
+                assert!(modes.is_none());
                 assert!(keep);
                 assert!(!no_tui);
                 assert!(!list);
@@ -303,12 +310,56 @@ mod tests {
     fn test_parse_eval_with_list() {
         let cli = Cli::try_parse_from(["rslph", "eval", "--list"]).expect("Should parse");
         match cli.command {
-            Commands::Eval { project, trials, keep, no_tui, list } => {
+            Commands::Eval { project, trials, modes, keep, no_tui, list } => {
                 assert!(project.is_none());
                 assert_eq!(trials, 1);
+                assert!(modes.is_none());
                 assert!(!keep);
                 assert!(!no_tui);
                 assert!(list);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_eval_with_modes() {
+        let cli = Cli::try_parse_from([
+            "rslph", "eval", "calculator", "--modes", "basic,gsd,gsd_tdd"
+        ]).expect("Should parse");
+        match cli.command {
+            Commands::Eval { project, trials, modes, keep, no_tui, list } => {
+                assert_eq!(project, Some("calculator".to_string()));
+                assert_eq!(trials, 1);
+                let modes = modes.expect("modes should be present");
+                assert_eq!(modes.len(), 3);
+                assert_eq!(modes[0], PromptMode::Basic);
+                assert_eq!(modes[1], PromptMode::Gsd);
+                assert_eq!(modes[2], PromptMode::GsdTdd);
+                assert!(!keep);
+                assert!(!no_tui);
+                assert!(!list);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_eval_with_modes_and_trials() {
+        let cli = Cli::try_parse_from([
+            "rslph", "eval", "calculator", "--modes", "basic,gsd", "--trials", "3"
+        ]).expect("Should parse");
+        match cli.command {
+            Commands::Eval { project, trials, modes, keep, no_tui, list } => {
+                assert_eq!(project, Some("calculator".to_string()));
+                assert_eq!(trials, 3);
+                let modes = modes.expect("modes should be present");
+                assert_eq!(modes.len(), 2);
+                assert_eq!(modes[0], PromptMode::Basic);
+                assert_eq!(modes[1], PromptMode::Gsd);
+                assert!(!keep);
+                assert!(!no_tui);
+                assert!(!list);
             }
             _ => panic!("Expected Eval command"),
         }

@@ -75,7 +75,7 @@ async fn main() -> color_eyre::Result<()> {
                 }
             }
         }
-        Commands::Eval { project, trials, keep, no_tui, list } => {
+        Commands::Eval { project, trials, modes: _, keep, no_tui, list } => {
             // Handle --list flag
             if list {
                 println!("Available built-in projects:");

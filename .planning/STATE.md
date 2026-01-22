@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 13 - Parallel Eval TUI
-Plan: 8 of 9 (13-09 complete, 13-08 pending)
-Status: Gap closure plan 13-09 complete
-Last activity: 2026-01-22 — Completed 13-09 mode passthrough to plan/build commands
+Plan: 9 of 9 (all complete)
+Status: Phase 13 complete - all gap closures done
+Last activity: 2026-01-22 - Completed 13-08 iteration progress wiring
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#########.] 90% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -25,7 +25,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#########.] 90% v1.
 | 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | Complete |
 | 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Complete |
 | 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Complete |
-| 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | In Progress (2 gap closure plans ready) |
+| 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | Complete |
 | 14 - TUI Visual Parity | Claude Code-style TUI design | TUI-01 to TUI-06 | Not Started |
 
 ## Performance Metrics
@@ -43,9 +43,9 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#########.] 90% v1.
 - Shipped: 2026-01-19 (same day)
 
 **v1.2 Velocity:**
-- Total plans completed: 24
-- Average duration: 3m 13s
-- Total execution time: 76m 51s
+- Total plans completed: 25
+- Average duration: 3m 08s
+- Total execution time: 81m 51s
 
 **By Phase (v1.0):**
 
@@ -74,7 +74,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#########.] 90% v1.
 | 10-eval-projects-and-testing | 4/4 | 11m 5s | 2m 46s |
 | 11-prompt-engineering | 4/4 | 14m 16s | 3m 34s |
 | 12-multi-trial-results | 5/5 | 13m | 2m 36s |
-| 13-parallel-eval-tui | 8/9 | 22m | 5m |
+| 13-parallel-eval-tui | 9/9 | 27m | 3m |
 
 *Updated after each plan completion*
 
@@ -185,7 +185,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-22
-Stopped at: Completed 13-09 mode passthrough
+Stopped at: Completed 13-08 iteration progress wiring, Phase 13 complete
 Resume file: None
 
 ### Roadmap Evolution
@@ -200,4 +200,6 @@ Resume file: None
 - Milestone audit: 2 critical gaps found (PARA-01 partial, PARA-02 partial)
 - Gap closure plans created: 13-08 (dashboard iteration progress), 13-09 (mode passthrough)
 - 13-09 complete: Mode passthrough from eval trials to plan/build commands
+- 13-08 complete: Iteration progress wired to dashboard TUI via ProgressCallback
+- Phase 13 complete: All 9 plans done, all PARA requirements fulfilled
 - Phase 14 added: TUI Visual Parity with Claude Code (brand colors, box-drawn elements, spinner, status bar)

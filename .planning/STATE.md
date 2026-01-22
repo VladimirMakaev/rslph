@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 13 - Parallel Eval TUI
-Plan: 3 of 4 (in progress)
-Status: In progress
-Last activity: 2026-01-22 — Completed 13-03-PLAN.md
+Plan: 4 of 4 (complete)
+Status: Phase complete
+Last activity: 2026-01-22 — Completed 13-04-PLAN.md
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [############] 96% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [############] 100% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -25,7 +25,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [############] 96% v
 | 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | Complete |
 | 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Complete |
 | 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Complete |
-| 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | In Progress |
+| 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | Complete |
 
 ## Performance Metrics
 
@@ -42,9 +42,9 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [############] 96% v
 - Shipped: 2026-01-19 (same day)
 
 **v1.2 Velocity:**
-- Total plans completed: 20
-- Average duration: 3m 21s
-- Total execution time: 70m 51s
+- Total plans completed: 24
+- Average duration: 3m 13s
+- Total execution time: 76m 51s
 
 **By Phase (v1.0):**
 
@@ -73,7 +73,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [############] 96% v
 | 10-eval-projects-and-testing | 4/4 | 11m 5s | 2m 46s |
 | 11-prompt-engineering | 4/4 | 14m 16s | 3m 34s |
 | 12-multi-trial-results | 5/5 | 13m | 2m 36s |
-| 13-parallel-eval-tui | 3/4 | 14m | 4m 40s |
+| 13-parallel-eval-tui | 4/4 | 20m | 5m |
 
 *Updated after each plan completion*
 
@@ -163,6 +163,8 @@ All decisions are archived in milestone roadmap files:
 | conversation-toggle-key | Conversation toggle key | 'c' key toggles split conversation view |
 | conversation-scroll-keys | Conversation scroll keys | PageUp/PageDown scroll by 10 items |
 | split-view-ratio | Split view layout | 50/50 horizontal split for conversation and main view |
+| plan-tui-pattern | Plan TUI architecture | Separate TUI task with mpsc channel for event forwarding |
+| plan-tui-auto-scroll | Plan TUI scrolling | Auto-scroll to bottom as new content arrives |
 
 ### Pending Todos
 
@@ -182,7 +184,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-22
-Stopped at: Completed 13-03-PLAN.md
+Stopped at: Completed 13-04-PLAN.md (Phase 13 complete)
 Resume file: None
 
 ### Roadmap Evolution
@@ -191,3 +193,5 @@ Resume file: None
 - Phase 13 planned: 4 plans in 2 waves (wave 1: 13-01, wave 2: 13-02, 13-03, 13-04)
 - 13-01 complete: Parallel infrastructure with --modes flag and JoinSet execution
 - 13-03 complete: Enhanced conversation view in build TUI with 'c' toggle
+- 13-04 complete: Plan command TUI mode with streaming LLM output
+- Phase 13 complete: All 4 plans executed, v1.2 milestone complete

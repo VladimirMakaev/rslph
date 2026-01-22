@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 13 - Parallel Eval TUI
-Plan: 0 of 4 (planned, ready for execution)
-Status: Planned
-Last activity: 2026-01-22 — Phase 13 plans created (4 plans in 2 waves)
+Plan: 1 of 4 (in progress)
+Status: In progress
+Last activity: 2026-01-22 — Completed 13-01-PLAN.md
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########░░] 83% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [###########░] 88% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -25,7 +25,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########░░] 8
 | 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | Complete |
 | 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Complete |
 | 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Complete |
-| 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | Planned |
+| 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | In Progress |
 
 ## Performance Metrics
 
@@ -42,9 +42,9 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########░░] 8
 - Shipped: 2026-01-19 (same day)
 
 **v1.2 Velocity:**
-- Total plans completed: 19
-- Average duration: 3m 19s
-- Total execution time: 62m 51s
+- Total plans completed: 20
+- Average duration: 3m 21s
+- Total execution time: 70m 51s
 
 **By Phase (v1.0):**
 
@@ -73,6 +73,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########░░] 8
 | 10-eval-projects-and-testing | 4/4 | 11m 5s | 2m 46s |
 | 11-prompt-engineering | 4/4 | 14m 16s | 3m 34s |
 | 12-multi-trial-results | 5/5 | 13m | 2m 36s |
+| 13-parallel-eval-tui | 1/4 | 8m | 8m |
 
 *Updated after each plan completion*
 
@@ -145,6 +146,15 @@ All decisions are archived in milestone roadmap files:
 | json-filename-pattern | Multi-trial JSON filename | eval-results-{project}-{YYYY-MM-DD}.json |
 | json-deserialize | Deserialize derive | Added for future compare command loading |
 
+**v1.2 Decisions (Phase 13):**
+
+| ID | Decision | Choice |
+|----|----------|--------|
+| parallel-limit | Concurrent trial limit | Semaphore::new(3) for rate limiting |
+| event-channel-type | TrialEvent channel | mpsc::unbounded_channel for async event communication |
+| hash-derive | PromptMode Hash | Added Hash to PromptMode for HashMap key usage |
+| multimode-filename | Multi-mode JSON filename | eval-results-{project}-multimode-{timestamp}.json |
+
 ### Pending Todos
 
 - **CLAUDE-INTERNET-FLAG**: Remove `--internet` workaround flag from Claude CLI invocations once the underlying issue causing Claude CLI to hang without it is resolved. See `src/planning/command.rs`.
@@ -163,10 +173,11 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-22
-Stopped at: Phase 13 planning complete
+Stopped at: Completed 13-01-PLAN.md
 Resume file: None
 
 ### Roadmap Evolution
 
 - Phase 13 added: Parallel Eval TUI (parallel modes, eval dashboard, enhanced TUI, plan TUI)
 - Phase 13 planned: 4 plans in 2 waves (wave 1: 13-01, wave 2: 13-02, 13-03, 13-04)
+- 13-01 complete: Parallel infrastructure with --modes flag and JoinSet execution

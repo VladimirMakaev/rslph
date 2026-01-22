@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 
 ## Current Position
 
-Phase: 12 - Multi-Trial Results
-Plan: 05 of 5
-Status: Phase complete
-Last activity: 2026-01-22 — Completed 12-05-PLAN.md (E2E Tests)
+Phase: 13 - Parallel Eval TUI
+Plan: 0 of 4 (planned, ready for execution)
+Status: Planned
+Last activity: 2026-01-22 — Phase 13 plans created (4 plans in 2 waves)
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########░░] 83% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -22,9 +22,10 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1
 |-------|------|--------------|--------|
 | 8 - Token Tracking | Users can observe token consumption | TOK-01, TOK-02, TOK-03, TOK-04 | Complete |
 | 9 - Eval Foundation | Controlled benchmarks in isolation | EVAL-01, EVAL-04, EVAL-05 | Complete |
-| 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | Complete ✓ |
-| 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Complete ✓ |
-| 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Complete ✓ |
+| 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | Complete |
+| 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Complete |
+| 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Complete |
+| 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | Planned |
 
 ## Performance Metrics
 
@@ -149,6 +150,12 @@ All decisions are archived in milestone roadmap files:
 - **CLAUDE-INTERNET-FLAG**: Remove `--internet` workaround flag from Claude CLI invocations once the underlying issue causing Claude CLI to hang without it is resolved. See `src/planning/command.rs`.
 - **CLAUDE-CLI-OUTPUT-FLAGS**: Research Claude CLI `--output-format stream-json` and `--json-schema` flags for correct usage.
 
+### Future Features (v1.3 Candidates)
+
+*Note: EVAL-PARALLEL-MODES, EVAL-TUI-DASHBOARD, TUI-LLM-OUTPUT, and PLAN-TUI are now addressed in Phase 13.*
+
+None currently.
+
 ### Blockers/Concerns
 
 None.
@@ -156,5 +163,10 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-22
-Stopped at: Completed 12-05-PLAN.md
+Stopped at: Phase 13 planning complete
 Resume file: None
+
+### Roadmap Evolution
+
+- Phase 13 added: Parallel Eval TUI (parallel modes, eval dashboard, enhanced TUI, plan TUI)
+- Phase 13 planned: 4 plans in 2 waves (wave 1: 13-01, wave 2: 13-02, 13-03, 13-04)

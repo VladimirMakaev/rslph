@@ -4,7 +4,7 @@
 
 - v1.0 MVP -- Phases 1-6 (shipped 2026-01-19)
 - v1.1 Testing Enhancement -- Phases 7-7.1 (shipped 2026-01-19)
-- **v1.2 Context Engineering** -- Phases 8-12 (active)
+- **v1.2 Context Engineering** -- Phases 8-13 (active)
 
 ## Overview
 
@@ -161,11 +161,43 @@ Plans:
 **Plans:** 5 plans
 
 Plans:
-- [ ] 12-01-PLAN.md — Add --trials CLI flag and statistics module
-- [ ] 12-02-PLAN.md — Multi-trial loop and statistics aggregation
-- [ ] 12-03-PLAN.md — Multi-trial JSON result serialization
-- [ ] 12-04-PLAN.md — Compare command with delta display
-- [ ] 12-05-PLAN.md — E2E tests for multi-trial and compare features
+- [x] 12-01-PLAN.md — Add --trials CLI flag and statistics module
+- [x] 12-02-PLAN.md — Multi-trial loop and statistics aggregation
+- [x] 12-03-PLAN.md — Multi-trial JSON result serialization
+- [x] 12-04-PLAN.md — Compare command with delta display
+- [x] 12-05-PLAN.md — E2E tests for multi-trial and compare features
+
+---
+
+### Phase 13: Parallel Eval TUI
+
+**Goal:** Users can run parallel evals across modes with live TUI dashboard and enhanced conversation display
+
+**Dependencies:** Phase 12 (Multi-Trial Results)
+
+**Requirements:**
+| ID | Requirement |
+|----|-------------|
+| PARA-01 | Parallel eval runs across different modes (basic, gsd, gsd_tdd) with --modes flag |
+| PARA-02 | TUI dashboard for parallel eval execution showing real-time progress of each trial/mode |
+| PARA-03 | Enhanced TUI showing full LLM conversation output (thinking, tool calls, messages) like Claude Code UI |
+| PARA-04 | TUI mode for `plan` command matching enhanced TUI style (streaming output, tool calls, thinking blocks) |
+
+**Success Criteria:**
+1. User runs `rslph eval calculator --modes basic,gsd,gsd_tdd --trials 3` and sees 9 total trials (3 per mode) run in parallel
+2. TUI dashboard shows real-time progress: mode, trial number, current iteration, pass rate, elapsed time
+3. Results are grouped by mode in JSON output for comparison
+4. User can view full LLM conversation in TUI (thinking blocks, tool calls, text output) in a scrollable view
+5. Enhanced TUI applies to `build` command with full conversation display
+6. `plan` command has TUI mode showing streaming LLM output, tool calls, thinking blocks, and generated plan preview
+
+**Plans:** 4 plans
+
+Plans:
+- [ ] 13-01-PLAN.md — --modes flag and parallel execution infrastructure
+- [ ] 13-02-PLAN.md — Parallel eval dashboard TUI
+- [ ] 13-03-PLAN.md — Enhanced conversation display
+- [ ] 13-04-PLAN.md — Plan command TUI mode
 
 ---
 
@@ -185,7 +217,8 @@ Plans:
 | 9. Eval Command Foundation | v1.2 | 3/3 | Complete | 2026-01-20 |
 | 10. Eval Projects and Testing | v1.2 | 4/4 | Complete | 2026-01-20 |
 | 11. Prompt Engineering | v1.2 | 4/4 | Complete | 2026-01-21 |
-| 12. Multi-Trial Results | v1.2 | 0/5 | Planned | — |
+| 12. Multi-Trial Results | v1.2 | 5/5 | Complete | 2026-01-22 |
+| 13. Parallel Eval TUI | v1.2 | 0/4 | Planned | — |
 
 ---
 
@@ -227,4 +260,4 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full details.
 
 ---
 
-*Last updated: 2026-01-21 — Phase 12 planned*
+*Last updated: 2026-01-22 — Phase 13 planned (4 plans in 2 waves)*

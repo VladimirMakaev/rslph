@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 12 - Multi-Trial Results
-Plan: —
-Status: Ready for planning
-Last activity: 2026-01-21 — Completed Phase 11 (Prompt Engineering)
+Plan: 01 of 4
+Status: In progress
+Last activity: 2026-01-22 — Completed 12-01-PLAN.md (CLI Flag and Statistics)
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [########░░] 80% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [########░░] 85% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -41,9 +41,9 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [########░░] 80%
 - Shipped: 2026-01-19 (same day)
 
 **v1.2 Velocity:**
-- Total plans completed: 14
-- Average duration: 3m 25s
-- Total execution time: 47m 51s
+- Total plans completed: 15
+- Average duration: 3m 27s
+- Total execution time: 51m 51s
 
 **By Phase (v1.0):**
 
@@ -71,6 +71,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [########░░] 80%
 | 09-eval-command-foundation | 3/3 | 9m 46s | 3m 15s |
 | 10-eval-projects-and-testing | 4/4 | 11m 5s | 2m 46s |
 | 11-prompt-engineering | 4/4 | 14m 16s | 3m 34s |
+| 12-multi-trial-results | 1/4 | 4m | 4m |
 
 *Updated after each plan completion*
 
@@ -131,6 +132,14 @@ All decisions are archived in milestone roadmap files:
 | basic-mode-content | Basic mode prompt content | Use current rslph prompts (not PortableRalph) for backward compatibility |
 | mode-file-precedence | File override precedence | File overrides > mode selection for power users |
 
+**v1.2 Decisions (Phase 12):**
+
+| ID | Decision | Choice |
+|----|----------|--------|
+| variance-correction | Sample variance formula | Bessel's correction (n-1) for unbiased estimator |
+| empty-stats-handling | Empty slice handling | Return zeros for all fields (count=0) |
+| single-value-variance | Single value variance | Return 0.0 (no variation with one sample) |
+
 ### Pending Todos
 
 - **CLAUDE-INTERNET-FLAG**: Remove `--internet` workaround flag from Claude CLI invocations once the underlying issue causing Claude CLI to hang without it is resolved. See `src/planning/command.rs`.
@@ -142,6 +151,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-21
-Stopped at: Phase 11 complete, ready for Phase 12
+Last session: 2026-01-22
+Stopped at: Completed 12-01-PLAN.md
 Resume file: None

@@ -88,6 +88,15 @@ pub enum Commands {
         /// Path to eval workspace directory
         workspace: PathBuf,
     },
+
+    /// Compare two eval result files
+    Compare {
+        /// First result file (baseline)
+        file1: PathBuf,
+
+        /// Second result file (comparison)
+        file2: PathBuf,
+    },
 }
 
 impl Cli {
@@ -347,6 +356,24 @@ mod tests {
             ])
             .expect("Should parse");
             assert_eq!(cli.mode, Some(expected));
+        }
+    }
+
+    #[test]
+    fn test_parse_compare_command() {
+        let cli = Cli::try_parse_from([
+            "rslph",
+            "compare",
+            "/path/to/baseline.json",
+            "/path/to/comparison.json",
+        ])
+        .expect("Should parse");
+        match cli.command {
+            Commands::Compare { file1, file2 } => {
+                assert_eq!(file1, PathBuf::from("/path/to/baseline.json"));
+                assert_eq!(file2, PathBuf::from("/path/to/comparison.json"));
+            }
+            _ => panic!("Expected Compare command"),
         }
     }
 }

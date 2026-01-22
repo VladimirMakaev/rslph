@@ -4,7 +4,7 @@ use clap::Parser;
 use rslph::build::run_build_command;
 use rslph::build::tokens::format_tokens;
 use rslph::cli::{Cli, Commands};
-use rslph::eval::run_eval_command;
+use rslph::eval::{run_eval_command, run_retest_command};
 use rslph::planning::run_plan_command;
 use rslph::subprocess::setup_ctrl_c_handler;
 
@@ -75,7 +75,7 @@ async fn main() -> color_eyre::Result<()> {
                 }
             }
         }
-        Commands::Eval { project, keep, no_tui, list } => {
+        Commands::Eval { project, trials, keep, no_tui, list } => {
             // Handle --list flag
             if list {
                 println!("Available built-in projects:");
@@ -92,6 +92,9 @@ async fn main() -> color_eyre::Result<()> {
             let cancel_token = setup_ctrl_c_handler();
 
             println!("Evaluating: {}", project);
+            if trials > 1 {
+                println!("Trials: {}", trials);
+            }
             if keep {
                 println!("Mode: keep temp directory (--keep)");
             }
@@ -126,6 +129,36 @@ async fn main() -> color_eyre::Result<()> {
                 }
                 Err(e) => {
                     eprintln!("Eval failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Commands::Retest { workspace } => {
+            // Set up Ctrl+C handling
+            let cancel_token = setup_ctrl_c_handler();
+
+            println!("Re-running tests on: {}", workspace.display());
+
+            match run_retest_command(workspace, &config, cancel_token).await {
+                Ok(result) => {
+                    println!("\n=== RETEST COMPLETE ===");
+                    println!("Project: {}", result.project);
+                    if let Some(ref test_results) = result.test_results {
+                        println!(
+                            "Tests: {}/{} passed ({:.1}%)",
+                            test_results.passed,
+                            test_results.total,
+                            test_results.pass_rate()
+                        );
+                    } else {
+                        println!("No test results available");
+                    }
+                    if let Some(path) = result.workspace_path {
+                        println!("Workspace: {}", path.display());
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Retest failed: {}", e);
                     std::process::exit(1);
                 }
             }

@@ -19,7 +19,7 @@ use crate::progress::ProgressFile;
 use crate::prompts::test_discovery_prompt;
 use crate::subprocess::{ClaudeRunner, OutputLine, StreamResponse};
 
-use super::EvalResult;
+use super::{EvalResult, StatSummary, TrialStatistics};
 
 /// Run the eval command (EVAL-01, EVAL-05, EVAL-06).
 ///
@@ -48,9 +48,26 @@ pub async fn run_eval_command(
     config: &Config,
     cancel_token: CancellationToken,
 ) -> color_eyre::Result<EvalResult> {
-    // For now, just run a single trial (backward compatible)
-    // Multi-trial loop will be added in Task 2
-    run_single_trial(&project, 1, no_tui, config, cancel_token).await
+    // Execute trials
+    let mut trial_results = Vec::with_capacity(trials as usize);
+
+    for trial_num in 1..=trials {
+        if trials > 1 {
+            println!("\n=== TRIAL {}/{} ===\n", trial_num, trials);
+        }
+        let result = run_single_trial(&project, trial_num, no_tui, config, cancel_token.clone()).await?;
+        trial_results.push(result);
+    }
+
+    // For multi-trial runs, compute and print statistics
+    if trials > 1 {
+        let statistics = compute_statistics(&trial_results);
+        print_statistics(&statistics, trials);
+    }
+
+    // Return the last trial result (for backward compatibility with single-trial case)
+    // The caller can access all results through the statistics if needed
+    trial_results.pop().ok_or_else(|| eyre!("No trials completed"))
 }
 
 /// Run a single trial of the eval command.
@@ -389,6 +406,100 @@ fn save_result_json(working_dir: &PathBuf, result: &EvalResult) -> color_eyre::R
     let json = serde_json::to_string_pretty(&serializable)?;
     std::fs::write(working_dir.join("result.json"), json)?;
     Ok(())
+}
+
+/// Compute statistics from a slice of trial results.
+///
+/// Extracts metrics from each trial and computes summary statistics:
+/// - Pass rate (0.0 to 1.0)
+/// - Elapsed time in seconds
+/// - Total input tokens
+/// - Total output tokens
+/// - Number of build iterations
+fn compute_statistics(trials: &[EvalResult]) -> TrialStatistics {
+    // Extract pass rates (only from trials with test results)
+    let pass_rates: Vec<f64> = trials
+        .iter()
+        .filter_map(|t| t.test_results.as_ref())
+        .map(|tr| tr.pass_rate() / 100.0) // Convert from percentage to 0.0-1.0
+        .collect();
+
+    // Extract elapsed time
+    let elapsed_secs: Vec<f64> = trials.iter().map(|t| t.elapsed_secs).collect();
+
+    // Extract token counts
+    let input_tokens: Vec<f64> = trials
+        .iter()
+        .map(|t| t.total_tokens.input_tokens as f64)
+        .collect();
+
+    let output_tokens: Vec<f64> = trials
+        .iter()
+        .map(|t| t.total_tokens.output_tokens as f64)
+        .collect();
+
+    // Extract iteration counts
+    let iterations: Vec<f64> = trials.iter().map(|t| t.iterations as f64).collect();
+
+    TrialStatistics {
+        pass_rate: StatSummary::from_values(&pass_rates),
+        elapsed_secs: StatSummary::from_values(&elapsed_secs),
+        total_input_tokens: StatSummary::from_values(&input_tokens),
+        total_output_tokens: StatSummary::from_values(&output_tokens),
+        iterations: StatSummary::from_values(&iterations),
+    }
+}
+
+/// Print statistics summary to stdout.
+fn print_statistics(stats: &TrialStatistics, trial_count: u32) {
+    println!("\n=== STATISTICAL SUMMARY ({} trials) ===\n", trial_count);
+
+    // Pass Rate (convert back to percentage for display)
+    if stats.pass_rate.count > 0 {
+        println!(
+            "Pass Rate:      Mean: {:.1}%  Std Dev: {:.1}%  Min: {:.1}%  Max: {:.1}%",
+            stats.pass_rate.mean * 100.0,
+            stats.pass_rate.std_dev() * 100.0,
+            stats.pass_rate.min * 100.0,
+            stats.pass_rate.max * 100.0,
+        );
+    } else {
+        println!("Pass Rate:      N/A (no test results)");
+    }
+
+    // Execution Time
+    println!(
+        "Execution Time: Mean: {:.1}s  Std Dev: {:.1}s  Min: {:.1}s  Max: {:.1}s",
+        stats.elapsed_secs.mean,
+        stats.elapsed_secs.std_dev(),
+        stats.elapsed_secs.min,
+        stats.elapsed_secs.max,
+    );
+
+    // Token Usage
+    println!(
+        "Input Tokens:   Mean: {}  Std Dev: {}  Min: {}  Max: {}",
+        format_tokens(stats.total_input_tokens.mean as u64),
+        format_tokens(stats.total_input_tokens.std_dev() as u64),
+        format_tokens(stats.total_input_tokens.min as u64),
+        format_tokens(stats.total_input_tokens.max as u64),
+    );
+    println!(
+        "Output Tokens:  Mean: {}  Std Dev: {}  Min: {}  Max: {}",
+        format_tokens(stats.total_output_tokens.mean as u64),
+        format_tokens(stats.total_output_tokens.std_dev() as u64),
+        format_tokens(stats.total_output_tokens.min as u64),
+        format_tokens(stats.total_output_tokens.max as u64),
+    );
+
+    // Iterations
+    println!(
+        "Iterations:     Mean: {:.1}  Std Dev: {:.1}  Min: {}  Max: {}",
+        stats.iterations.mean,
+        stats.iterations.std_dev(),
+        stats.iterations.min as u32,
+        stats.iterations.max as u32,
+    );
 }
 
 /// Copy directory contents recursively.
@@ -1242,5 +1353,129 @@ version = "0.1.0"
             "Error should mention not built-in: {}",
             err
         );
+    }
+
+    #[test]
+    fn test_compute_statistics_with_multiple_trials() {
+        use crate::build::tokens::TokenUsage;
+        use crate::eval::TestResults;
+
+        let trials = vec![
+            EvalResult {
+                project: "test".to_string(),
+                trial_num: 1,
+                elapsed_secs: 10.0,
+                total_tokens: TokenUsage {
+                    input_tokens: 1000,
+                    output_tokens: 500,
+                    cache_creation_input_tokens: 0,
+                    cache_read_input_tokens: 0,
+                },
+                iterations: 3,
+                workspace_path: None,
+                test_results: Some(TestResults {
+                    passed: 8,
+                    total: 10,
+                    cases: vec![],
+                }),
+            },
+            EvalResult {
+                project: "test".to_string(),
+                trial_num: 2,
+                elapsed_secs: 15.0,
+                total_tokens: TokenUsage {
+                    input_tokens: 1200,
+                    output_tokens: 600,
+                    cache_creation_input_tokens: 0,
+                    cache_read_input_tokens: 0,
+                },
+                iterations: 4,
+                workspace_path: None,
+                test_results: Some(TestResults {
+                    passed: 10,
+                    total: 10,
+                    cases: vec![],
+                }),
+            },
+            EvalResult {
+                project: "test".to_string(),
+                trial_num: 3,
+                elapsed_secs: 12.5,
+                total_tokens: TokenUsage {
+                    input_tokens: 800,
+                    output_tokens: 400,
+                    cache_creation_input_tokens: 0,
+                    cache_read_input_tokens: 0,
+                },
+                iterations: 2,
+                workspace_path: None,
+                test_results: Some(TestResults {
+                    passed: 9,
+                    total: 10,
+                    cases: vec![],
+                }),
+            },
+        ];
+
+        let stats = compute_statistics(&trials);
+
+        // Verify pass rate (80%, 100%, 90%) -> mean = 90% = 0.9
+        assert_eq!(stats.pass_rate.count, 3);
+        assert!((stats.pass_rate.mean - 0.9).abs() < 0.001);
+        assert!((stats.pass_rate.min - 0.8).abs() < 0.001);
+        assert!((stats.pass_rate.max - 1.0).abs() < 0.001);
+
+        // Verify elapsed time (10, 15, 12.5) -> mean = 12.5
+        assert_eq!(stats.elapsed_secs.count, 3);
+        assert!((stats.elapsed_secs.mean - 12.5).abs() < 0.001);
+        assert!((stats.elapsed_secs.min - 10.0).abs() < 0.001);
+        assert!((stats.elapsed_secs.max - 15.0).abs() < 0.001);
+
+        // Verify iterations (3, 4, 2) -> mean = 3.0
+        assert_eq!(stats.iterations.count, 3);
+        assert!((stats.iterations.mean - 3.0).abs() < 0.001);
+        assert!((stats.iterations.min - 2.0).abs() < 0.001);
+        assert!((stats.iterations.max - 4.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_compute_statistics_empty_trials() {
+        let trials: Vec<EvalResult> = vec![];
+        let stats = compute_statistics(&trials);
+
+        assert_eq!(stats.pass_rate.count, 0);
+        assert_eq!(stats.elapsed_secs.count, 0);
+        assert_eq!(stats.iterations.count, 0);
+    }
+
+    #[test]
+    fn test_compute_statistics_no_test_results() {
+        use crate::build::tokens::TokenUsage;
+
+        // Trials without test results (external projects)
+        let trials = vec![
+            EvalResult {
+                project: "external".to_string(),
+                trial_num: 1,
+                elapsed_secs: 10.0,
+                total_tokens: TokenUsage {
+                    input_tokens: 1000,
+                    output_tokens: 500,
+                    cache_creation_input_tokens: 0,
+                    cache_read_input_tokens: 0,
+                },
+                iterations: 3,
+                workspace_path: None,
+                test_results: None, // No test results
+            },
+        ];
+
+        let stats = compute_statistics(&trials);
+
+        // Pass rate should have count 0 since no test results
+        assert_eq!(stats.pass_rate.count, 0);
+        // Other stats should still work
+        assert_eq!(stats.elapsed_secs.count, 1);
+        assert!((stats.elapsed_secs.mean - 10.0).abs() < 0.001);
     }
 }

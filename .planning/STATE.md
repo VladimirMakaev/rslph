@@ -192,6 +192,7 @@ Resume file: None
 - Phase 13 added: Parallel Eval TUI (parallel modes, eval dashboard, enhanced TUI, plan TUI)
 - Phase 13 planned: 4 plans in 2 waves (wave 1: 13-01, wave 2: 13-02, 13-03, 13-04)
 - 13-01 complete: Parallel infrastructure with --modes flag and JoinSet execution
+- 13-02 complete: Dashboard TUI for parallel eval with multi-pane grid layout
 - 13-03 complete: Enhanced conversation view in build TUI with 'c' toggle
 - 13-04 complete: Plan command TUI mode with streaming LLM output
 - Phase 13 complete: All 4 plans executed, v1.2 milestone complete

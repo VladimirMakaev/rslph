@@ -109,7 +109,8 @@ impl ProgressFile {
         let mut heading_level: Option<HeadingLevel> = None;
         let mut heading_text = String::new();
         let mut section_text = String::new();
-        let mut current_task_checked: Option<bool> = None;
+        let mut task_is_checked: Option<bool> = None;
+        let mut task_description = String::new();
         let mut current_phase_tasks: Vec<Task> = Vec::new();
         let mut in_table_cell = false;
         let mut table_row: Vec<String> = Vec::new();
@@ -165,19 +166,9 @@ impl ProgressFile {
                 Event::Text(text) => {
                     if heading_level.is_some() {
                         heading_text.push_str(&text);
-                    } else if current_task_checked.is_some() {
-                        // This is task description following TaskListMarker
-                        // Check this BEFORE in_list_item since task items are also list items
-                        let checked = current_task_checked.take().unwrap();
-                        let task = Task {
-                            description: text.trim().to_string(),
-                            completed: checked,
-                        };
-                        if current_h2 == "Tasks" {
-                            current_phase_tasks.push(task);
-                        } else if current_h2 == "Completed This Iteration" {
-                            pf.completed_this_iteration.push(text.trim().to_string());
-                        }
+                    } else if task_is_checked.is_some() {
+                        // Accumulate task description text
+                        task_description.push_str(&text);
                     } else if in_list_item {
                         list_item_text.push_str(&text);
                     } else if in_table_cell {
@@ -187,8 +178,21 @@ impl ProgressFile {
                         section_text.push('\n');
                     }
                 }
+                Event::Code(code) => {
+                    if task_is_checked.is_some() {
+                        // Include inline code in task description
+                        task_description.push('`');
+                        task_description.push_str(&code);
+                        task_description.push('`');
+                    } else if in_list_item {
+                        list_item_text.push('`');
+                        list_item_text.push_str(&code);
+                        list_item_text.push('`');
+                    }
+                }
                 Event::TaskListMarker(checked) => {
-                    current_task_checked = Some(checked);
+                    task_is_checked = Some(checked);
+                    task_description.clear();
                 }
                 Event::Start(Tag::Item) => {
                     in_list_item = true;
@@ -196,8 +200,21 @@ impl ProgressFile {
                 }
                 Event::End(TagEnd::Item) => {
                     in_list_item = false;
-                    // Handle list items in Recent Attempts section
-                    if current_h2 == "Recent Attempts" && !list_item_text.is_empty() {
+
+                    // If we have a task being built, finalize it
+                    if let Some(checked) = task_is_checked.take() {
+                        let task = Task {
+                            description: task_description.trim().to_string(),
+                            completed: checked,
+                        };
+                        if current_h2 == "Tasks" {
+                            current_phase_tasks.push(task);
+                        } else if current_h2 == "Completed This Iteration" {
+                            pf.completed_this_iteration.push(task_description.trim().to_string());
+                        }
+                        task_description.clear();
+                    } else if current_h2 == "Recent Attempts" && !list_item_text.is_empty() {
+                        // Handle list items in Recent Attempts section
                         let text = list_item_text.trim();
                         if let Some(iteration_num) = current_h3.strip_prefix("Iteration ") {
                             if let Ok(iteration) = iteration_num.trim().parse::<u32>() {
@@ -711,5 +728,49 @@ Some analysis notes here.
         // Verify oldest were removed (iterations 1 and 2 gone, 3-5 remain)
         assert_eq!(progress.recent_attempts[0].iteration, 3);
         assert_eq!(progress.recent_attempts[2].iteration, 5);
+    }
+
+    #[test]
+    fn test_parse_task_with_inline_code() {
+        let content = r#"# Progress: Test
+
+## Status
+
+In Progress
+
+## Analysis
+
+Test analysis.
+
+## Tasks
+
+### Phase 1: CLI
+
+- [ ] Add `-n` flag for newline suppression
+- [ ] Write tests for `--help` output
+- [x] Implement `echo` command
+
+## Testing Strategy
+
+Unit tests.
+
+## Completed This Iteration
+
+## Recent Attempts
+
+## Iteration Log
+
+| Iteration | Started | Duration | Tasks Completed | Notes |
+|-----------|---------|----------|-----------------|-------|
+"#;
+
+        let pf = ProgressFile::parse(content).expect("Should parse");
+
+        assert_eq!(pf.tasks.len(), 1);
+        assert_eq!(pf.tasks[0].tasks.len(), 3);
+        assert_eq!(pf.tasks[0].tasks[0].description, "Add `-n` flag for newline suppression");
+        assert_eq!(pf.tasks[0].tasks[1].description, "Write tests for `--help` output");
+        assert_eq!(pf.tasks[0].tasks[2].description, "Implement `echo` command");
+        assert!(pf.tasks[0].tasks[2].completed);
     }
 }

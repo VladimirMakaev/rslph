@@ -1206,4 +1206,55 @@ mod tests {
         assert_eq!(MessageRole::System.label(), "System");
         assert_eq!(MessageRole::Tool("Read".to_string()).label(), "Tool");
     }
+
+    #[test]
+    fn test_toggle_conversation() {
+        let mut app = App::default();
+        assert!(!app.show_conversation);
+
+        app.update(AppEvent::ToggleConversation);
+        assert!(app.show_conversation);
+
+        app.update(AppEvent::ToggleConversation);
+        assert!(!app.show_conversation);
+    }
+
+    #[test]
+    fn test_conversation_scroll_up() {
+        let mut app = App::default();
+        app.conversation_scroll = 20;
+
+        app.update(AppEvent::ConversationScrollUp(10));
+        assert_eq!(app.conversation_scroll, 10);
+
+        app.update(AppEvent::ConversationScrollUp(15));
+        assert_eq!(app.conversation_scroll, 0); // Saturates at 0
+    }
+
+    #[test]
+    fn test_conversation_scroll_down() {
+        use crate::tui::conversation::ConversationItem;
+
+        let mut app = App::default();
+        // Push some items so we have content to scroll
+        for i in 0..30 {
+            app.conversation.push(ConversationItem::Text(format!("Item {}", i)));
+        }
+        app.conversation_scroll = 0;
+
+        app.update(AppEvent::ConversationScrollDown(10));
+        assert_eq!(app.conversation_scroll, 10);
+
+        app.update(AppEvent::ConversationScrollDown(100));
+        // Should cap at len() - 1
+        assert_eq!(app.conversation_scroll, 29);
+    }
+
+    #[test]
+    fn test_conversation_buffer_in_default_app() {
+        let app = App::default();
+        assert_eq!(app.conversation.len(), 0);
+        assert_eq!(app.conversation_scroll, 0);
+        assert!(!app.show_conversation);
+    }
 }

@@ -10,6 +10,7 @@ use ratatui::{
 };
 
 use super::app::App;
+use super::conversation::render_conversation;
 use super::widgets::status_bar::render_header;
 use super::widgets::thread_view::render_thread;
 
@@ -19,6 +20,9 @@ use super::widgets::thread_view::render_thread;
 /// - Header (2 lines): Status bar with iteration/task count and context bar
 /// - Body (fills remaining): Output area for Claude messages
 /// - Footer (1 line): Key binding hints and log path
+///
+/// When show_conversation is enabled, the body area is split horizontally
+/// with the conversation view on the left and main thread view on the right.
 ///
 /// # Arguments
 ///
@@ -34,7 +38,26 @@ pub fn render(frame: &mut Frame, app: &App, recent_count: usize) {
     .areas(frame.area());
 
     render_header(frame, header, app);
-    render_body(frame, body, app, recent_count);
+
+    if app.show_conversation {
+        // Split body: conversation on left, main view on right
+        let [conv_area, main_area] = Layout::horizontal([
+            Constraint::Percentage(50),
+            Constraint::Percentage(50),
+        ])
+        .areas(body);
+
+        render_conversation(
+            frame,
+            conv_area,
+            app.conversation.items(),
+            app.conversation_scroll,
+        );
+        render_body(frame, main_area, app, recent_count);
+    } else {
+        render_body(frame, body, app, recent_count);
+    }
+
     render_footer(frame, footer, app);
 
     // Show pause overlay if paused
@@ -59,7 +82,7 @@ fn render_body(frame: &mut Frame, area: Rect, app: &App, recent_count: usize) {
 
 /// Render the footer with key binding hints and log path.
 fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
-    let key_hints = "j/k:scroll  Tab:select  Enter:toggle  {/}:iteration  p:pause  Ctrl+C:quit";
+    let key_hints = "j/k:scroll  Tab:select  Enter:toggle  {/}:iteration  c:conversation  p:pause  Ctrl+C:quit";
 
     // If log_path exists, show it on the right
     let log_display = app

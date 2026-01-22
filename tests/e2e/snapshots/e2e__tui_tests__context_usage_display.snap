@@ -25,4 +25,4 @@ expression: terminal.backend()
 "                                                                                "
 "                                                                                "
 "                                                                                "
-"j/k:scroll  Tab:select  Enter:toggle  {/}:iteration  p:pause  Ctrl+C:quit       "
+"j/k:scroll  Tab:select  Enter:toggle  {/}:iteration  c:conversation  p:pause  Ct"

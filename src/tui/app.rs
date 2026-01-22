@@ -7,6 +7,8 @@ use std::fmt;
 use std::path::PathBuf;
 
 use crate::build::tokens::TokenUsage;
+use crate::subprocess::StreamEvent;
+use crate::tui::conversation::ConversationBuffer;
 
 /// A group of consecutive tool uses under a common header.
 ///
@@ -318,6 +320,14 @@ pub struct App {
     /// Cumulative token usage across all iterations.
     pub total_tokens: TokenUsage,
 
+    // Conversation view state (enhanced TUI)
+    /// Full conversation history for enhanced display.
+    pub conversation: ConversationBuffer,
+    /// Scroll offset for conversation view.
+    pub conversation_scroll: usize,
+    /// Whether to show enhanced conversation view.
+    pub show_conversation: bool,
+
     // Backwards compatibility - keep for existing code
     /// Currently selected message index (deprecated, use selected_group).
     pub selected_message: Option<usize>,
@@ -345,6 +355,9 @@ impl Default for App {
             should_quit: false,
             max_system_expanded: 5,
             total_tokens: TokenUsage::default(),
+            conversation: ConversationBuffer::new(1000),
+            conversation_scroll: 0,
+            show_conversation: false,
             selected_message: None,
         }
     }
@@ -404,6 +417,27 @@ impl App {
             }
             AppEvent::ToggleMessage => {
                 self.toggle_selected_group();
+            }
+            AppEvent::ToggleConversation => {
+                self.show_conversation = !self.show_conversation;
+            }
+            AppEvent::ConversationScrollUp(lines) => {
+                self.conversation_scroll = self.conversation_scroll.saturating_sub(lines);
+            }
+            AppEvent::ConversationScrollDown(lines) => {
+                self.conversation_scroll = (self.conversation_scroll + lines)
+                    .min(self.conversation.len().saturating_sub(1));
+            }
+            AppEvent::StreamEvent(stream_event) => {
+                // Extract conversation items from the stream event
+                let items = stream_event.extract_conversation_items();
+                for item in items {
+                    self.conversation.push(item);
+                }
+                // Auto-scroll to keep recent items visible
+                if self.conversation.len() > 20 {
+                    self.conversation_scroll = self.conversation.len().saturating_sub(20);
+                }
             }
             AppEvent::ClaudeOutput(content) => {
                 // Finalize any pending system group first
@@ -791,6 +825,16 @@ pub enum AppEvent {
     SelectNextMessage,
     /// Toggle collapse state of selected message.
     ToggleMessage,
+
+    // Conversation view events
+    /// Toggle enhanced conversation view display.
+    ToggleConversation,
+    /// Scroll conversation up by N lines.
+    ConversationScrollUp(usize),
+    /// Scroll conversation down by N lines.
+    ConversationScrollDown(usize),
+    /// Raw stream event for conversation extraction.
+    StreamEvent(StreamEvent),
 
     // Subprocess events
     /// New output from Claude (text).

@@ -8,7 +8,7 @@ use strum_macros::{Display, EnumString};
 ///
 /// Each mode represents a coherent pair of plan + build prompts
 /// designed to work together with a specific philosophy.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, EnumString, Display, ValueEnum)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize, EnumString, Display, ValueEnum)]
 #[strum(serialize_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 #[clap(rename_all = "snake_case")]

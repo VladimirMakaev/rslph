@@ -75,7 +75,7 @@ async fn main() -> color_eyre::Result<()> {
                 }
             }
         }
-        Commands::Eval { project, trials, modes: _, keep, no_tui, list } => {
+        Commands::Eval { project, trials, modes, keep, no_tui, list } => {
             // Handle --list flag
             if list {
                 println!("Available built-in projects:");
@@ -92,8 +92,11 @@ async fn main() -> color_eyre::Result<()> {
             let cancel_token = setup_ctrl_c_handler();
 
             println!("Evaluating: {}", project);
+            if let Some(ref mode_list) = modes {
+                println!("Modes: {}", mode_list.iter().map(|m| m.to_string()).collect::<Vec<_>>().join(", "));
+            }
             if trials > 1 {
-                println!("Trials: {}", trials);
+                println!("Trials per mode: {}", trials);
             }
             if keep {
                 println!("Mode: keep temp directory (--keep)");
@@ -102,7 +105,7 @@ async fn main() -> color_eyre::Result<()> {
                 println!("Mode: headless (--no-tui)");
             }
 
-            match run_eval_command(project, trials, keep, no_tui, &config, cancel_token).await {
+            match run_eval_command(project, trials, modes, keep, no_tui, &config, cancel_token).await {
                 Ok(result) => {
                     if trials == 1 {
                         // Single trial: display same output as before (backward compatible)

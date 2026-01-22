@@ -19,6 +19,7 @@ use crate::progress::ProgressFile;
 use crate::prompts::{test_discovery_prompt, PromptMode};
 use crate::subprocess::{ClaudeRunner, OutputLine, StreamResponse};
 
+use super::parallel::{run_parallel_evals, TrialEvent, TrialResult as ParallelTrialResult};
 use super::{EvalResult, StatSummary, TrialStatistics};
 
 /// Run the eval command (EVAL-01, EVAL-05, EVAL-06).
@@ -31,6 +32,7 @@ use super::{EvalResult, StatSummary, TrialStatistics};
 ///
 /// * `project` - Path to project directory to evaluate
 /// * `trials` - Number of independent trials to run
+/// * `modes` - Optional list of prompt modes to evaluate (parallel when > 1)
 /// * `_keep` - Deprecated: workspaces are always persisted now
 /// * `no_tui` - If true, disable TUI output
 /// * `config` - Application configuration
@@ -43,11 +45,29 @@ use super::{EvalResult, StatSummary, TrialStatistics};
 pub async fn run_eval_command(
     project: String,
     trials: u32,
+    modes: Option<Vec<PromptMode>>,
     _keep: bool, // Deprecated: always persist
     no_tui: bool,
     config: &Config,
     cancel_token: CancellationToken,
 ) -> color_eyre::Result<EvalResult> {
+    // Resolve modes: use provided list, or fall back to config default
+    let resolved_modes = modes.unwrap_or_else(|| vec![config.prompt_mode]);
+
+    // If multiple modes or multiple trials, use parallel execution
+    if resolved_modes.len() > 1 {
+        return run_parallel_eval_mode(
+            &project,
+            trials,
+            &resolved_modes,
+            no_tui,
+            config,
+            cancel_token,
+        )
+        .await;
+    }
+
+    // Single mode - use existing sequential behavior
     // Execute trials
     let mut trial_results = Vec::with_capacity(trials as usize);
 
@@ -72,6 +92,217 @@ pub async fn run_eval_command(
     // Return the last trial result (for backward compatibility with single-trial case)
     // The caller can access all results through the statistics if needed
     trial_results.pop().ok_or_else(|| eyre!("No trials completed"))
+}
+
+/// Run evals across multiple modes in parallel.
+///
+/// This function handles parallel execution when multiple modes are specified.
+/// It uses tokio::JoinSet and channels to coordinate parallel trials.
+///
+/// # Arguments
+///
+/// * `project` - Path to project directory to evaluate
+/// * `trials_per_mode` - Number of trials per mode
+/// * `modes` - List of prompt modes to evaluate
+/// * `no_tui` - If true, disable TUI output
+/// * `config` - Application configuration
+/// * `cancel_token` - Token for graceful cancellation
+///
+/// # Returns
+///
+/// * `Ok(EvalResult)` - Last trial result for backward compatibility
+/// * `Err(e)` - Parallel eval failed
+async fn run_parallel_eval_mode(
+    project: &str,
+    trials_per_mode: u32,
+    modes: &[PromptMode],
+    no_tui: bool,
+    config: &Config,
+    cancel_token: CancellationToken,
+) -> color_eyre::Result<EvalResult> {
+    use tokio::sync::mpsc;
+    use std::collections::HashMap;
+
+    println!(
+        "\n=== PARALLEL EVAL: {} modes x {} trials = {} total trials ===\n",
+        modes.len(),
+        trials_per_mode,
+        modes.len() as u32 * trials_per_mode
+    );
+
+    // Create channel for trial events (for future TUI integration)
+    let (event_tx, mut event_rx) = mpsc::unbounded_channel::<TrialEvent>();
+
+    // Spawn event handler task (for now just prints progress)
+    let event_handler = tokio::spawn(async move {
+        while let Some(event) = event_rx.recv().await {
+            match &event.event {
+                super::parallel::TrialEventKind::Started => {
+                    println!("[{}/{}] {} - Started", event.mode, event.trial_num, event.mode);
+                }
+                super::parallel::TrialEventKind::Planning => {
+                    println!("[{}/{}] Planning...", event.mode, event.trial_num);
+                }
+                super::parallel::TrialEventKind::Building { iteration, max_iterations } => {
+                    println!(
+                        "[{}/{}] Building iteration {}/{}",
+                        event.mode, event.trial_num, iteration, max_iterations
+                    );
+                }
+                super::parallel::TrialEventKind::Testing => {
+                    println!("[{}/{}] Testing...", event.mode, event.trial_num);
+                }
+                super::parallel::TrialEventKind::Complete { result } => {
+                    let pass_rate = result
+                        .eval_result
+                        .test_results
+                        .as_ref()
+                        .map(|tr| tr.pass_rate())
+                        .unwrap_or(0.0);
+                    println!(
+                        "[{}/{}] Complete - {:.1}% pass rate",
+                        event.mode, event.trial_num, pass_rate
+                    );
+                }
+                super::parallel::TrialEventKind::Failed { error } => {
+                    println!("[{}/{}] FAILED: {}", event.mode, event.trial_num, error);
+                }
+            }
+        }
+    });
+
+    // Run parallel evals
+    let results = run_parallel_evals(
+        modes.to_vec(),
+        trials_per_mode,
+        project.to_string(),
+        false, // keep
+        no_tui,
+        config.clone(),
+        event_tx,
+        cancel_token,
+    )
+    .await;
+
+    // Wait for event handler to finish
+    drop(event_handler);
+
+    if results.is_empty() {
+        return Err(eyre!("No trials completed successfully"));
+    }
+
+    // Group results by mode
+    let mut by_mode: HashMap<PromptMode, Vec<&ParallelTrialResult>> = HashMap::new();
+    for result in &results {
+        by_mode.entry(result.mode).or_default().push(result);
+    }
+
+    // Print statistics for each mode
+    println!("\n=== RESULTS BY MODE ===\n");
+    for mode in modes {
+        if let Some(mode_results) = by_mode.get(mode) {
+            let eval_results: Vec<EvalResult> = mode_results
+                .iter()
+                .map(|r| r.eval_result.clone())
+                .collect();
+            let statistics = compute_statistics(&eval_results);
+
+            println!("--- {} ---", mode);
+            print_statistics(&statistics, mode_results.len() as u32);
+            println!();
+        }
+    }
+
+    // Save multi-mode results to JSON
+    let all_eval_results: Vec<EvalResult> = results.iter().map(|r| r.eval_result.clone()).collect();
+    let _combined_stats = compute_statistics(&all_eval_results);
+    let result_path = save_multi_mode_result(
+        &config.eval_dir,
+        project,
+        modes,
+        &results,
+        &by_mode,
+    )?;
+    println!("Results saved to: {}", result_path.display());
+
+    // Return last result for backward compatibility
+    results
+        .into_iter()
+        .last()
+        .map(|r| r.eval_result)
+        .ok_or_else(|| eyre!("No trials completed"))
+}
+
+/// Save multi-mode results to JSON file.
+fn save_multi_mode_result(
+    eval_dir: &Path,
+    project: &str,
+    modes: &[PromptMode],
+    results: &[ParallelTrialResult],
+    by_mode: &std::collections::HashMap<PromptMode, Vec<&ParallelTrialResult>>,
+) -> color_eyre::Result<PathBuf> {
+    // Generate filename: eval-results-{project}-multimode-{YYYY-MM-DD}.json
+    let filename = format!(
+        "eval-results-{}-multimode-{}.json",
+        project,
+        Utc::now().format("%Y-%m-%d-%H%M%S")
+    );
+    let path = eval_dir.join(&filename);
+
+    // Build mode results
+    let mode_results: Vec<SerializableModeResult> = modes
+        .iter()
+        .filter_map(|mode| {
+            by_mode.get(mode).map(|mode_trials| {
+                let eval_results: Vec<EvalResult> =
+                    mode_trials.iter().map(|r| r.eval_result.clone()).collect();
+                let statistics = compute_statistics(&eval_results);
+
+                SerializableModeResult {
+                    mode: mode.to_string(),
+                    trial_count: mode_trials.len() as u32,
+                    trials: mode_trials
+                        .iter()
+                        .map(|r| convert_trial_to_serializable(&r.eval_result))
+                        .collect(),
+                    statistics: convert_statistics_to_serializable(&statistics),
+                }
+            })
+        })
+        .collect();
+
+    let result = SerializableMultiModeResult {
+        project: project.to_string(),
+        timestamp: Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+        modes: modes.iter().map(|m| m.to_string()).collect(),
+        total_trials: results.len() as u32,
+        results_by_mode: mode_results,
+    };
+
+    // Write pretty-printed JSON
+    let json = serde_json::to_string_pretty(&result)?;
+    std::fs::write(&path, json)?;
+
+    Ok(path)
+}
+
+/// Serializable multi-mode result for JSON output.
+#[derive(Debug, Serialize, Deserialize)]
+struct SerializableMultiModeResult {
+    project: String,
+    timestamp: String,
+    modes: Vec<String>,
+    total_trials: u32,
+    results_by_mode: Vec<SerializableModeResult>,
+}
+
+/// Serializable mode result for JSON output.
+#[derive(Debug, Serialize, Deserialize)]
+struct SerializableModeResult {
+    mode: String,
+    trial_count: u32,
+    trials: Vec<SerializableTrialSummary>,
+    statistics: SerializableStatistics,
 }
 
 /// Run a single trial of the eval command.

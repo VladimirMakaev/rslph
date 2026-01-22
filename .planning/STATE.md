@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 12 - Multi-Trial Results
-Plan: 01 of 4
+Plan: 02 of 4
 Status: In progress
-Last activity: 2026-01-22 — Completed 12-01-PLAN.md (CLI Flag and Statistics)
+Last activity: 2026-01-22 — Completed 12-02-PLAN.md (Multi-Trial Execution Loop)
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [########░░] 85% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [########░░] 88% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -41,9 +41,9 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [########░░] 85%
 - Shipped: 2026-01-19 (same day)
 
 **v1.2 Velocity:**
-- Total plans completed: 15
-- Average duration: 3m 27s
-- Total execution time: 51m 51s
+- Total plans completed: 16
+- Average duration: 3m 31s
+- Total execution time: 56m 51s
 
 **By Phase (v1.0):**
 
@@ -71,7 +71,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [########░░] 85%
 | 09-eval-command-foundation | 3/3 | 9m 46s | 3m 15s |
 | 10-eval-projects-and-testing | 4/4 | 11m 5s | 2m 46s |
 | 11-prompt-engineering | 4/4 | 14m 16s | 3m 34s |
-| 12-multi-trial-results | 1/4 | 4m | 4m |
+| 12-multi-trial-results | 2/4 | 9m | 4m 30s |
 
 *Updated after each plan completion*
 
@@ -139,6 +139,8 @@ All decisions are archived in milestone roadmap files:
 | variance-correction | Sample variance formula | Bessel's correction (n-1) for unbiased estimator |
 | empty-stats-handling | Empty slice handling | Return zeros for all fields (count=0) |
 | single-value-variance | Single value variance | Return 0.0 (no variation with one sample) |
+| trial-result-return | run_eval_command return value | Return last trial's EvalResult for backward compatibility |
+| pass-rate-normalization | Pass rate internal format | 0.0-1.0 internally, displayed as percentage |
 
 ### Pending Todos
 
@@ -152,5 +154,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-22
-Stopped at: Completed 12-01-PLAN.md
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None

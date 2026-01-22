@@ -4,7 +4,7 @@
 
 - v1.0 MVP -- Phases 1-6 (shipped 2026-01-19)
 - v1.1 Testing Enhancement -- Phases 7-7.1 (shipped 2026-01-19)
-- **v1.2 Context Engineering** -- Phases 8-13 (active)
+- **v1.2 Context Engineering** -- Phases 8-14 (active)
 
 ## Overview
 
@@ -191,16 +191,52 @@ Plans:
 5. Enhanced TUI applies to `build` command with full conversation display
 6. `plan` command has TUI mode showing streaming LLM output, tool calls, thinking blocks, and generated plan preview
 
-**Plans:** 7 plans
+**Plans:** 9 plans
 
 Plans:
 - [x] 13-01-PLAN.md — --modes flag and parallel execution infrastructure
 - [x] 13-02-PLAN.md — Parallel eval dashboard TUI
 - [x] 13-03-PLAN.md — Enhanced conversation display
 - [x] 13-04-PLAN.md — Plan command TUI mode
-- [ ] 13-05-PLAN.md — Make plan TUI default with --no-tui to disable (UAT Gap 1)
-- [ ] 13-06-PLAN.md — Fix task description truncation in progress parser (UAT Gap 2)
-- [ ] 13-07-PLAN.md — Wire StreamEvent to conversation view (UAT Gap 3 - blocker)
+- [x] 13-05-PLAN.md — Make plan TUI default with --no-tui to disable (UAT Gap 1)
+- [x] 13-06-PLAN.md — Fix task description truncation in progress parser (UAT Gap 2)
+- [x] 13-07-PLAN.md — Wire StreamEvent to conversation view (UAT Gap 3)
+- [ ] 13-08-PLAN.md — Wire iteration progress to dashboard TUI (Audit Gap 0 - blocker)
+- [ ] 13-09-PLAN.md — Mode passthrough to plan/build commands (Audit Gap 1)
+
+---
+
+### Phase 14: TUI Visual Parity with Claude Code
+
+**Goal:** Align TUI visual design with Claude Code's interface for consistent user experience
+
+**Dependencies:** Phase 13 (Parallel Eval TUI)
+
+**Requirements:**
+| ID | Requirement |
+|----|-------------|
+| TUI-01 | Claude brand color palette (Crail #C15F3C, Cloudy #B1ADA1) with centralized theme |
+| TUI-02 | Box-drawn thinking blocks with collapse/expand toggle |
+| TUI-03 | Box-drawn tool call containers with tool name header and indented parameters |
+| TUI-04 | Animated braille spinner during LLM streaming |
+| TUI-05 | Enhanced status bar with model tier indicator (◆◇○), token bar, session timer |
+| TUI-06 | Box-drawn message borders with type-specific styling |
+
+**Success Criteria:**
+1. TUI uses Claude brand colors via centralized `theme.rs` module
+2. Thinking blocks display with `┌─ Thinking ─┐` borders and are collapsible
+3. Tool calls show as `┌─ TOOL: Read ─┐` with indented content
+4. Animated spinner shows during LLM response streaming
+5. Status bar shows model indicator, token usage bar, and session timer
+6. Messages have distinct box-drawn borders per type (assistant, tool, system)
+
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 14 to break down)
+
+**Details:**
+[To be added during planning]
 
 ---
 
@@ -221,7 +257,8 @@ Plans:
 | 10. Eval Projects and Testing | v1.2 | 4/4 | Complete | 2026-01-20 |
 | 11. Prompt Engineering | v1.2 | 4/4 | Complete | 2026-01-21 |
 | 12. Multi-Trial Results | v1.2 | 5/5 | Complete | 2026-01-22 |
-| 13. Parallel Eval TUI | v1.2 | 4/7 | In Progress | - |
+| 13. Parallel Eval TUI | v1.2 | 7/9 | In Progress | - |
+| 14. TUI Visual Parity | v1.2 | 0/6 | Not Started | - |
 
 ---
 
@@ -263,4 +300,4 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full details.
 
 ---
 
-*Last updated: 2026-01-22 — Phase 13 complete (v1.2 milestone complete)*
+*Last updated: 2026-01-22 — Phase 14 added (TUI Visual Parity with Claude Code)*

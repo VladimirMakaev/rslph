@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 13 - Parallel Eval TUI
-Plan: 1 of 4 (in progress)
+Plan: 3 of 4 (in progress)
 Status: In progress
-Last activity: 2026-01-22 — Completed 13-01-PLAN.md
+Last activity: 2026-01-22 — Completed 13-03-PLAN.md
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [###########░] 88% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [############] 96% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -73,7 +73,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [###########░] 88%
 | 10-eval-projects-and-testing | 4/4 | 11m 5s | 2m 46s |
 | 11-prompt-engineering | 4/4 | 14m 16s | 3m 34s |
 | 12-multi-trial-results | 5/5 | 13m | 2m 36s |
-| 13-parallel-eval-tui | 1/4 | 8m | 8m |
+| 13-parallel-eval-tui | 3/4 | 14m | 4m 40s |
 
 *Updated after each plan completion*
 
@@ -155,6 +155,15 @@ All decisions are archived in milestone roadmap files:
 | hash-derive | PromptMode Hash | Added Hash to PromptMode for HashMap key usage |
 | multimode-filename | Multi-mode JSON filename | eval-results-{project}-multimode-{timestamp}.json |
 
+**v1.2 Decisions (Phase 13 - Continued):**
+
+| ID | Decision | Choice |
+|----|----------|--------|
+| conversation-max-items | Ring buffer limit | 1000 items for memory efficiency |
+| conversation-toggle-key | Conversation toggle key | 'c' key toggles split conversation view |
+| conversation-scroll-keys | Conversation scroll keys | PageUp/PageDown scroll by 10 items |
+| split-view-ratio | Split view layout | 50/50 horizontal split for conversation and main view |
+
 ### Pending Todos
 
 - **CLAUDE-INTERNET-FLAG**: Remove `--internet` workaround flag from Claude CLI invocations once the underlying issue causing Claude CLI to hang without it is resolved. See `src/planning/command.rs`.
@@ -173,7 +182,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-22
-Stopped at: Completed 13-01-PLAN.md
+Stopped at: Completed 13-03-PLAN.md
 Resume file: None
 
 ### Roadmap Evolution
@@ -181,3 +190,4 @@ Resume file: None
 - Phase 13 added: Parallel Eval TUI (parallel modes, eval dashboard, enhanced TUI, plan TUI)
 - Phase 13 planned: 4 plans in 2 waves (wave 1: 13-01, wave 2: 13-02, 13-03, 13-04)
 - 13-01 complete: Parallel infrastructure with --modes flag and JoinSet execution
+- 13-03 complete: Enhanced conversation view in build TUI with 'c' toggle

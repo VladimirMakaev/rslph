@@ -608,3 +608,167 @@ fn test_eval_trials_zero() {
         );
     }
 }
+
+// =============================================================================
+// Compare Command E2E Tests
+// =============================================================================
+
+/// Test that compare help output documents required arguments.
+#[test]
+fn test_compare_help() {
+    let mut cmd = Command::cargo_bin("rslph").expect("rslph binary should exist");
+    cmd.args(["compare", "--help"]);
+
+    let output = cmd.output().expect("Failed to run rslph compare --help");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Verify file1 and file2 arguments are documented
+    assert!(
+        stdout.contains("file1") || stdout.contains("FILE1"),
+        "Help should document file1 argument. stdout:\n{}",
+        stdout
+    );
+    assert!(
+        stdout.contains("file2") || stdout.contains("FILE2"),
+        "Help should document file2 argument. stdout:\n{}",
+        stdout
+    );
+
+    // Verify Compare is documented
+    assert!(
+        stdout.contains("Compare") || stdout.contains("compare"),
+        "Help should describe compare command. stdout:\n{}",
+        stdout
+    );
+}
+
+/// Test that compare fails gracefully with missing file.
+#[test]
+fn test_compare_missing_file() {
+    let mut cmd = Command::cargo_bin("rslph").expect("rslph binary should exist");
+    cmd.args(["compare", "/nonexistent/file1.json", "/nonexistent/file2.json"]);
+
+    let output = cmd.output().expect("Failed to run rslph compare");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Verify command failed
+    assert!(
+        !output.status.success(),
+        "Compare should fail with missing files"
+    );
+
+    // Verify error message mentions file issue
+    assert!(
+        stderr.contains("Failed to read") || stderr.contains("nonexistent") || stderr.contains("file"),
+        "Error should mention file issue. stderr:\n{}",
+        stderr
+    );
+}
+
+/// Test that compare fails when missing required arguments.
+#[test]
+fn test_compare_missing_args() {
+    let mut cmd = Command::cargo_bin("rslph").expect("rslph binary should exist");
+    cmd.args(["compare"]);
+
+    let output = cmd.output().expect("Failed to run rslph compare");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Verify command failed
+    assert!(
+        !output.status.success(),
+        "Compare should fail when missing required arguments"
+    );
+
+    // Verify error message mentions required arguments
+    assert!(
+        stderr.contains("required") || stderr.contains("FILE1") || stderr.contains("file1"),
+        "Error should mention required arguments. stderr:\n{}",
+        stderr
+    );
+}
+
+/// Test that compare succeeds with valid JSON files.
+#[test]
+fn test_compare_valid_files() {
+    let temp_dir = TempDir::new().expect("temp dir");
+
+    // Create valid multi-trial result JSON files
+    let json1 = r#"{
+  "project": "test1",
+  "timestamp": "2026-01-21",
+  "trial_count": 1,
+  "trials": [{
+    "trial_num": 1,
+    "elapsed_secs": 10.0,
+    "iterations": 1,
+    "tokens": {"input": 100, "output": 50, "cache_creation": 0, "cache_read": 0},
+    "test_results": {"passed": 5, "total": 10, "pass_rate": 50.0},
+    "workspace_path": "/tmp/test1"
+  }],
+  "statistics": {
+    "pass_rate": {"mean": 50.0, "variance": 0.0, "std_dev": 0.0, "min": 50.0, "max": 50.0, "count": 1},
+    "elapsed_secs": {"mean": 10.0, "variance": 0.0, "std_dev": 0.0, "min": 10.0, "max": 10.0, "count": 1},
+    "total_input_tokens": {"mean": 100.0, "variance": 0.0, "std_dev": 0.0, "min": 100.0, "max": 100.0, "count": 1},
+    "total_output_tokens": {"mean": 50.0, "variance": 0.0, "std_dev": 0.0, "min": 50.0, "max": 50.0, "count": 1},
+    "iterations": {"mean": 1.0, "variance": 0.0, "std_dev": 0.0, "min": 1.0, "max": 1.0, "count": 1}
+  }
+}"#;
+
+    let json2 = r#"{
+  "project": "test2",
+  "timestamp": "2026-01-22",
+  "trial_count": 1,
+  "trials": [{
+    "trial_num": 1,
+    "elapsed_secs": 8.0,
+    "iterations": 1,
+    "tokens": {"input": 80, "output": 40, "cache_creation": 0, "cache_read": 0},
+    "test_results": {"passed": 7, "total": 10, "pass_rate": 70.0},
+    "workspace_path": "/tmp/test2"
+  }],
+  "statistics": {
+    "pass_rate": {"mean": 70.0, "variance": 0.0, "std_dev": 0.0, "min": 70.0, "max": 70.0, "count": 1},
+    "elapsed_secs": {"mean": 8.0, "variance": 0.0, "std_dev": 0.0, "min": 8.0, "max": 8.0, "count": 1},
+    "total_input_tokens": {"mean": 80.0, "variance": 0.0, "std_dev": 0.0, "min": 80.0, "max": 80.0, "count": 1},
+    "total_output_tokens": {"mean": 40.0, "variance": 0.0, "std_dev": 0.0, "min": 40.0, "max": 40.0, "count": 1},
+    "iterations": {"mean": 1.0, "variance": 0.0, "std_dev": 0.0, "min": 1.0, "max": 1.0, "count": 1}
+  }
+}"#;
+
+    let file1 = temp_dir.path().join("result1.json");
+    let file2 = temp_dir.path().join("result2.json");
+
+    std::fs::write(&file1, json1).expect("write file1");
+    std::fs::write(&file2, json2).expect("write file2");
+
+    let mut cmd = Command::cargo_bin("rslph").expect("rslph binary should exist");
+    cmd.args([
+        "compare",
+        file1.to_str().unwrap(),
+        file2.to_str().unwrap(),
+    ]);
+
+    let output = cmd.output().expect("Failed to run rslph compare");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Verify command succeeded
+    assert!(
+        output.status.success(),
+        "Compare should succeed with valid files. stderr:\n{}",
+        stderr
+    );
+
+    // Verify output contains expected content
+    assert!(
+        stdout.contains("Comparing results"),
+        "Output should contain 'Comparing results'. stdout:\n{}",
+        stdout
+    );
+    assert!(
+        stdout.contains("Pass Rate"),
+        "Output should contain 'Pass Rate'. stdout:\n{}",
+        stdout
+    );
+}

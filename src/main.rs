@@ -104,27 +104,36 @@ async fn main() -> color_eyre::Result<()> {
 
             match run_eval_command(project, trials, keep, no_tui, &config, cancel_token).await {
                 Ok(result) => {
-                    println!("\n=== EVAL COMPLETE ===");
-                    println!("Project: {}", result.project);
-                    println!("Time: {:.1}s", result.elapsed_secs);
-                    println!("Iterations: {}", result.iterations);
-                    println!(
-                        "Tokens: In: {} | Out: {} | CacheW: {} | CacheR: {}",
-                        format_tokens(result.total_tokens.input_tokens),
-                        format_tokens(result.total_tokens.output_tokens),
-                        format_tokens(result.total_tokens.cache_creation_input_tokens),
-                        format_tokens(result.total_tokens.cache_read_input_tokens),
-                    );
-                    if let Some(ref test_results) = result.test_results {
+                    if trials == 1 {
+                        // Single trial: display same output as before (backward compatible)
+                        println!("\n=== EVAL COMPLETE ===");
+                        println!("Project: {}", result.project);
+                        println!("Time: {:.1}s", result.elapsed_secs);
+                        println!("Iterations: {}", result.iterations);
                         println!(
-                            "Tests: {}/{} passed ({:.1}%)",
-                            test_results.passed,
-                            test_results.total,
-                            test_results.pass_rate()
+                            "Tokens: In: {} | Out: {} | CacheW: {} | CacheR: {}",
+                            format_tokens(result.total_tokens.input_tokens),
+                            format_tokens(result.total_tokens.output_tokens),
+                            format_tokens(result.total_tokens.cache_creation_input_tokens),
+                            format_tokens(result.total_tokens.cache_read_input_tokens),
                         );
-                    }
-                    if let Some(path) = result.workspace_path {
-                        println!("Workspace: {}", path.display());
+                        if let Some(ref test_results) = result.test_results {
+                            println!(
+                                "Tests: {}/{} passed ({:.1}%)",
+                                test_results.passed,
+                                test_results.total,
+                                test_results.pass_rate()
+                            );
+                        }
+                        if let Some(path) = result.workspace_path {
+                            println!("Workspace: {}", path.display());
+                        }
+                    } else {
+                        // Multi-trial: statistics already printed by run_eval_command
+                        // Show final summary with last trial info
+                        println!("\n=== EVAL COMPLETE ({} trials) ===", trials);
+                        println!("Project: {}", result.project);
+                        println!("Last trial workspace: {}", result.workspace_path.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "N/A".to_string()));
                     }
                 }
                 Err(e) => {

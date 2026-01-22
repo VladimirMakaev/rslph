@@ -369,7 +369,7 @@ struct SerializableResult {
     test_results: Option<SerializableTestResults>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct SerializableTokens {
     input: u64,
     output: u64,
@@ -377,11 +377,53 @@ struct SerializableTokens {
     cache_read: u64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 struct SerializableTestResults {
     passed: u32,
     total: u32,
     pass_rate: f64,
+}
+
+/// Serializable multi-trial result for JSON output (EVAL-08).
+#[derive(Debug, Serialize, Deserialize)]
+struct SerializableMultiTrialResult {
+    project: String,
+    timestamp: String,
+    trial_count: u32,
+    trials: Vec<SerializableTrialSummary>,
+    statistics: SerializableStatistics,
+}
+
+/// Serializable trial summary for JSON output.
+#[derive(Debug, Serialize, Deserialize)]
+struct SerializableTrialSummary {
+    trial_num: u32,
+    elapsed_secs: f64,
+    iterations: u32,
+    tokens: SerializableTokens,
+    test_results: Option<SerializableTestResults>,
+    workspace_path: String,
+}
+
+/// Serializable statistics for JSON output.
+#[derive(Debug, Serialize, Deserialize)]
+struct SerializableStatistics {
+    pass_rate: SerializableStatSummary,
+    elapsed_secs: SerializableStatSummary,
+    total_input_tokens: SerializableStatSummary,
+    total_output_tokens: SerializableStatSummary,
+    iterations: SerializableStatSummary,
+}
+
+/// Serializable stat summary for JSON output.
+#[derive(Debug, Serialize, Deserialize)]
+struct SerializableStatSummary {
+    mean: f64,
+    variance: f64,
+    std_dev: f64,
+    min: f64,
+    max: f64,
+    count: usize,
 }
 
 /// Save result.json to workspace directory.

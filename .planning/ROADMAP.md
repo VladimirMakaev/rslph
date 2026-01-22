@@ -194,10 +194,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 13-01-PLAN.md — --modes flag and parallel execution infrastructure
-- [ ] 13-02-PLAN.md — Parallel eval dashboard TUI
-- [ ] 13-03-PLAN.md — Enhanced conversation display
-- [ ] 13-04-PLAN.md — Plan command TUI mode
+- [x] 13-01-PLAN.md — --modes flag and parallel execution infrastructure
+- [x] 13-02-PLAN.md — Parallel eval dashboard TUI
+- [x] 13-03-PLAN.md — Enhanced conversation display
+- [x] 13-04-PLAN.md — Plan command TUI mode
 
 ---
 
@@ -218,7 +218,7 @@ Plans:
 | 10. Eval Projects and Testing | v1.2 | 4/4 | Complete | 2026-01-20 |
 | 11. Prompt Engineering | v1.2 | 4/4 | Complete | 2026-01-21 |
 | 12. Multi-Trial Results | v1.2 | 5/5 | Complete | 2026-01-22 |
-| 13. Parallel Eval TUI | v1.2 | 0/4 | Planned | — |
+| 13. Parallel Eval TUI | v1.2 | 4/4 | Complete | 2026-01-22 |
 
 ---
 
@@ -260,4 +260,4 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full details.
 
 ---
 
-*Last updated: 2026-01-22 — Phase 13 planned (4 plans in 2 waves)*
+*Last updated: 2026-01-22 — Phase 13 complete (v1.2 milestone complete)*

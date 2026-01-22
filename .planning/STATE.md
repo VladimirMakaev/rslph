@@ -11,8 +11,8 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 
 Phase: 13 - Parallel Eval TUI
 Plan: 4 of 4 (complete)
-Status: Phase complete
-Last activity: 2026-01-22 — Completed 13-04-PLAN.md
+Status: Milestone v1.2 complete
+Last activity: 2026-01-22 — Phase 13 verified, v1.2 Context Engineering milestone complete
 
 Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [############] 100% v1.2
 

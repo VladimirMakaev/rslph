@@ -66,6 +66,10 @@ pub enum Commands {
         #[arg(required_unless_present = "list")]
         project: Option<String>,
 
+        /// Number of independent trials to run
+        #[arg(long, default_value = "1")]
+        trials: u32,
+
         /// Keep temp directory after completion
         #[arg(long)]
         keep: bool,
@@ -245,8 +249,24 @@ mod tests {
     fn test_parse_eval_command() {
         let cli = Cli::try_parse_from(["rslph", "eval", "calculator"]).expect("Should parse");
         match cli.command {
-            Commands::Eval { project, keep, no_tui, list } => {
+            Commands::Eval { project, trials, keep, no_tui, list } => {
                 assert_eq!(project, Some("calculator".to_string()));
+                assert_eq!(trials, 1); // default value
+                assert!(!keep);
+                assert!(!no_tui);
+                assert!(!list);
+            }
+            _ => panic!("Expected Eval command"),
+        }
+    }
+
+    #[test]
+    fn test_parse_eval_with_trials() {
+        let cli = Cli::try_parse_from(["rslph", "eval", "calculator", "--trials", "5"]).expect("Should parse");
+        match cli.command {
+            Commands::Eval { project, trials, keep, no_tui, list } => {
+                assert_eq!(project, Some("calculator".to_string()));
+                assert_eq!(trials, 5);
                 assert!(!keep);
                 assert!(!no_tui);
                 assert!(!list);
@@ -259,8 +279,9 @@ mod tests {
     fn test_parse_eval_with_keep() {
         let cli = Cli::try_parse_from(["rslph", "eval", "calculator", "--keep"]).expect("Should parse");
         match cli.command {
-            Commands::Eval { project, keep, no_tui, list } => {
+            Commands::Eval { project, trials, keep, no_tui, list } => {
                 assert_eq!(project, Some("calculator".to_string()));
+                assert_eq!(trials, 1);
                 assert!(keep);
                 assert!(!no_tui);
                 assert!(!list);
@@ -273,8 +294,9 @@ mod tests {
     fn test_parse_eval_with_list() {
         let cli = Cli::try_parse_from(["rslph", "eval", "--list"]).expect("Should parse");
         match cli.command {
-            Commands::Eval { project, keep, no_tui, list } => {
+            Commands::Eval { project, trials, keep, no_tui, list } => {
                 assert!(project.is_none());
+                assert_eq!(trials, 1);
                 assert!(!keep);
                 assert!(!no_tui);
                 assert!(list);

@@ -102,7 +102,7 @@ async fn main() -> color_eyre::Result<()> {
                 println!("Mode: headless (--no-tui)");
             }
 
-            match run_eval_command(project, keep, no_tui, &config, cancel_token).await {
+            match run_eval_command(project, trials, keep, no_tui, &config, cancel_token).await {
                 Ok(result) => {
                     println!("\n=== EVAL COMPLETE ===");
                     println!("Project: {}", result.project);

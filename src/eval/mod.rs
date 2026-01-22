@@ -21,6 +21,8 @@ use crate::build::tokens::TokenUsage;
 pub struct EvalResult {
     /// Project that was evaluated
     pub project: String,
+    /// Trial number (1-indexed)
+    pub trial_num: u32,
     /// Total execution time in seconds
     pub elapsed_secs: f64,
     /// Total tokens consumed across plan and build
@@ -31,4 +33,17 @@ pub struct EvalResult {
     pub workspace_path: Option<PathBuf>,
     /// Test results for built-in projects (EVAL-02, EVAL-03)
     pub test_results: Option<TestResults>,
+}
+
+/// Aggregated result of multiple trials (EVAL-06, EVAL-07).
+#[derive(Debug, Clone)]
+pub struct MultiTrialResult {
+    /// Project that was evaluated
+    pub project: String,
+    /// Number of trials executed
+    pub trial_count: u32,
+    /// Results from each trial
+    pub trials: Vec<EvalResult>,
+    /// Aggregated statistics across trials
+    pub statistics: TrialStatistics,
 }

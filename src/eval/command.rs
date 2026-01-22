@@ -1,32 +1,37 @@
 //! Eval command handler.
 //!
-//! Orchestrates plan+build execution in isolated temporary directories
+//! Orchestrates plan+build execution in persistent eval directories
 //! for controlled benchmarking.
 
+use chrono::Utc;
 use color_eyre::eyre::eyre;
-use std::path::PathBuf;
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
-use tempfile::TempDir;
 use tokio_util::sync::CancellationToken;
 
 use crate::build::run_build_command;
 use crate::build::tokens::{format_tokens, TokenUsage};
 use crate::config::Config;
-use crate::eval::{load_test_cases, TestRunner, TestResults};
+use crate::eval::{load_test_cases, TestResults, TestRunner};
 use crate::planning::run_plan_command;
 use crate::progress::ProgressFile;
+use crate::prompts::test_discovery_prompt;
+use crate::subprocess::{ClaudeRunner, OutputLine, StreamResponse};
 
 use super::EvalResult;
 
-/// Run the eval command (EVAL-01, EVAL-05).
+/// Run the eval command (EVAL-01, EVAL-05, EVAL-06).
 ///
-/// Executes plan and build in an isolated temporary directory,
-/// collecting metrics for tokens and timing.
+/// Executes plan and build in a persistent eval directory,
+/// collecting metrics for tokens and timing. Results are saved
+/// to `result.json` in the workspace.
 ///
 /// # Arguments
 ///
 /// * `project` - Path to project directory to evaluate
-/// * `keep` - If true, preserve temp directory after completion
+/// * `trials` - Number of independent trials to run
+/// * `_keep` - Deprecated: workspaces are always persisted now
 /// * `no_tui` - If true, disable TUI output
 /// * `config` - Application configuration
 /// * `cancel_token` - Token for graceful cancellation
@@ -37,7 +42,46 @@ use super::EvalResult;
 /// * `Err(e)` - Eval failed
 pub async fn run_eval_command(
     project: String,
-    keep: bool,
+    trials: u32,
+    _keep: bool, // Deprecated: always persist
+    no_tui: bool,
+    config: &Config,
+    cancel_token: CancellationToken,
+) -> color_eyre::Result<EvalResult> {
+    // For now, just run a single trial (backward compatible)
+    // Multi-trial loop will be added in Task 2
+    run_single_trial(&project, 1, no_tui, config, cancel_token).await
+}
+
+/// Run a single trial of the eval command.
+///
+/// This helper function contains the core eval logic:
+/// 1. Resolve project (built-in or external path)
+/// 2. Create persistent eval workspace
+/// 3. Extract/copy project files
+/// 4. Initialize git
+/// 5. Detect prompt
+/// 6. Run plan command
+/// 7. Run build command
+/// 8. Aggregate tokens
+/// 9. Run hidden tests (for built-in projects)
+/// 10. Save result.json
+///
+/// # Arguments
+///
+/// * `project` - Path to project directory to evaluate
+/// * `trial_num` - Trial number (1-indexed, used in workspace naming)
+/// * `no_tui` - If true, disable TUI output
+/// * `config` - Application configuration
+/// * `cancel_token` - Token for graceful cancellation
+///
+/// # Returns
+///
+/// * `Ok(EvalResult)` - Trial completed with metrics
+/// * `Err(e)` - Trial failed
+async fn run_single_trial(
+    project: &str,
+    trial_num: u32,
     no_tui: bool,
     config: &Config,
     cancel_token: CancellationToken,
@@ -58,9 +102,9 @@ pub async fn run_eval_command(
         (false, Some(path))
     };
 
-    // Step 2: Create isolated temp directory
+    // Step 2: Create persistent eval workspace in config.eval_dir
     let project_name = if is_builtin_project {
-        project.clone()
+        project.to_string()
     } else {
         project_source
             .as_ref()
@@ -70,8 +114,14 @@ pub async fn run_eval_command(
             .unwrap_or("project")
             .to_string()
     };
-    let workspace = TempDir::with_prefix(&format!("rslph-eval-{}-", project_name))?;
-    let working_dir = workspace.path().to_path_buf();
+
+    // Create timestamped directory name with trial suffix
+    let timestamp = Utc::now().format("%Y%m%d-%H%M%S");
+    let workspace_name = format!("{}-{}-trial{}", project_name, timestamp, trial_num);
+    let working_dir = config.eval_dir.join(&workspace_name);
+
+    // Ensure eval_dir exists and create workspace
+    std::fs::create_dir_all(&working_dir)?;
 
     println!("Eval workspace: {}", working_dir.display());
 
@@ -152,30 +202,193 @@ pub async fn run_eval_command(
 
     // Step 10: Execute hidden tests for built-in projects (EVAL-02, EVAL-03)
     let test_results = if is_builtin_project {
-        run_project_tests(&project, &working_dir)
+        run_project_tests(&project, &working_dir, config, cancel_token).await
     } else {
         None // External projects don't have hidden tests
     };
 
-    // Step 11: Handle workspace cleanup
-    let workspace_path = if keep {
-        let preserved = workspace.keep();
-        println!("\nWorkspace preserved at: {}", preserved.display());
-        Some(preserved)
-    } else {
-        // TempDir will be dropped and cleaned up automatically
-        drop(workspace);
-        None
+    // Step 11: Save result.json to workspace (EVAL-06)
+    let result = EvalResult {
+        project: project.to_string(),
+        trial_num,
+        elapsed_secs,
+        total_tokens: total_tokens.clone(),
+        iterations,
+        workspace_path: Some(working_dir.clone()),
+        test_results: test_results.clone(),
+    };
+    save_result_json(&working_dir, &result)?;
+    println!("\nResults saved to: {}", working_dir.join("result.json").display());
+
+    Ok(result)
+}
+
+/// Re-run only the test phase on an existing eval workspace.
+///
+/// This is useful when:
+/// - The build completed successfully
+/// - But the test run script had a bug
+/// - User fixed the script manually
+/// - Now they want to re-run just the tests
+///
+/// # Arguments
+///
+/// * `workspace` - Path to existing eval workspace directory
+/// * `config` - Application configuration
+/// * `cancel_token` - Token for graceful cancellation
+///
+/// # Returns
+///
+/// * `Ok(EvalResult)` - Retest completed with updated metrics
+/// * `Err(e)` - Retest failed
+pub async fn run_retest_command(
+    workspace: PathBuf,
+    config: &Config,
+    cancel_token: CancellationToken,
+) -> color_eyre::Result<EvalResult> {
+    let start = Instant::now();
+
+    // Verify workspace exists
+    if !workspace.exists() {
+        return Err(eyre!("Workspace directory does not exist: {}", workspace.display()));
+    }
+
+    // Load existing result.json to get project name and previous metrics
+    let result_path = workspace.join("result.json");
+    if !result_path.exists() {
+        return Err(eyre!(
+            "No result.json found in workspace. Is this a valid eval workspace?\n\
+             Expected: {}",
+            result_path.display()
+        ));
+    }
+
+    let existing_result = load_result_json(&result_path)?;
+    let project = existing_result.project.clone();
+
+    println!("Retest workspace: {}", workspace.display());
+    println!("Project: {}", project);
+
+    // Check if this is a built-in project
+    if !crate::eval::is_builtin(&project) {
+        return Err(eyre!(
+            "Retest is only supported for built-in projects.\n\
+             Project '{}' is not a built-in project.",
+            project
+        ));
+    }
+
+    // Run tests
+    let test_results = run_project_tests(&project, &workspace, config, cancel_token).await;
+
+    let elapsed_secs = start.elapsed().as_secs_f64();
+
+    // Build result with original metrics but updated test results
+    let result = EvalResult {
+        project: existing_result.project,
+        trial_num: 1, // Retest is always a single-trial operation
+        elapsed_secs: existing_result.elapsed_secs, // Keep original timing
+        total_tokens: TokenUsage {
+            input_tokens: existing_result.tokens.input,
+            output_tokens: existing_result.tokens.output,
+            cache_creation_input_tokens: existing_result.tokens.cache_creation,
+            cache_read_input_tokens: existing_result.tokens.cache_read,
+        },
+        iterations: existing_result.iterations,
+        workspace_path: Some(workspace.clone()),
+        test_results: test_results.clone(),
     };
 
-    Ok(EvalResult {
-        project,
-        elapsed_secs,
-        total_tokens,
-        iterations,
-        workspace_path,
-        test_results,
-    })
+    // Save updated result.json
+    save_result_json(&workspace, &result)?;
+
+    println!("\nRetest completed in {:.1}s", elapsed_secs);
+    println!("Results saved to: {}", result_path.display());
+
+    Ok(result)
+}
+
+/// Load result.json from workspace directory.
+fn load_result_json(path: &PathBuf) -> color_eyre::Result<StoredResult> {
+    let content = std::fs::read_to_string(path)?;
+    let result: StoredResult = serde_json::from_str(&content)?;
+    Ok(result)
+}
+
+/// Stored result format (matches what we write to result.json).
+#[derive(Debug, Deserialize)]
+struct StoredResult {
+    project: String,
+    elapsed_secs: f64,
+    iterations: u32,
+    tokens: StoredTokens,
+    #[allow(dead_code)]
+    test_results: Option<StoredTestResults>,
+}
+
+#[derive(Debug, Deserialize)]
+struct StoredTokens {
+    input: u64,
+    output: u64,
+    cache_creation: u64,
+    cache_read: u64,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+struct StoredTestResults {
+    passed: u32,
+    total: u32,
+    pass_rate: f64,
+}
+
+/// Serializable result for JSON output.
+#[derive(Debug, Serialize)]
+struct SerializableResult {
+    project: String,
+    elapsed_secs: f64,
+    iterations: u32,
+    tokens: SerializableTokens,
+    test_results: Option<SerializableTestResults>,
+}
+
+#[derive(Debug, Serialize)]
+struct SerializableTokens {
+    input: u64,
+    output: u64,
+    cache_creation: u64,
+    cache_read: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct SerializableTestResults {
+    passed: u32,
+    total: u32,
+    pass_rate: f64,
+}
+
+/// Save result.json to workspace directory.
+fn save_result_json(working_dir: &PathBuf, result: &EvalResult) -> color_eyre::Result<()> {
+    let serializable = SerializableResult {
+        project: result.project.clone(),
+        elapsed_secs: result.elapsed_secs,
+        iterations: result.iterations,
+        tokens: SerializableTokens {
+            input: result.total_tokens.input_tokens,
+            output: result.total_tokens.output_tokens,
+            cache_creation: result.total_tokens.cache_creation_input_tokens,
+            cache_read: result.total_tokens.cache_read_input_tokens,
+        },
+        test_results: result.test_results.as_ref().map(|tr| SerializableTestResults {
+            passed: tr.passed,
+            total: tr.total,
+            pass_rate: tr.pass_rate(),
+        }),
+    };
+
+    let json = serde_json::to_string_pretty(&serializable)?;
+    std::fs::write(working_dir.join("result.json"), json)?;
+    Ok(())
 }
 
 /// Copy directory contents recursively.
@@ -266,8 +479,14 @@ fn detect_eval_prompt(working_dir: &PathBuf) -> color_eyre::Result<String> {
 /// Run hidden tests for a built-in project.
 ///
 /// Loads test cases from the embedded project and runs them against
-/// the built program, displaying results.
-fn run_project_tests(project: &str, working_dir: &PathBuf) -> Option<TestResults> {
+/// the built program, displaying results. Uses Claude to discover
+/// how to run the program, falling back to hardcoded detection.
+async fn run_project_tests(
+    project: &str,
+    working_dir: &PathBuf,
+    config: &Config,
+    cancel_token: CancellationToken,
+) -> Option<TestResults> {
     println!("\n=== TEST PHASE ===\n");
 
     // Get test data from embedded project
@@ -280,7 +499,28 @@ fn run_project_tests(project: &str, working_dir: &PathBuf) -> Option<TestResults
         return None;
     }
 
-    // Find the built program
+    // Try to discover run script using Claude
+    let run_script = match discover_run_script(&config.claude_path, working_dir, cancel_token)
+        .await
+    {
+        Ok(script_path) => Some(script_path),
+        Err(e) => {
+            println!("Discovery failed ({}), trying fallback detection...", e);
+            None
+        }
+    };
+
+    // If discovery succeeded, use script-based runner
+    if let Some(script_path) = run_script {
+        println!("Testing with script: {}", script_path.display());
+        let runner = TestRunner::from_script(script_path, working_dir.clone());
+        let results = runner.run_tests(&test_cases);
+
+        print_test_results(&results);
+        return Some(results);
+    }
+
+    // Fallback: Find the built program using hardcoded patterns
     let program_path = match find_built_program(working_dir) {
         Some(path) => path,
         None => {
@@ -291,11 +531,16 @@ fn run_project_tests(project: &str, working_dir: &PathBuf) -> Option<TestResults
 
     println!("Testing program: {}", program_path.display());
 
-    // Run tests
+    // Run tests with direct program execution
     let runner = TestRunner::new(program_path);
     let results = runner.run_tests(&test_cases);
 
-    // Print summary
+    print_test_results(&results);
+    Some(results)
+}
+
+/// Print test results summary.
+fn print_test_results(results: &TestResults) {
     println!(
         "Tests: {}/{} passed ({:.1}%)",
         results.passed,
@@ -312,8 +557,6 @@ fn run_project_tests(project: &str, working_dir: &PathBuf) -> Option<TestResults
             );
         }
     }
-
-    Some(results)
 }
 
 /// Attempt to find a runnable program in the workspace.
@@ -350,6 +593,233 @@ fn find_built_program(working_dir: &PathBuf) -> Option<PathBuf> {
     }
 
     None
+}
+
+/// Discover how to run the program using Claude.
+///
+/// Uses Claude to analyze the workspace and generate a shell script
+/// that can run the built program. This is language-agnostic and works
+/// for any project structure.
+///
+/// # Arguments
+///
+/// * `claude_path` - Path to Claude CLI
+/// * `working_dir` - Workspace directory containing the built project
+/// * `cancel_token` - Token for graceful cancellation
+///
+/// # Returns
+///
+/// * `Ok(PathBuf)` - Path to the generated run script
+/// * `Err(e)` - Discovery failed
+async fn discover_run_script(
+    claude_path: &str,
+    working_dir: &Path,
+    cancel_token: CancellationToken,
+) -> color_eyre::Result<PathBuf> {
+    println!("Discovering how to run the program...");
+
+    // Build workspace context for Claude
+    let context = build_workspace_context(working_dir)?;
+
+    // Prepare Claude args
+    let system_prompt = test_discovery_prompt();
+    let args = vec![
+        "--internet".to_string(),
+        "-p".to_string(),
+        "--verbose".to_string(),
+        "--output-format".to_string(),
+        "stream-json".to_string(),
+        "--system-prompt".to_string(),
+        system_prompt.to_string(),
+        context,
+    ];
+
+    // Spawn Claude
+    let mut runner = ClaudeRunner::spawn(claude_path, &args, working_dir)
+        .await
+        .map_err(|e| eyre!("Failed to spawn claude for test discovery: {}", e))?;
+
+    // Run with 60 second timeout (discovery should be quick)
+    let timeout = Duration::from_secs(60);
+    let output = runner
+        .run_with_timeout(timeout, cancel_token)
+        .await
+        .map_err(|e| eyre!("Claude test discovery failed: {}", e))?;
+
+    // Parse response
+    let mut stream_response = StreamResponse::new();
+    for line in &output {
+        if let OutputLine::Stdout(s) = line {
+            stream_response.process_line(s);
+        }
+    }
+
+    let script_content = extract_script(&stream_response.text)?;
+
+    // Write script to workspace
+    let script_path = working_dir.join("_run_tests.sh");
+    std::fs::write(&script_path, &script_content)?;
+
+    // Make executable
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = std::fs::metadata(&script_path)?.permissions();
+        perms.set_mode(0o755);
+        std::fs::set_permissions(&script_path, perms)?;
+    }
+
+    println!("Generated run script: {}", script_path.display());
+    Ok(script_path)
+}
+
+/// Build workspace context string for Claude to analyze.
+fn build_workspace_context(working_dir: &Path) -> color_eyre::Result<String> {
+    let mut context = String::new();
+
+    // Add file listing
+    context.push_str("## Project Files\n\n```\n");
+    if let Ok(entries) = std::fs::read_dir(working_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            let name = path.file_name().unwrap_or_default().to_string_lossy();
+            // Skip hidden files except config files
+            if name.starts_with('.') && !name.starts_with(".python") {
+                continue;
+            }
+            if path.is_dir() {
+                context.push_str(&format!("{}/\n", name));
+                // List first-level contents of directories
+                if let Ok(sub_entries) = std::fs::read_dir(&path) {
+                    for sub in sub_entries.flatten().take(10) {
+                        let sub_name = sub.file_name().to_string_lossy().to_string();
+                        if !sub_name.starts_with('.') {
+                            context.push_str(&format!("  {}\n", sub_name));
+                        }
+                    }
+                }
+            } else {
+                context.push_str(&format!("{}\n", name));
+            }
+        }
+    }
+    context.push_str("```\n\n");
+
+    // Add key configuration files
+    let config_files = [
+        "Cargo.toml",
+        "pyproject.toml",
+        "setup.py",
+        "package.json",
+        "go.mod",
+        "Makefile",
+        "build.zig",
+        "CMakeLists.txt",
+    ];
+
+    for config_file in config_files {
+        let path = working_dir.join(config_file);
+        if path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                context.push_str(&format!("## {}\n\n```\n{}\n```\n\n", config_file, content));
+            }
+        }
+    }
+
+    // Look for main entry point files
+    let entry_files = [
+        "main.py",
+        "main.rs",
+        "main.go",
+        "index.js",
+        "index.ts",
+        "main.sh",
+    ];
+
+    for entry_file in entry_files {
+        let path = working_dir.join(entry_file);
+        if path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                // Only include first 50 lines
+                let truncated: String = content.lines().take(50).collect::<Vec<_>>().join("\n");
+                context.push_str(&format!(
+                    "## {} (first 50 lines)\n\n```\n{}\n```\n\n",
+                    entry_file, truncated
+                ));
+            }
+        }
+    }
+
+    // Look for Python files with __main__ in subdirectories
+    if let Ok(entries) = std::fs::read_dir(working_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                let name = path.file_name().unwrap_or_default().to_string_lossy();
+                if name.starts_with('.') || name == "__pycache__" || name == "tests" {
+                    continue;
+                }
+                // Check for Python files in subdirectory
+                if let Ok(sub_entries) = std::fs::read_dir(&path) {
+                    for sub in sub_entries.flatten() {
+                        let sub_path = sub.path();
+                        if sub_path.extension().map_or(false, |e| e == "py") {
+                            if let Ok(content) = std::fs::read_to_string(&sub_path) {
+                                if content.contains("if __name__") || content.contains("def main") {
+                                    let truncated: String =
+                                        content.lines().take(50).collect::<Vec<_>>().join("\n");
+                                    context.push_str(&format!(
+                                        "## {}/{} (first 50 lines - has main)\n\n```python\n{}\n```\n\n",
+                                        name,
+                                        sub_path.file_name().unwrap_or_default().to_string_lossy(),
+                                        truncated
+                                    ));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(context)
+}
+
+/// Extract shell script from Claude's response.
+fn extract_script(response: &str) -> color_eyre::Result<String> {
+    let text = response.trim();
+
+    // If response starts with shebang, use it directly
+    if text.starts_with("#!/") {
+        return Ok(text.to_string());
+    }
+
+    // Try to extract from code fence
+    if let Some(start) = text.find("```") {
+        let after_fence = &text[start + 3..];
+        // Skip language identifier (bash, sh, etc.)
+        let content_start = after_fence.find('\n').unwrap_or(0) + 1;
+        let content = &after_fence[content_start..];
+        if let Some(end) = content.find("```") {
+            let script = content[..end].trim();
+            if script.starts_with("#!/") {
+                return Ok(script.to_string());
+            }
+            // Add shebang if missing
+            return Ok(format!("#!/bin/sh\n{}", script));
+        }
+    }
+
+    // Fallback: assume the whole response is the script
+    if !text.is_empty() {
+        if text.starts_with("#!/") {
+            return Ok(text.to_string());
+        }
+        return Ok(format!("#!/bin/sh\n{}", text));
+    }
+
+    Err(eyre!("Could not extract script from Claude's response"))
 }
 
 #[cfg(test)]
@@ -594,5 +1064,183 @@ version = "0.1.0"
         assert!(crate::eval::is_builtin("calculator"));
         assert!(!crate::eval::is_builtin("nonexistent"));
         assert!(!crate::eval::is_builtin("/some/path"));
+    }
+
+    #[test]
+    fn test_save_result_json() {
+        use crate::build::tokens::TokenUsage;
+        use crate::eval::TestResults;
+
+        let dir = TempDir::new().expect("temp dir");
+        let result = EvalResult {
+            project: "test-project".to_string(),
+            trial_num: 1,
+            elapsed_secs: 123.45,
+            total_tokens: TokenUsage {
+                input_tokens: 1000,
+                output_tokens: 500,
+                cache_creation_input_tokens: 100,
+                cache_read_input_tokens: 50,
+            },
+            iterations: 5,
+            workspace_path: Some(dir.path().to_path_buf()),
+            test_results: Some(TestResults {
+                passed: 3,
+                total: 5,
+                cases: vec![],
+            }),
+        };
+
+        save_result_json(&dir.path().to_path_buf(), &result).expect("save result");
+
+        // Verify file was created
+        let result_path = dir.path().join("result.json");
+        assert!(result_path.exists(), "result.json should exist");
+
+        // Verify JSON content
+        let content = std::fs::read_to_string(&result_path).expect("read result.json");
+        let json: serde_json::Value = serde_json::from_str(&content).expect("parse json");
+
+        assert_eq!(json["project"], "test-project");
+        assert_eq!(json["elapsed_secs"], 123.45);
+        assert_eq!(json["iterations"], 5);
+        assert_eq!(json["tokens"]["input"], 1000);
+        assert_eq!(json["tokens"]["output"], 500);
+        assert_eq!(json["test_results"]["passed"], 3);
+        assert_eq!(json["test_results"]["total"], 5);
+        assert_eq!(json["test_results"]["pass_rate"], 60.0);
+    }
+
+    #[test]
+    fn test_save_result_json_without_tests() {
+        use crate::build::tokens::TokenUsage;
+
+        let dir = TempDir::new().expect("temp dir");
+        let result = EvalResult {
+            project: "external-project".to_string(),
+            trial_num: 1,
+            elapsed_secs: 50.0,
+            total_tokens: TokenUsage {
+                input_tokens: 200,
+                output_tokens: 100,
+                cache_creation_input_tokens: 0,
+                cache_read_input_tokens: 0,
+            },
+            iterations: 3,
+            workspace_path: Some(dir.path().to_path_buf()),
+            test_results: None,
+        };
+
+        save_result_json(&dir.path().to_path_buf(), &result).expect("save result");
+
+        let content = std::fs::read_to_string(dir.path().join("result.json")).expect("read");
+        let json: serde_json::Value = serde_json::from_str(&content).expect("parse");
+
+        assert_eq!(json["project"], "external-project");
+        assert!(json["test_results"].is_null());
+    }
+
+    #[test]
+    fn test_load_result_json() {
+        let dir = TempDir::new().expect("temp dir");
+        let result_path = dir.path().join("result.json");
+
+        // Write a sample result.json
+        let json = r#"{
+            "project": "calculator",
+            "elapsed_secs": 123.45,
+            "iterations": 5,
+            "tokens": {
+                "input": 1000,
+                "output": 500,
+                "cache_creation": 100,
+                "cache_read": 50
+            },
+            "test_results": {
+                "passed": 8,
+                "total": 10,
+                "pass_rate": 80.0
+            }
+        }"#;
+        std::fs::write(&result_path, json).expect("write");
+
+        let loaded = load_result_json(&result_path).expect("load");
+        assert_eq!(loaded.project, "calculator");
+        assert_eq!(loaded.elapsed_secs, 123.45);
+        assert_eq!(loaded.iterations, 5);
+        assert_eq!(loaded.tokens.input, 1000);
+        assert_eq!(loaded.tokens.output, 500);
+    }
+
+    #[test]
+    fn test_load_result_json_missing_file() {
+        let dir = TempDir::new().expect("temp dir");
+        let result_path = dir.path().join("nonexistent.json");
+
+        let result = load_result_json(&result_path);
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn test_retest_missing_workspace() {
+        let config = crate::config::Config::default();
+        let cancel_token = tokio_util::sync::CancellationToken::new();
+
+        let result = run_retest_command(
+            std::path::PathBuf::from("/nonexistent/workspace"),
+            &config,
+            cancel_token,
+        )
+        .await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("does not exist"), "Error: {}", err);
+    }
+
+    #[tokio::test]
+    async fn test_retest_missing_result_json() {
+        let dir = TempDir::new().expect("temp dir");
+        let config = crate::config::Config::default();
+        let cancel_token = tokio_util::sync::CancellationToken::new();
+
+        let result = run_retest_command(dir.path().to_path_buf(), &config, cancel_token).await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("result.json"), "Error: {}", err);
+    }
+
+    #[tokio::test]
+    async fn test_retest_non_builtin_project() {
+        let dir = TempDir::new().expect("temp dir");
+
+        // Write result.json with a non-builtin project
+        let json = r#"{
+            "project": "my-custom-project",
+            "elapsed_secs": 10.0,
+            "iterations": 1,
+            "tokens": {
+                "input": 100,
+                "output": 50,
+                "cache_creation": 0,
+                "cache_read": 0
+            },
+            "test_results": null
+        }"#;
+        std::fs::write(dir.path().join("result.json"), json).expect("write");
+
+        let config = crate::config::Config::default();
+        let cancel_token = tokio_util::sync::CancellationToken::new();
+
+        let result = run_retest_command(dir.path().to_path_buf(), &config, cancel_token).await;
+
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("not a built-in project"),
+            "Error should mention not built-in: {}",
+            err
+        );
     }
 }

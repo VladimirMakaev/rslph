@@ -16,7 +16,7 @@ use crate::config::Config;
 use crate::eval::{load_test_cases, TestResults, TestRunner};
 use crate::planning::run_plan_command;
 use crate::progress::ProgressFile;
-use crate::prompts::test_discovery_prompt;
+use crate::prompts::{test_discovery_prompt, PromptMode};
 use crate::subprocess::{ClaudeRunner, OutputLine, StreamResponse};
 
 use super::{EvalResult, StatSummary, TrialStatistics};
@@ -242,6 +242,37 @@ async fn run_single_trial(
     println!("\nResults saved to: {}", working_dir.join("result.json").display());
 
     Ok(result)
+}
+
+/// Run a single trial with a specific prompt mode.
+///
+/// This is the mode-aware version of run_single_trial for parallel evaluation.
+/// It allows running trials with different prompt modes (basic, gsd, gsd_tdd).
+///
+/// # Arguments
+///
+/// * `project` - Path to project directory to evaluate
+/// * `trial_num` - Trial number (1-indexed, used in workspace naming)
+/// * `mode` - The prompt mode to use for this trial
+/// * `no_tui` - If true, disable TUI output
+/// * `config` - Application configuration
+/// * `cancel_token` - Token for graceful cancellation
+///
+/// # Returns
+///
+/// * `Ok(EvalResult)` - Trial completed with metrics
+/// * `Err(e)` - Trial failed
+pub async fn run_single_trial_with_mode(
+    project: &str,
+    trial_num: u32,
+    _mode: PromptMode,
+    no_tui: bool,
+    config: &Config,
+    cancel_token: CancellationToken,
+) -> color_eyre::Result<EvalResult> {
+    // TODO(Task 3): Pass mode to plan and build commands
+    // For now, forward to run_single_trial to enable parallel infrastructure
+    run_single_trial(project, trial_num, no_tui, config, cancel_token).await
 }
 
 /// Re-run only the test phase on an existing eval workspace.

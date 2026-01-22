@@ -59,10 +59,14 @@ pub async fn run_eval_command(
         trial_results.push(result);
     }
 
-    // For multi-trial runs, compute and print statistics
+    // For multi-trial runs, compute and print statistics, and save results
     if trials > 1 {
         let statistics = compute_statistics(&trial_results);
         print_statistics(&statistics, trials);
+
+        // Save multi-trial results to JSON file (EVAL-08)
+        let result_path = save_multi_trial_result(&config.eval_dir, &project, &trial_results, &statistics)?;
+        println!("\nResults saved to: {}", result_path.display());
     }
 
     // Return the last trial result (for backward compatibility with single-trial case)
@@ -542,6 +546,109 @@ fn print_statistics(stats: &TrialStatistics, trial_count: u32) {
         stats.iterations.min as u32,
         stats.iterations.max as u32,
     );
+}
+
+/// Save multi-trial results to a JSON file in eval_dir (EVAL-08).
+///
+/// Creates a timestamped JSON file containing all trial summaries
+/// and aggregated statistics for later comparison and analysis.
+///
+/// # Arguments
+///
+/// * `eval_dir` - Directory to save the results file
+/// * `project` - Project name
+/// * `trials` - Trial results to save
+/// * `statistics` - Computed statistics across trials
+///
+/// # Returns
+///
+/// * `Ok(PathBuf)` - Path to the saved JSON file
+/// * `Err(e)` - File write failed
+fn save_multi_trial_result(
+    eval_dir: &Path,
+    project: &str,
+    trials: &[EvalResult],
+    statistics: &TrialStatistics,
+) -> color_eyre::Result<PathBuf> {
+    // Generate filename: eval-results-{project}-{YYYY-MM-DD}.json
+    let filename = format!(
+        "eval-results-{}-{}.json",
+        project,
+        Utc::now().format("%Y-%m-%d")
+    );
+    let path = eval_dir.join(&filename);
+
+    // Convert to serializable format
+    let serializable = convert_to_serializable(project, trials, statistics);
+
+    // Write pretty-printed JSON
+    let json = serde_json::to_string_pretty(&serializable)?;
+    std::fs::write(&path, json)?;
+
+    Ok(path)
+}
+
+/// Convert multi-trial results to serializable format.
+fn convert_to_serializable(
+    project: &str,
+    trials: &[EvalResult],
+    statistics: &TrialStatistics,
+) -> SerializableMultiTrialResult {
+    SerializableMultiTrialResult {
+        project: project.to_string(),
+        timestamp: Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+        trial_count: trials.len() as u32,
+        trials: trials.iter().map(convert_trial_to_serializable).collect(),
+        statistics: convert_statistics_to_serializable(statistics),
+    }
+}
+
+/// Convert a single trial result to serializable format.
+fn convert_trial_to_serializable(trial: &EvalResult) -> SerializableTrialSummary {
+    SerializableTrialSummary {
+        trial_num: trial.trial_num,
+        elapsed_secs: trial.elapsed_secs,
+        iterations: trial.iterations,
+        tokens: SerializableTokens {
+            input: trial.total_tokens.input_tokens,
+            output: trial.total_tokens.output_tokens,
+            cache_creation: trial.total_tokens.cache_creation_input_tokens,
+            cache_read: trial.total_tokens.cache_read_input_tokens,
+        },
+        test_results: trial.test_results.as_ref().map(|tr| SerializableTestResults {
+            passed: tr.passed,
+            total: tr.total,
+            pass_rate: tr.pass_rate(),
+        }),
+        workspace_path: trial
+            .workspace_path
+            .as_ref()
+            .map(|p| p.display().to_string())
+            .unwrap_or_default(),
+    }
+}
+
+/// Convert statistics to serializable format.
+fn convert_statistics_to_serializable(stats: &TrialStatistics) -> SerializableStatistics {
+    SerializableStatistics {
+        pass_rate: convert_stat_summary(&stats.pass_rate),
+        elapsed_secs: convert_stat_summary(&stats.elapsed_secs),
+        total_input_tokens: convert_stat_summary(&stats.total_input_tokens),
+        total_output_tokens: convert_stat_summary(&stats.total_output_tokens),
+        iterations: convert_stat_summary(&stats.iterations),
+    }
+}
+
+/// Convert a StatSummary to serializable format, including std_dev.
+fn convert_stat_summary(stat: &StatSummary) -> SerializableStatSummary {
+    SerializableStatSummary {
+        mean: stat.mean,
+        variance: stat.variance,
+        std_dev: stat.std_dev(),
+        min: stat.min,
+        max: stat.max,
+        count: stat.count,
+    }
 }
 
 /// Copy directory contents recursively.
@@ -1519,5 +1626,99 @@ version = "0.1.0"
         // Other stats should still work
         assert_eq!(stats.elapsed_secs.count, 1);
         assert!((stats.elapsed_secs.mean - 10.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_save_multi_trial_result() {
+        use crate::build::tokens::TokenUsage;
+        use crate::eval::TestResults;
+
+        let dir = TempDir::new().expect("temp dir");
+
+        // Create mock trials
+        let trials = vec![
+            EvalResult {
+                project: "calculator".to_string(),
+                trial_num: 1,
+                elapsed_secs: 10.0,
+                total_tokens: TokenUsage {
+                    input_tokens: 1000,
+                    output_tokens: 500,
+                    cache_creation_input_tokens: 100,
+                    cache_read_input_tokens: 50,
+                },
+                iterations: 3,
+                workspace_path: Some(PathBuf::from("/tmp/workspace1")),
+                test_results: Some(TestResults {
+                    passed: 8,
+                    total: 10,
+                    cases: vec![],
+                }),
+            },
+            EvalResult {
+                project: "calculator".to_string(),
+                trial_num: 2,
+                elapsed_secs: 12.0,
+                total_tokens: TokenUsage {
+                    input_tokens: 1200,
+                    output_tokens: 600,
+                    cache_creation_input_tokens: 120,
+                    cache_read_input_tokens: 60,
+                },
+                iterations: 4,
+                workspace_path: Some(PathBuf::from("/tmp/workspace2")),
+                test_results: Some(TestResults {
+                    passed: 10,
+                    total: 10,
+                    cases: vec![],
+                }),
+            },
+        ];
+
+        // Compute statistics
+        let statistics = compute_statistics(&trials);
+
+        // Save to temp directory
+        let result_path = save_multi_trial_result(dir.path(), "calculator", &trials, &statistics)
+            .expect("save multi-trial result");
+
+        // Verify file exists
+        assert!(result_path.exists(), "JSON file should exist");
+        assert!(
+            result_path.file_name().unwrap().to_str().unwrap().starts_with("eval-results-calculator-"),
+            "Filename should match pattern"
+        );
+        assert!(
+            result_path.extension().unwrap() == "json",
+            "File should have .json extension"
+        );
+
+        // Verify JSON content
+        let content = std::fs::read_to_string(&result_path).expect("read json");
+        let json: serde_json::Value = serde_json::from_str(&content).expect("parse json");
+
+        // Check top-level fields
+        assert_eq!(json["project"], "calculator");
+        assert_eq!(json["trial_count"], 2);
+        assert!(json["timestamp"].as_str().is_some());
+
+        // Check trials array
+        let trials_arr = json["trials"].as_array().expect("trials array");
+        assert_eq!(trials_arr.len(), 2);
+        assert_eq!(trials_arr[0]["trial_num"], 1);
+        assert_eq!(trials_arr[0]["elapsed_secs"], 10.0);
+        assert_eq!(trials_arr[0]["iterations"], 3);
+        assert_eq!(trials_arr[0]["tokens"]["input"], 1000);
+        assert_eq!(trials_arr[0]["test_results"]["passed"], 8);
+        assert_eq!(trials_arr[1]["trial_num"], 2);
+
+        // Check statistics
+        let stats = &json["statistics"];
+        assert!(stats["pass_rate"]["mean"].as_f64().is_some());
+        assert!(stats["pass_rate"]["std_dev"].as_f64().is_some());
+        assert!(stats["elapsed_secs"]["mean"].as_f64().is_some());
+        assert!(stats["total_input_tokens"]["mean"].as_f64().is_some());
+        assert!(stats["total_output_tokens"]["mean"].as_f64().is_some());
+        assert!(stats["iterations"]["mean"].as_f64().is_some());
     }
 }

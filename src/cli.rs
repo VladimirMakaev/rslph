@@ -41,9 +41,9 @@ pub enum Commands {
         #[arg(long)]
         adaptive: bool,
 
-        /// Enable TUI mode with streaming output
+        /// Disable TUI mode (use plain output)
         #[arg(long)]
-        tui: bool,
+        no_tui: bool,
     },
 
     /// Execute tasks iteratively with fresh context (CMD-02)
@@ -150,10 +150,10 @@ mod tests {
     fn test_parse_plan_command() {
         let cli = Cli::try_parse_from(["rslph", "plan", "my-idea.txt"]).expect("Should parse");
         match cli.command {
-            Commands::Plan { plan, adaptive, tui } => {
+            Commands::Plan { plan, adaptive, no_tui } => {
                 assert_eq!(plan, "my-idea.txt");
                 assert!(!adaptive);
-                assert!(!tui);
+                assert!(!no_tui);
             }
             _ => panic!("Expected Plan command"),
         }
@@ -201,24 +201,24 @@ mod tests {
         let cli = Cli::try_parse_from(["rslph", "plan", "idea.txt", "--adaptive"])
             .expect("Should parse");
         match cli.command {
-            Commands::Plan { plan, adaptive, tui } => {
+            Commands::Plan { plan, adaptive, no_tui } => {
                 assert_eq!(plan, "idea.txt");
                 assert!(adaptive);
-                assert!(!tui);
+                assert!(!no_tui);
             }
             _ => panic!("Expected Plan command"),
         }
     }
 
     #[test]
-    fn test_parse_plan_with_tui() {
-        let cli = Cli::try_parse_from(["rslph", "plan", "my-idea.txt", "--tui"])
+    fn test_parse_plan_with_no_tui() {
+        let cli = Cli::try_parse_from(["rslph", "plan", "my-idea.txt", "--no-tui"])
             .expect("Should parse");
         match cli.command {
-            Commands::Plan { plan, adaptive, tui } => {
+            Commands::Plan { plan, adaptive, no_tui } => {
                 assert_eq!(plan, "my-idea.txt");
                 assert!(!adaptive);
-                assert!(tui);
+                assert!(no_tui);
             }
             _ => panic!("Expected Plan command"),
         }

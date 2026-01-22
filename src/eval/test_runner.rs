@@ -61,6 +61,8 @@ pub fn load_test_cases(content: &str) -> Vec<TestCase> {
 pub struct TestRunner {
     /// Path to the program to test
     program_path: PathBuf,
+    /// Working directory for script execution (optional)
+    working_dir: Option<PathBuf>,
     /// Timeout per test case
     timeout: Duration,
 }
@@ -70,6 +72,19 @@ impl TestRunner {
     pub fn new(program_path: PathBuf) -> Self {
         Self {
             program_path,
+            working_dir: None,
+            timeout: Duration::from_secs(5),
+        }
+    }
+
+    /// Create a test runner for a script with a specific working directory.
+    ///
+    /// This is used when Claude discovers the run command and generates
+    /// a script that needs to run from the workspace root.
+    pub fn from_script(script_path: PathBuf, working_dir: PathBuf) -> Self {
+        Self {
+            program_path: script_path,
+            working_dir: Some(working_dir),
             timeout: Duration::from_secs(5),
         }
     }
@@ -110,12 +125,19 @@ impl TestRunner {
         use std::io::Write;
         use std::process::{Command, Stdio};
 
-        // Spawn process with stdin/stdout piping
-        let child_result = Command::new(&self.program_path)
-            .stdin(Stdio::piped())
+        // Build command with optional working directory
+        let mut cmd = Command::new(&self.program_path);
+        cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn();
+            .stderr(Stdio::piped());
+
+        // Set working directory if specified (for script-based execution)
+        if let Some(ref working_dir) = self.working_dir {
+            cmd.current_dir(working_dir);
+        }
+
+        // Spawn process
+        let child_result = cmd.spawn();
 
         let mut child = match child_result {
             Ok(c) => c,

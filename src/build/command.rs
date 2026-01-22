@@ -95,12 +95,38 @@ pub async fn run_build_command(
             BuildState::Running { iteration } => {
                 match run_single_iteration(&mut ctx).await {
                     Ok(IterationResult::Continue { tasks_completed }) => {
+                        // Reset timeout retry count on success
+                        ctx.timeout_retry_count = 0;
                         BuildState::IterationComplete {
                             iteration,
                             tasks_completed,
                         }
                     }
                     Ok(IterationResult::Done(reason)) => BuildState::Done { reason },
+                    Ok(IterationResult::Timeout) => {
+                        // Handle timeout with retry
+                        ctx.timeout_retry_count += 1;
+                        if ctx.timeout_retry_count >= ctx.config.timeout_retries {
+                            ctx.log(&format!(
+                                "[BUILD] Iteration {} timed out {} times, failing",
+                                iteration, ctx.timeout_retry_count
+                            ));
+                            BuildState::Failed {
+                                error: format!(
+                                    "Iteration timed out {} times (max retries: {})",
+                                    ctx.timeout_retry_count, ctx.config.timeout_retries
+                                ),
+                            }
+                        } else {
+                            ctx.log(&format!(
+                                "[BUILD] Iteration {} timed out, retry {}/{}",
+                                iteration, ctx.timeout_retry_count, ctx.config.timeout_retries
+                            ));
+                            // Reset iteration start time for retry
+                            ctx.iteration_start = Some(std::time::Instant::now());
+                            BuildState::Running { iteration }
+                        }
+                    }
                     Err(RslphError::Cancelled) => BuildState::Done {
                         reason: DoneReason::UserCancelled,
                     },
@@ -332,12 +358,38 @@ async fn run_build_with_tui(
             BuildState::Running { iteration } => {
                 match run_single_iteration(&mut ctx).await {
                     Ok(IterationResult::Continue { tasks_completed }) => {
+                        // Reset timeout retry count on success
+                        ctx.timeout_retry_count = 0;
                         BuildState::IterationComplete {
                             iteration,
                             tasks_completed,
                         }
                     }
                     Ok(IterationResult::Done(reason)) => BuildState::Done { reason },
+                    Ok(IterationResult::Timeout) => {
+                        // Handle timeout with retry
+                        ctx.timeout_retry_count += 1;
+                        if ctx.timeout_retry_count >= ctx.config.timeout_retries {
+                            let _ = tui_tx.send(SubprocessEvent::Log(format!(
+                                "Iteration {} timed out {} times, failing",
+                                iteration, ctx.timeout_retry_count
+                            )));
+                            BuildState::Failed {
+                                error: format!(
+                                    "Iteration timed out {} times (max retries: {})",
+                                    ctx.timeout_retry_count, ctx.config.timeout_retries
+                                ),
+                            }
+                        } else {
+                            let _ = tui_tx.send(SubprocessEvent::Log(format!(
+                                "Iteration {} timed out, retry {}/{}",
+                                iteration, ctx.timeout_retry_count, ctx.config.timeout_retries
+                            )));
+                            // Reset iteration start time for retry
+                            ctx.iteration_start = Some(std::time::Instant::now());
+                            BuildState::Running { iteration }
+                        }
+                    }
                     Err(RslphError::Cancelled) => BuildState::Done {
                         reason: DoneReason::UserCancelled,
                     },

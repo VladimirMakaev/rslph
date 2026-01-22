@@ -191,13 +191,16 @@ Plans:
 5. Enhanced TUI applies to `build` command with full conversation display
 6. `plan` command has TUI mode showing streaming LLM output, tool calls, thinking blocks, and generated plan preview
 
-**Plans:** 4 plans
+**Plans:** 7 plans
 
 Plans:
 - [x] 13-01-PLAN.md — --modes flag and parallel execution infrastructure
 - [x] 13-02-PLAN.md — Parallel eval dashboard TUI
 - [x] 13-03-PLAN.md — Enhanced conversation display
 - [x] 13-04-PLAN.md — Plan command TUI mode
+- [ ] 13-05-PLAN.md — Make plan TUI default with --no-tui to disable (UAT Gap 1)
+- [ ] 13-06-PLAN.md — Fix task description truncation in progress parser (UAT Gap 2)
+- [ ] 13-07-PLAN.md — Wire StreamEvent to conversation view (UAT Gap 3 - blocker)
 
 ---
 
@@ -218,7 +221,7 @@ Plans:
 | 10. Eval Projects and Testing | v1.2 | 4/4 | Complete | 2026-01-20 |
 | 11. Prompt Engineering | v1.2 | 4/4 | Complete | 2026-01-21 |
 | 12. Multi-Trial Results | v1.2 | 5/5 | Complete | 2026-01-22 |
-| 13. Parallel Eval TUI | v1.2 | 4/4 | Complete | 2026-01-22 |
+| 13. Parallel Eval TUI | v1.2 | 4/7 | In Progress | - |
 
 ---
 

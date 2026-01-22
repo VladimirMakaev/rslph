@@ -72,6 +72,8 @@ pub enum IterationResult {
     },
     /// Build should stop.
     Done(DoneReason),
+    /// Iteration timed out, can be retried.
+    Timeout,
 }
 
 impl IterationResult {
@@ -116,6 +118,8 @@ pub struct BuildContext {
     pub total_tokens: TokenUsage,
     /// Current iteration's token usage (reset each iteration).
     pub current_iteration_tokens: TokenUsage,
+    /// Number of timeout retries for the current iteration.
+    pub timeout_retry_count: u32,
 }
 
 impl BuildContext {
@@ -175,6 +179,7 @@ impl BuildContext {
             iteration_tokens: Vec::new(),
             total_tokens: TokenUsage::default(),
             current_iteration_tokens: TokenUsage::default(),
+            timeout_retry_count: 0,
         };
 
         // Log initialization info

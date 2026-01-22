@@ -14,6 +14,7 @@ use futures::StreamExt;
 use tokio::sync::mpsc;
 
 use super::AppEvent;
+use crate::subprocess::StreamEvent;
 
 /// Subprocess event that can be sent to the TUI.
 ///
@@ -39,6 +40,8 @@ pub enum SubprocessEvent {
     IterationDone { tasks_done: u32 },
     /// Log message (displayed in output area but not treated as Claude message).
     Log(String),
+    /// Raw stream event for conversation view extraction.
+    StreamEvent(StreamEvent),
 }
 
 impl From<SubprocessEvent> for AppEvent {
@@ -68,6 +71,8 @@ impl From<SubprocessEvent> for AppEvent {
             }
             // Log messages are displayed in the output but treated as system messages
             SubprocessEvent::Log(s) => AppEvent::LogMessage(s),
+            // Stream events are forwarded for conversation view extraction
+            SubprocessEvent::StreamEvent(e) => AppEvent::StreamEvent(e),
         }
     }
 }
@@ -281,5 +286,19 @@ mod tests {
         let log = SubprocessEvent::Log("log message".to_string());
         let app_event: AppEvent = log.into();
         assert!(matches!(app_event, AppEvent::LogMessage(s) if s == "log message"));
+    }
+
+    #[test]
+    fn test_subprocess_stream_event_conversion() {
+        use crate::subprocess::StreamEvent;
+
+        // Create a minimal stream event for testing
+        let json = r#"{"type":"assistant","message":{"content":[{"type":"text","text":"hello"}]}}"#;
+        let stream_event = StreamEvent::parse(json).unwrap();
+
+        let subprocess_event = SubprocessEvent::StreamEvent(stream_event);
+        let app_event: AppEvent = subprocess_event.into();
+
+        assert!(matches!(app_event, AppEvent::StreamEvent(_)));
     }
 }

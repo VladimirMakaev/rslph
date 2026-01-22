@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 13 - Parallel Eval TUI
-Plan: 4 of 4 (complete)
-Status: Milestone v1.2 complete
-Last activity: 2026-01-22 — Phase 13 verified, v1.2 Context Engineering milestone complete
+Plan: 4 of 7 (gap closure pending)
+Status: UAT complete, 3 fix plans created
+Last activity: 2026-01-22 — Phase 13 UAT complete, gaps diagnosed, fix plans 13-05/06/07 created
 
 Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [############] 100% v1.2
 

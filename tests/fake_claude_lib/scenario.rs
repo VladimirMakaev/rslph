@@ -100,6 +100,14 @@ impl ScenarioBuilder {
         self
     }
 
+    /// Set initial delay before outputting any events (milliseconds).
+    ///
+    /// Use this to simulate a slow startup that causes timeout.
+    pub fn with_initial_delay_ms(mut self, delay: u64) -> Self {
+        self.current_invocation.initial_delay_ms = Some(delay);
+        self
+    }
+
     /// Configure the current invocation to crash after N events.
     pub fn crash_after(mut self, count: usize) -> Self {
         self.current_invocation.crash_after_events = Some(count);

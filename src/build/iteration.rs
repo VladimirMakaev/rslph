@@ -36,6 +36,9 @@ fn parse_and_stream_line(
         Err(_) => return None,
     };
 
+    // Send raw event for conversation view extraction
+    let _ = tui_tx.send(SubprocessEvent::StreamEvent(event.clone()));
+
     // Send assistant text as ClaudeOutput
     if event.is_assistant() {
         if let Some(text) = event.extract_text() {
@@ -175,7 +178,7 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
 
     // Step 6: Run subprocess and collect output
     // When TUI is active, stream output to TUI while collecting for response parsing
-    let timeout = Duration::from_secs(600);
+    let timeout = Duration::from_secs(ctx.config.iteration_timeout);
     let mut stream_response = StreamResponse::new();
 
     let run_result = if let Some(ref tui_tx) = ctx.tui_tx {
@@ -215,21 +218,39 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
         }
     } else {
         // Non-streaming mode: collect all output then parse
-        let output = runner
+        // Don't use ? here - we want to catch timeout errors and handle them below
+        match runner
             .run_with_timeout(timeout, ctx.cancel_token.clone())
-            .await?;
-
-        // Parse JSONL response
-        for line in &output {
-            if let OutputLine::Stdout(s) = line {
-                stream_response.process_line(s);
+            .await
+        {
+            Ok(output) => {
+                // Parse JSONL response
+                for line in &output {
+                    if let OutputLine::Stdout(s) = line {
+                        stream_response.process_line(s);
+                    }
+                }
+                Ok(())
             }
+            Err(e) => Err(e),
         }
-        Ok(())
     };
 
     // Handle run errors
     if let Err(e) = run_result {
+        // Check if this is a timeout error - return Timeout result for retry
+        if matches!(e, RslphError::Timeout(_)) {
+            ctx.progress.add_attempt(
+                ctx.current_iteration,
+                "Execute Claude subprocess",
+                &format!("Timeout after {}s", ctx.config.iteration_timeout),
+                Some("Retrying iteration"),
+            );
+            ctx.progress.trim_attempts(ctx.config.recent_threads as usize);
+            ctx.progress.write(&ctx.progress_path)?;
+            return Ok(IterationResult::Timeout);
+        }
+
         ctx.progress.add_attempt(
             ctx.current_iteration,
             "Execute Claude subprocess",

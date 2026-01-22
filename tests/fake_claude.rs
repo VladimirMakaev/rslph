@@ -48,6 +48,11 @@ fn main() {
         io::stdout().flush().unwrap();
     }
 
+    // Apply initial delay before outputting any events
+    if let Some(initial_delay) = inv_config.initial_delay_ms {
+        std::thread::sleep(std::time::Duration::from_millis(initial_delay));
+    }
+
     for (i, event) in inv_config.events.iter().enumerate() {
         if let Some(delay) = inv_config.delay_ms {
             std::thread::sleep(std::time::Duration::from_millis(delay));

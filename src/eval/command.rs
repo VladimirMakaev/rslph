@@ -671,6 +671,110 @@ fn load_multi_trial_result(path: &Path) -> color_eyre::Result<SerializableMultiT
     Ok(result)
 }
 
+/// Run the compare command to compare two eval result files (EVAL-09).
+///
+/// Loads two multi-trial result JSON files and displays deltas for key metrics:
+/// - Pass rate (higher is better)
+/// - Execution time (lower is better)
+/// - Input tokens (lower is better)
+/// - Output tokens (lower is better)
+///
+/// # Arguments
+///
+/// * `file1` - Path to baseline result file
+/// * `file2` - Path to comparison result file
+///
+/// # Returns
+///
+/// * `Ok(())` - Comparison completed successfully
+/// * `Err(e)` - File loading or parsing failed
+pub fn run_compare_command(file1: PathBuf, file2: PathBuf) -> color_eyre::Result<()> {
+    let result1 = load_multi_trial_result(&file1)?;
+    let result2 = load_multi_trial_result(&file2)?;
+
+    println!("Comparing results:");
+    println!("  Baseline:   {} ({} trials)", file1.display(), result1.trial_count);
+    println!("  Comparison: {} ({} trials)", file2.display(), result2.trial_count);
+    println!();
+
+    // Print deltas for each metric
+    // Pass rate: higher is better
+    print_delta(
+        "Pass Rate",
+        result1.statistics.pass_rate.mean * 100.0,
+        result2.statistics.pass_rate.mean * 100.0,
+        "%",
+        true, // higher is better
+    );
+
+    // Execution time: lower is better
+    print_delta(
+        "Execution Time",
+        result1.statistics.elapsed_secs.mean,
+        result2.statistics.elapsed_secs.mean,
+        "s",
+        false, // lower is better
+    );
+
+    // Input tokens: lower is better
+    print_delta(
+        "Input Tokens",
+        result1.statistics.total_input_tokens.mean,
+        result2.statistics.total_input_tokens.mean,
+        "",
+        false, // lower is better
+    );
+
+    // Output tokens: lower is better
+    print_delta(
+        "Output Tokens",
+        result1.statistics.total_output_tokens.mean,
+        result2.statistics.total_output_tokens.mean,
+        "",
+        false, // lower is better
+    );
+
+    Ok(())
+}
+
+/// Print a delta comparison between two values.
+///
+/// Shows: `{name}: {baseline}{unit} -> {comparison}{unit} ({arrow}{delta}{unit}, {percent}%)`
+///
+/// # Arguments
+///
+/// * `name` - Metric name
+/// * `baseline` - Baseline value
+/// * `comparison` - Comparison value
+/// * `unit` - Unit suffix (e.g., "%", "s", "")
+/// * `higher_is_better` - If true, positive delta shows ^, else shows v
+fn print_delta(name: &str, baseline: f64, comparison: f64, unit: &str, higher_is_better: bool) {
+    let delta = comparison - baseline;
+    let percent = if baseline.abs() > 0.0001 {
+        (delta / baseline) * 100.0
+    } else {
+        0.0
+    };
+
+    // Determine arrow based on whether this is an improvement
+    // For "higher is better" metrics: positive delta = improvement (^)
+    // For "lower is better" metrics: negative delta = improvement (^)
+    let is_improvement = if higher_is_better {
+        delta > 0.0
+    } else {
+        delta < 0.0
+    };
+    let arrow = if is_improvement { "^" } else { "v" };
+
+    // Format the sign for display
+    let sign = if delta >= 0.0 { "+" } else { "" };
+
+    println!(
+        "{}: {:.1}{} -> {:.1}{} ({}{:.1}{}, {}{}%)",
+        name, baseline, unit, comparison, unit, arrow, delta.abs(), unit, sign, percent as i64
+    );
+}
+
 /// Copy directory contents recursively.
 fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
     if !dst.exists() {

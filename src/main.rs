@@ -4,7 +4,7 @@ use clap::Parser;
 use rslph::build::run_build_command;
 use rslph::build::tokens::format_tokens;
 use rslph::cli::{Cli, Commands};
-use rslph::eval::{run_eval_command, run_retest_command};
+use rslph::eval::{run_compare_command, run_eval_command, run_retest_command};
 use rslph::planning::run_plan_command;
 use rslph::subprocess::setup_ctrl_c_handler;
 
@@ -168,6 +168,15 @@ async fn main() -> color_eyre::Result<()> {
                 }
                 Err(e) => {
                     eprintln!("Retest failed: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Commands::Compare { file1, file2 } => {
+            match run_compare_command(file1, file2) {
+                Ok(()) => {}
+                Err(e) => {
+                    eprintln!("Compare failed: {}", e);
                     std::process::exit(1);
                 }
             }

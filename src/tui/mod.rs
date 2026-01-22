@@ -4,6 +4,8 @@
 //! viewing Claude output in real-time, and navigating iteration history.
 
 mod app;
+pub mod conversation;
+pub mod dashboard;
 mod event;
 mod keybindings;
 mod run;
@@ -12,6 +14,8 @@ mod ui;
 mod widgets;
 
 pub use app::{App, AppEvent, Message, MessageRole};
+pub use conversation::{ConversationBuffer, ConversationItem};
+pub use dashboard::{DashboardState, TrialProgress, TrialStatus};
 pub use event::{EventHandler, SubprocessEvent};
 pub use keybindings::handle_event;
 pub use run::{run_tui, run_tui_blocking};

@@ -5,6 +5,8 @@
 
 use serde::Deserialize;
 
+use crate::tui::conversation::ConversationItem;
+
 /// A single line from Claude CLI's stream-json output.
 #[derive(Debug, Clone, Deserialize)]
 pub struct StreamEvent {
@@ -173,6 +175,15 @@ pub fn format_tool_summary(tool_name: &str, input_json: &str) -> String {
     }
 }
 
+/// Truncate a string to max length with ellipsis for display.
+fn truncate_for_display(s: &str, max_len: usize) -> String {
+    if s.len() > max_len {
+        format!("{}...", &s[..max_len.saturating_sub(3)])
+    } else {
+        s.to_string()
+    }
+}
+
 /// Token usage statistics.
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct Usage {
@@ -197,6 +208,55 @@ impl StreamEvent {
     /// Parse a single JSON line into a StreamEvent.
     pub fn parse(line: &str) -> Result<Self, serde_json::Error> {
         serde_json::from_str(line)
+    }
+
+    /// Extract conversation items from this event for TUI display.
+    ///
+    /// Returns a vector of ConversationItems representing the content blocks
+    /// in this event (thinking, text, tool_use).
+    pub fn extract_conversation_items(&self) -> Vec<ConversationItem> {
+        let message = match &self.message {
+            Some(m) => m,
+            None => return vec![],
+        };
+
+        let blocks = match &message.content {
+            MessageContent::Text(s) => {
+                // User message as system-type display
+                return vec![ConversationItem::System(format!(
+                    "[User] {}",
+                    truncate_for_display(s, 200)
+                ))];
+            }
+            MessageContent::Blocks(blocks) => blocks,
+            MessageContent::Empty => return vec![],
+        };
+
+        blocks
+            .iter()
+            .filter_map(|block| match block.block_type.as_str() {
+                "thinking" => block
+                    .thinking
+                    .clone()
+                    .map(|t| ConversationItem::Thinking(truncate_for_display(&t, 500))),
+                "text" => block.text.clone().map(ConversationItem::Text),
+                "tool_use" => {
+                    let name = block.name.clone().unwrap_or_else(|| "unknown".to_string());
+                    let input_json = block
+                        .input
+                        .as_ref()
+                        .map(|v| serde_json::to_string(v).unwrap_or_default())
+                        .unwrap_or_default();
+                    let summary = format_tool_summary(&name, &input_json);
+                    Some(ConversationItem::ToolUse { name, summary })
+                }
+                "tool_result" => {
+                    // Tool results come in different events - skip for now
+                    None
+                }
+                _ => None,
+            })
+            .collect()
     }
 
     /// Check if this is an assistant message.
@@ -329,11 +389,12 @@ impl StreamResponse {
                 }
 
                 if let Some(usage) = &message.usage {
-                    self.input_tokens = usage.input_tokens;
-                    self.output_tokens = usage.output_tokens;
-                    self.cache_creation_input_tokens =
+                    // Accumulate tokens from all messages in this response
+                    self.input_tokens += usage.input_tokens;
+                    self.output_tokens += usage.output_tokens;
+                    self.cache_creation_input_tokens +=
                         usage.cache_creation_input_tokens.unwrap_or(0);
-                    self.cache_read_input_tokens = usage.cache_read_input_tokens.unwrap_or(0);
+                    self.cache_read_input_tokens += usage.cache_read_input_tokens.unwrap_or(0);
                 }
             }
         }
@@ -402,7 +463,9 @@ mod tests {
         assert_eq!(response.text, "Hello world!");
         assert_eq!(response.model, Some("claude-opus-4.5".to_string()));
         assert_eq!(response.stop_reason, Some("end_turn".to_string()));
-        assert_eq!(response.output_tokens, 20); // Last usage wins
+        // Tokens are accumulated across all messages
+        assert_eq!(response.input_tokens, 100);  // 50 + 50
+        assert_eq!(response.output_tokens, 30);  // 10 + 20
     }
 
     #[test]

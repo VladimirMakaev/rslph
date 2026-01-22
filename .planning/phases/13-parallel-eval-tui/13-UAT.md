@@ -60,9 +60,15 @@ skipped: 1
   reason: "User reported: Make TUI default and change flag to --no-tui to disable"
   severity: major
   test: 4
-  root_cause: ""
-  artifacts: []
-  missing: []
+  root_cause: "Design decision - plan command should default to TUI mode with --no-tui flag to disable instead of current opt-in --tui flag"
+  artifacts:
+    - path: "src/cli.rs"
+      issue: "PlanArgs has --tui flag (opt-in) instead of --no-tui flag (opt-out)"
+    - path: "src/planning/command.rs"
+      issue: "run_plan_command checks 'if tui' instead of 'if !no_tui'"
+  missing:
+    - "Change --tui flag to --no-tui in PlanArgs struct"
+    - "Invert boolean logic in run_plan_command call"
   debug_session: ""
 
 - truth: "Plan command generates complete, coherent task descriptions"
@@ -70,11 +76,14 @@ skipped: 1
   reason: "User reported: Plan output has incomplete tasks - Phase 3 shows 'Add' and 'Write tests for' with no content"
   severity: major
   test: 4
-  root_cause: ""
+  root_cause: "progress.rs parser only captures first Text event after TaskListMarker, missing subsequent Code/Text chunks for inline formatting"
   artifacts:
-    - path: "progress.md"
-      issue: "Truncated task descriptions in Phase 3"
-  missing: []
+    - path: "src/progress.rs"
+      issue: "Lines 165-180: current_task_checked.take() consumes marker on first Text, ignores subsequent Code/Text events"
+  missing:
+    - "Accumulate all content between TaskListMarker and End(Item) into task description"
+    - "Handle Code events by extracting their text content"
+    - "Only create Task when Item ends, not on first Text event"
   debug_session: ""
 
 - truth: "Conversation view displays LLM stream content (thinking, tool calls, text)"

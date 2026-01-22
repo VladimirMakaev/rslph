@@ -5,6 +5,7 @@
 use std::io::{self, BufRead};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
+use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
 
 use crate::build::tokens::{format_tokens, TokenUsage};
@@ -15,7 +16,8 @@ use crate::planning::{
 };
 use crate::progress::ProgressFile;
 use crate::prompts::get_plan_prompt;
-use crate::subprocess::{ClaudeRunner, OutputLine, StreamResponse};
+use crate::subprocess::{ClaudeRunner, OutputLine, StreamEvent, StreamResponse};
+use crate::tui::plan_tui::run_plan_tui;
 
 /// Run the planning command.
 ///
@@ -44,10 +46,9 @@ pub async fn run_plan_command(
     cancel_token: CancellationToken,
     timeout: Duration,
 ) -> color_eyre::Result<(PathBuf, TokenUsage)> {
-    // If TUI mode, run the TUI planning flow (to be implemented)
+    // If TUI mode, run the TUI planning flow
     if tui {
-        // TUI mode will be implemented in Task 3
-        return run_basic_planning(input, config, working_dir, cancel_token, timeout).await;
+        return run_tui_planning(input, config, working_dir, cancel_token, timeout).await;
     }
 
     // If adaptive mode, run the adaptive planning flow
@@ -160,6 +161,150 @@ async fn run_basic_planning(
     eprintln!("[TRACE] Wrote progress file to: {}", output_path.display());
 
     // Step 10: Create TokenUsage from stream_response
+    let tokens = TokenUsage {
+        input_tokens: stream_response.input_tokens,
+        output_tokens: stream_response.output_tokens,
+        cache_creation_input_tokens: stream_response.cache_creation_input_tokens,
+        cache_read_input_tokens: stream_response.cache_read_input_tokens,
+    };
+
+    Ok((output_path, tokens))
+}
+
+/// Run TUI planning mode with streaming output display.
+///
+/// TUI mode:
+/// 1. Detects project stack
+/// 2. Spawns Claude with stream-json output
+/// 3. Streams events to TUI for real-time display
+/// 4. Parses output and writes progress file
+async fn run_tui_planning(
+    input: &str,
+    config: &Config,
+    working_dir: &Path,
+    cancel_token: CancellationToken,
+    timeout: Duration,
+) -> color_eyre::Result<(PathBuf, TokenUsage)> {
+    use tokio::time::timeout as tokio_timeout;
+
+    // Step 1: Detect project stack for testing strategy
+    let stack = detect_stack(working_dir);
+
+    // Step 2: Get the planning prompt (default or override)
+    let system_prompt = get_plan_prompt(config)?;
+
+    // Step 3: Build user input with stack context
+    let full_input = format!(
+        "## Detected Stack\n{}\n\n## User Request\n{}",
+        stack.to_summary(),
+        input
+    );
+
+    // Step 4: Build Claude CLI args for streaming mode
+    let args = vec![
+        "--internet".to_string(),
+        "-p".to_string(),
+        "--verbose".to_string(),
+        "--output-format".to_string(),
+        "stream-json".to_string(),
+        "--system-prompt".to_string(),
+        system_prompt,
+        full_input,
+    ];
+
+    // Step 5: Spawn Claude
+    let mut runner = ClaudeRunner::spawn(&config.claude_path, &args, working_dir)
+        .await
+        .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
+
+    // Step 6: Create channel for stream events
+    let (event_tx, event_rx) = mpsc::unbounded_channel();
+
+    // Step 7: Spawn TUI task
+    let tui_cancel = cancel_token.clone();
+    let tui_handle = tokio::spawn(async move { run_plan_tui(event_rx, tui_cancel).await });
+
+    // Step 8: Stream events to TUI with timeout
+    let mut stream_response = StreamResponse::new();
+    let stream_cancel = cancel_token.clone();
+
+    let stream_result = tokio_timeout(timeout, async {
+        loop {
+            tokio::select! {
+                biased;
+
+                _ = stream_cancel.cancelled() => {
+                    runner.terminate_gracefully(Duration::from_secs(5)).await
+                        .map_err(|e| RslphError::Subprocess(e.to_string()))?;
+                    return Err::<(), RslphError>(RslphError::Cancelled);
+                }
+
+                line = runner.next_output() => {
+                    match line {
+                        Some(OutputLine::Stdout(s)) => {
+                            // Parse and forward to TUI
+                            if let Ok(event) = StreamEvent::parse(&s) {
+                                stream_response.process_event(&event);
+                                let _ = event_tx.send(event);
+                            }
+                        }
+                        Some(OutputLine::Stderr(_)) => {
+                            // Ignore stderr in TUI mode
+                        }
+                        None => {
+                            // Stream complete
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    })
+    .await;
+
+    // Step 9: Drop sender to signal completion to TUI
+    drop(event_tx);
+
+    // Step 10: Wait for TUI to finish
+    let tui_state = tui_handle
+        .await
+        .map_err(|e| RslphError::Subprocess(format!("TUI task failed: {}", e)))?
+        .map_err(|e| RslphError::Subprocess(format!("TUI error: {}", e)))?;
+
+    // Check for timeout or cancellation
+    match stream_result {
+        Err(_) => return Err(RslphError::Timeout(timeout.as_secs()).into()),
+        Ok(Err(e)) => return Err(e.into()),
+        Ok(Ok(())) => {}
+    }
+
+    // Check if user quit
+    if tui_state.should_quit {
+        return Err(RslphError::Cancelled.into());
+    }
+
+    // Step 11: Parse response into ProgressFile
+    let mut progress_file = ProgressFile::parse(&stream_response.text)?;
+
+    // Step 12: Generate project name if empty (non-TUI for simplicity)
+    if progress_file.name.is_empty() {
+        let generated_name = generate_project_name(
+            &config.claude_path,
+            input,
+            working_dir,
+            cancel_token.clone(),
+            timeout,
+        )
+        .await?;
+        progress_file.name = generated_name;
+    }
+
+    // Step 13: Write to file
+    let output_path = working_dir.join("progress.md");
+    progress_file.write(&output_path)?;
+
+    // Step 14: Create TokenUsage from stream_response
     let tokens = TokenUsage {
         input_tokens: stream_response.input_tokens,
         output_tokens: stream_response.output_tokens,

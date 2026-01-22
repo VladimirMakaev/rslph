@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 13 - Parallel Eval TUI
-Plan: 4 of 7 (gap closure pending)
-Status: UAT complete, 3 fix plans created
-Last activity: 2026-01-22 — Phase 13 UAT complete, gaps diagnosed, fix plans 13-05/06/07 created
+Plan: 7 of 9 (UAT gaps closed, gap closure plans 13-08 and 13-09 ready)
+Status: Gap closure plans created, ready for execution
+Last activity: 2026-01-22 — Created gap closure plans 13-08 (dashboard progress) and 13-09 (mode passthrough)
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [############] 100% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#########.] 90% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -25,7 +25,8 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [############] 100% 
 | 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | Complete |
 | 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Complete |
 | 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Complete |
-| 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | Complete |
+| 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | In Progress (2 gap closure plans ready) |
+| 14 - TUI Visual Parity | Claude Code-style TUI design | TUI-01 to TUI-06 | Not Started |
 
 ## Performance Metrics
 
@@ -73,7 +74,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [############] 100% 
 | 10-eval-projects-and-testing | 4/4 | 11m 5s | 2m 46s |
 | 11-prompt-engineering | 4/4 | 14m 16s | 3m 34s |
 | 12-multi-trial-results | 5/5 | 13m | 2m 36s |
-| 13-parallel-eval-tui | 4/4 | 20m | 5m |
+| 13-parallel-eval-tui | 7/9 | 20m | 5m |
 
 *Updated after each plan completion*
 
@@ -184,7 +185,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-22
-Stopped at: Completed 13-04-PLAN.md (Phase 13 complete)
+Stopped at: Created gap closure plans 13-08 and 13-09
 Resume file: None
 
 ### Roadmap Evolution
@@ -195,4 +196,7 @@ Resume file: None
 - 13-02 complete: Dashboard TUI for parallel eval with multi-pane grid layout
 - 13-03 complete: Enhanced conversation view in build TUI with 'c' toggle
 - 13-04 complete: Plan command TUI mode with streaming LLM output
-- Phase 13 complete: All 4 plans executed, v1.2 milestone complete
+- Phase 13 UAT: 3 gaps found, closed with plans 13-05, 13-06, 13-07
+- Milestone audit: 2 critical gaps found (PARA-01 partial, PARA-02 partial)
+- Gap closure plans created: 13-08 (dashboard iteration progress), 13-09 (mode passthrough)
+- Phase 14 added: TUI Visual Parity with Claude Code (brand colors, box-drawn elements, spinner, status bar)

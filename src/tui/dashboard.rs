@@ -4,17 +4,23 @@
 //! parallel trials across different prompt modes.
 
 use std::collections::HashMap;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
+use crossterm::event::{Event as CrosstermEvent, EventStream, KeyCode, KeyModifiers};
+use futures::StreamExt;
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     widgets::{Block, Borders, Gauge, Paragraph},
     Frame,
 };
+use tokio::sync::mpsc;
+use tokio_util::sync::CancellationToken;
 
+use crate::error::RslphError;
 use crate::eval::{TestResults, TrialEvent, TrialEventKind};
 use crate::prompts::PromptMode;
+use crate::tui::terminal::{init_terminal, restore_terminal};
 
 /// State for the parallel eval dashboard.
 ///
@@ -138,6 +144,122 @@ impl DashboardState {
     pub fn total_elapsed_secs(&self) -> f64 {
         self.start_time.elapsed().as_secs_f64()
     }
+}
+
+/// Run the dashboard TUI for parallel eval execution.
+///
+/// This function manages the TUI lifecycle for the dashboard:
+/// 1. Initializes the terminal
+/// 2. Renders the dashboard with updates from trial events
+/// 3. Handles keyboard input (q/Esc/Ctrl+C to quit)
+/// 4. Restores the terminal on exit
+///
+/// # Arguments
+///
+/// * `modes` - List of prompt modes being evaluated
+/// * `trials_per_mode` - Number of trials per mode
+/// * `event_rx` - Receiver for trial events from parallel eval execution
+/// * `cancel_token` - Token to signal cancellation (user quit or completion)
+///
+/// # Returns
+///
+/// * `Ok(())` on successful completion or user quit
+/// * `Err(RslphError)` on terminal or I/O error
+pub async fn run_dashboard_tui(
+    modes: Vec<PromptMode>,
+    trials_per_mode: u32,
+    mut event_rx: mpsc::UnboundedReceiver<TrialEvent>,
+    cancel_token: CancellationToken,
+) -> Result<(), RslphError> {
+    let mut terminal = init_terminal()
+        .map_err(|e| RslphError::Subprocess(format!("Terminal init failed: {}", e)))?;
+
+    let mut state = DashboardState::new(&modes, trials_per_mode);
+    let mut event_stream = EventStream::new();
+
+    // Render interval for responsive updates (30 FPS)
+    let mut render_interval = tokio::time::interval(Duration::from_millis(33));
+
+    loop {
+        // Render current state
+        terminal
+            .draw(|frame| {
+                render_dashboard(frame, frame.area(), &state);
+            })
+            .map_err(|e| RslphError::Subprocess(format!("Render failed: {}", e)))?;
+
+        // Poll for events with timeout for responsive rendering
+        tokio::select! {
+            biased;
+
+            // Check for cancellation
+            _ = cancel_token.cancelled() => {
+                break;
+            }
+
+            // Handle keyboard events
+            maybe_key = event_stream.next() => {
+                match maybe_key {
+                    Some(Ok(CrosstermEvent::Key(key))) => {
+                        // Check for Ctrl+C
+                        if key.modifiers.contains(KeyModifiers::CONTROL) {
+                            if let KeyCode::Char('c') = key.code {
+                                cancel_token.cancel();
+                                break;
+                            }
+                        }
+                        // Check for q or Esc to quit
+                        match key.code {
+                            KeyCode::Char('q') | KeyCode::Esc => {
+                                cancel_token.cancel();
+                                break;
+                            }
+                            _ => {}
+                        }
+                    }
+                    Some(Ok(CrosstermEvent::Resize(_, _))) => {
+                        // Resize triggers a re-render on next loop
+                    }
+                    Some(Err(_)) | None => {
+                        // Event stream error or ended
+                    }
+                    _ => {}
+                }
+            }
+
+            // Handle trial events
+            event = event_rx.recv() => {
+                match event {
+                    Some(trial_event) => {
+                        state.update(&trial_event);
+                        if state.all_complete {
+                            // Keep displayed for a moment to show final state
+                            // Re-render first
+                            let _ = terminal.draw(|frame| {
+                                render_dashboard(frame, frame.area(), &state);
+                            });
+                            tokio::time::sleep(Duration::from_secs(2)).await;
+                            break;
+                        }
+                    }
+                    None => {
+                        // Channel closed - all trials done
+                        break;
+                    }
+                }
+            }
+
+            // Periodic render for elapsed time updates
+            _ = render_interval.tick() => {
+                // Loop continues and re-renders
+            }
+        }
+    }
+
+    restore_terminal()
+        .map_err(|e| RslphError::Subprocess(format!("Terminal restore failed: {}", e)))?;
+
+    Ok(())
 }
 
 /// Render the dashboard to the frame.

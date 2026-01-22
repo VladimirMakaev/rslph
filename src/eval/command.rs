@@ -18,6 +18,7 @@ use crate::planning::run_plan_command;
 use crate::progress::ProgressFile;
 use crate::prompts::{test_discovery_prompt, PromptMode};
 use crate::subprocess::{ClaudeRunner, OutputLine, StreamResponse};
+use crate::tui::run_dashboard_tui;
 
 use super::parallel::{run_parallel_evals, TrialEvent, TrialResult as ParallelTrialResult};
 use super::{EvalResult, StatSummary, TrialStatistics};
@@ -123,53 +124,68 @@ async fn run_parallel_eval_mode(
     use tokio::sync::mpsc;
     use std::collections::HashMap;
 
-    println!(
-        "\n=== PARALLEL EVAL: {} modes x {} trials = {} total trials ===\n",
-        modes.len(),
-        trials_per_mode,
-        modes.len() as u32 * trials_per_mode
-    );
+    if no_tui {
+        println!(
+            "\n=== PARALLEL EVAL: {} modes x {} trials = {} total trials ===\n",
+            modes.len(),
+            trials_per_mode,
+            modes.len() as u32 * trials_per_mode
+        );
+    }
 
-    // Create channel for trial events (for future TUI integration)
-    let (event_tx, mut event_rx) = mpsc::unbounded_channel::<TrialEvent>();
+    // Create channel for trial events
+    let (event_tx, event_rx) = mpsc::unbounded_channel::<TrialEvent>();
 
-    // Spawn event handler task (for now just prints progress)
-    let event_handler = tokio::spawn(async move {
-        while let Some(event) = event_rx.recv().await {
-            match &event.event {
-                super::parallel::TrialEventKind::Started => {
-                    println!("[{}/{}] {} - Started", event.mode, event.trial_num, event.mode);
-                }
-                super::parallel::TrialEventKind::Planning => {
-                    println!("[{}/{}] Planning...", event.mode, event.trial_num);
-                }
-                super::parallel::TrialEventKind::Building { iteration, max_iterations } => {
-                    println!(
-                        "[{}/{}] Building iteration {}/{}",
-                        event.mode, event.trial_num, iteration, max_iterations
-                    );
-                }
-                super::parallel::TrialEventKind::Testing => {
-                    println!("[{}/{}] Testing...", event.mode, event.trial_num);
-                }
-                super::parallel::TrialEventKind::Complete { result } => {
-                    let pass_rate = result
-                        .eval_result
-                        .test_results
-                        .as_ref()
-                        .map(|tr| tr.pass_rate())
-                        .unwrap_or(0.0);
-                    println!(
-                        "[{}/{}] Complete - {:.1}% pass rate",
-                        event.mode, event.trial_num, pass_rate
-                    );
-                }
-                super::parallel::TrialEventKind::Failed { error } => {
-                    println!("[{}/{}] FAILED: {}", event.mode, event.trial_num, error);
+    // Spawn TUI or print-based event handler based on no_tui flag
+    let tui_handle = if !no_tui {
+        // Spawn dashboard TUI
+        let modes_clone = modes.to_vec();
+        let cancel_clone = cancel_token.clone();
+        Some(tokio::spawn(async move {
+            if let Err(e) = run_dashboard_tui(modes_clone, trials_per_mode, event_rx, cancel_clone).await {
+                eprintln!("Dashboard error: {}", e);
+            }
+        }))
+    } else {
+        // Spawn print-based event handler for no-TUI mode
+        let mut event_rx = event_rx;
+        Some(tokio::spawn(async move {
+            while let Some(event) = event_rx.recv().await {
+                match &event.event {
+                    super::parallel::TrialEventKind::Started => {
+                        println!("[{}/{}] {} - Started", event.mode, event.trial_num, event.mode);
+                    }
+                    super::parallel::TrialEventKind::Planning => {
+                        println!("[{}/{}] Planning...", event.mode, event.trial_num);
+                    }
+                    super::parallel::TrialEventKind::Building { iteration, max_iterations } => {
+                        println!(
+                            "[{}/{}] Building iteration {}/{}",
+                            event.mode, event.trial_num, iteration, max_iterations
+                        );
+                    }
+                    super::parallel::TrialEventKind::Testing => {
+                        println!("[{}/{}] Testing...", event.mode, event.trial_num);
+                    }
+                    super::parallel::TrialEventKind::Complete { result } => {
+                        let pass_rate = result
+                            .eval_result
+                            .test_results
+                            .as_ref()
+                            .map(|tr| tr.pass_rate())
+                            .unwrap_or(0.0);
+                        println!(
+                            "[{}/{}] Complete - {:.1}% pass rate",
+                            event.mode, event.trial_num, pass_rate
+                        );
+                    }
+                    super::parallel::TrialEventKind::Failed { error } => {
+                        println!("[{}/{}] FAILED: {}", event.mode, event.trial_num, error);
+                    }
                 }
             }
-        }
-    });
+        }))
+    };
 
     // Run parallel evals
     let results = run_parallel_evals(
@@ -184,8 +200,11 @@ async fn run_parallel_eval_mode(
     )
     .await;
 
-    // Wait for event handler to finish
-    drop(event_handler);
+    // Wait for TUI/event handler to finish
+    if let Some(handle) = tui_handle {
+        // Don't wait forever - the handle will finish when the channel closes
+        let _ = handle.await;
+    }
 
     if results.is_empty() {
         return Err(eyre!("No trials completed successfully"));
@@ -401,6 +420,7 @@ async fn run_single_trial(
     let (progress_path, plan_tokens) = run_plan_command(
         &prompt,
         false, // not adaptive
+        false, // not tui
         config,
         &working_dir,
         cancel_token.clone(),

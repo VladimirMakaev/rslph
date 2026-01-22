@@ -9,6 +9,7 @@ use tokio_util::sync::CancellationToken;
 use crate::config::Config;
 use crate::error::RslphError;
 use crate::progress::ProgressFile;
+use crate::prompts::PromptMode;
 
 use super::iteration::run_single_iteration;
 use super::state::{BuildContext, BuildState, DoneReason, IterationResult};
@@ -25,6 +26,7 @@ use super::tokens::TokenUsage;
 /// * `once` - If true, run only one iteration
 /// * `dry_run` - If true, preview what would be done without executing
 /// * `no_tui` - If true, disable TUI and use headless output
+/// * `mode` - The prompt mode to use for this build
 /// * `config` - Application configuration
 /// * `cancel_token` - Token for graceful cancellation
 ///
@@ -37,6 +39,7 @@ pub async fn run_build_command(
     once: bool,
     dry_run: bool,
     no_tui: bool,
+    mode: PromptMode,
     config: &Config,
     cancel_token: CancellationToken,
 ) -> color_eyre::Result<TokenUsage> {
@@ -63,6 +66,7 @@ pub async fn run_build_command(
         progress_path.clone(),
         progress,
         config.clone(),
+        mode,
         cancel_token.clone(),
         once,
         dry_run,
@@ -77,7 +81,7 @@ pub async fn run_build_command(
     // Note: Full subprocess integration requires refactoring iteration.rs to use channels.
     // For now, TUI runs with initial state and headless build runs in parallel.
     if use_tui {
-        return run_build_with_tui(progress_path, ctx.progress.clone(), config, cancel_token).await;
+        return run_build_with_tui(progress_path, ctx.progress.clone(), mode, config, cancel_token).await;
     }
 
     // Main iteration loop with state machine
@@ -301,6 +305,7 @@ fn run_dry_run(ctx: &BuildContext) -> color_eyre::Result<TokenUsage> {
 async fn run_build_with_tui(
     progress_path: PathBuf,
     progress: ProgressFile,
+    mode: PromptMode,
     config: &Config,
     cancel_token: CancellationToken,
 ) -> color_eyre::Result<TokenUsage> {
@@ -330,6 +335,7 @@ async fn run_build_with_tui(
         progress_path.clone(),
         progress,
         config.clone(),
+        mode,
         cancel_token.clone(),
         false, // once_mode - TUI always runs full loop
         false, // dry_run - already handled before this function
@@ -553,6 +559,7 @@ fn log_iteration(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prompts::PromptMode;
     use std::time::Duration;
     use tempfile::TempDir;
 
@@ -601,6 +608,7 @@ mod tests {
             true, // once
             false,
             true, // no_tui
+            PromptMode::Basic,
             &config,
             token,
         )
@@ -623,6 +631,7 @@ mod tests {
             false,
             true, // dry_run
             true, // no_tui
+            PromptMode::Basic,
             &config,
             token,
         )
@@ -669,6 +678,7 @@ mod tests {
             true, // once mode to limit iterations
             false,
             true, // no_tui
+            PromptMode::Basic,
             &config,
             token,
         )
@@ -710,7 +720,7 @@ mod tests {
             token_clone.cancel();
         });
 
-        let result = run_build_command(progress_path, false, false, true, &config, token).await;
+        let result = run_build_command(progress_path, false, false, true, PromptMode::Basic, &config, token).await;
 
         // Should complete with user cancelled status
         assert!(result.is_ok(), "Should handle cancellation: {:?}", result);
@@ -726,6 +736,7 @@ mod tests {
             false,
             false,
             true, // no_tui
+            PromptMode::Basic,
             &config,
             token,
         )
@@ -773,6 +784,7 @@ mod tests {
             false,
             true, // dry_run
             true, // no_tui
+            PromptMode::Basic,
             &config,
             token,
         )
@@ -818,6 +830,7 @@ mod tests {
             true,  // once mode
             true,  // dry_run
             true,  // no_tui
+            PromptMode::Basic,
             &config,
             token,
         )
@@ -865,6 +878,7 @@ mod tests {
             progress_path,
             progress,
             config,
+            PromptMode::Basic,
             token,
             true,  // once_mode
             true,  // dry_run
@@ -924,6 +938,7 @@ mod tests {
             true,  // once mode
             false, // not dry-run
             true,  // no_tui
+            PromptMode::Basic,
             &config,
             token,
         )
@@ -962,6 +977,7 @@ mod tests {
             progress_path,
             progress,
             config,
+            PromptMode::Basic,
             token,
             true,  // once_mode - this is what we're testing
             false,
@@ -1019,6 +1035,7 @@ mod tests {
             false,
             false,
             true, // no_tui
+            PromptMode::Basic,
             &config,
             token,
         )
@@ -1085,6 +1102,7 @@ mod tests {
             false,
             false,
             true, // no_tui
+            PromptMode::Basic,
             &config,
             token,
         )
@@ -1143,6 +1161,7 @@ mod tests {
             false,
             false,
             true, // no_tui
+            PromptMode::Basic,
             &config,
             token,
         )
@@ -1252,6 +1271,7 @@ mod tests {
             true,  // once mode to limit execution
             false,
             true,  // no_tui
+            PromptMode::Basic,
             &config,
             token,
         )

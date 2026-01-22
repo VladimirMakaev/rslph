@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 
 use crate::error::RslphError;
 use crate::progress::ProgressFile;
-use crate::prompts::get_build_prompt;
+use crate::prompts::get_build_prompt_for_mode;
 use crate::subprocess::{format_tool_summary, ClaudeRunner, OutputLine, StreamEvent, StreamResponse};
 use crate::tui::SubprocessEvent;
 
@@ -111,9 +111,7 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
     }
 
     // Step 3: Build prompt with current progress context
-    let system_prompt = get_build_prompt(&ctx.config).map_err(|e| {
-        RslphError::Subprocess(format!("Failed to load build prompt: {}", e))
-    })?;
+    let system_prompt = get_build_prompt_for_mode(ctx.mode);
 
     // Clear completed this iteration from previous iteration
     ctx.progress.clear_iteration_completed();
@@ -364,6 +362,7 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prompts::PromptMode;
     use tempfile::TempDir;
     use tokio_util::sync::CancellationToken;
 
@@ -410,6 +409,7 @@ mod tests {
             progress_path,
             progress,
             config,
+            PromptMode::Basic,
             token,
             false,
             false,
@@ -451,6 +451,7 @@ mod tests {
             progress_path,
             progress,
             config,
+            PromptMode::Basic,
             token,
             false,
             false,

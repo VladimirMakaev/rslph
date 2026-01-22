@@ -34,7 +34,7 @@ async fn main() -> color_eyre::Result<()> {
                 println!("Mode: headless (--no-tui)");
             }
 
-            match run_plan_command(&plan, adaptive, !no_tui, &config, &working_dir, cancel_token, timeout).await {
+            match run_plan_command(&plan, adaptive, !no_tui, config.prompt_mode, &config, &working_dir, cancel_token, timeout).await {
                 Ok((output_path, _tokens)) => {
                     // Tokens already printed by run_plan_command
                     println!("Success! Progress file written to: {}", output_path.display());
@@ -65,7 +65,7 @@ async fn main() -> color_eyre::Result<()> {
                 }
             }
 
-            match run_build_command(plan, once, dry_run, no_tui, &config, cancel_token).await {
+            match run_build_command(plan, once, dry_run, no_tui, config.prompt_mode, &config, cancel_token).await {
                 Ok(_tokens) => {
                     // Tokens already printed by build command
                     if !use_tui {

@@ -15,7 +15,7 @@ use crate::planning::{
     assess_vagueness, detect_stack, REQUIREMENTS_CLARIFIER_PERSONA, TESTING_STRATEGIST_PERSONA,
 };
 use crate::progress::ProgressFile;
-use crate::prompts::get_plan_prompt;
+use crate::prompts::{get_plan_prompt_for_mode, PromptMode};
 use crate::subprocess::{ClaudeRunner, OutputLine, StreamEvent, StreamResponse};
 use crate::tui::plan_tui::run_plan_tui;
 
@@ -29,6 +29,7 @@ use crate::tui::plan_tui::run_plan_tui;
 /// * `input` - User's idea/plan description
 /// * `adaptive` - Whether to use adaptive mode with clarifying questions
 /// * `tui` - Whether to use TUI mode with streaming output
+/// * `mode` - The prompt mode to use (Basic, Gsd, GsdTdd)
 /// * `config` - Application configuration
 /// * `working_dir` - Directory to use as working directory and output location
 /// * `cancel_token` - Token for graceful cancellation
@@ -41,6 +42,7 @@ pub async fn run_plan_command(
     input: &str,
     adaptive: bool,
     tui: bool,
+    mode: PromptMode,
     config: &Config,
     working_dir: &Path,
     cancel_token: CancellationToken,
@@ -48,21 +50,22 @@ pub async fn run_plan_command(
 ) -> color_eyre::Result<(PathBuf, TokenUsage)> {
     // If TUI mode, run the TUI planning flow
     if tui {
-        return run_tui_planning(input, config, working_dir, cancel_token, timeout).await;
+        return run_tui_planning(input, mode, config, working_dir, cancel_token, timeout).await;
     }
 
     // If adaptive mode, run the adaptive planning flow
     if adaptive {
-        return run_adaptive_planning(input, config, working_dir, cancel_token, timeout).await;
+        return run_adaptive_planning(input, mode, config, working_dir, cancel_token, timeout).await;
     }
 
     // Basic mode: direct planning without clarification
-    run_basic_planning(input, config, working_dir, cancel_token, timeout).await
+    run_basic_planning(input, mode, config, working_dir, cancel_token, timeout).await
 }
 
 /// Run basic (non-adaptive) planning mode.
 async fn run_basic_planning(
     input: &str,
+    mode: PromptMode,
     config: &Config,
     working_dir: &Path,
     cancel_token: CancellationToken,
@@ -71,8 +74,8 @@ async fn run_basic_planning(
     // Step 1: Detect project stack for testing strategy
     let stack = detect_stack(working_dir);
 
-    // Step 2: Get the planning prompt (default or override)
-    let system_prompt = get_plan_prompt(config)?;
+    // Step 2: Get the planning prompt for the specified mode
+    let system_prompt = get_plan_prompt_for_mode(mode);
 
     // Step 3: Build user input with stack context
     let full_input = format!(
@@ -180,6 +183,7 @@ async fn run_basic_planning(
 /// 4. Parses output and writes progress file
 async fn run_tui_planning(
     input: &str,
+    mode: PromptMode,
     config: &Config,
     working_dir: &Path,
     cancel_token: CancellationToken,
@@ -190,8 +194,8 @@ async fn run_tui_planning(
     // Step 1: Detect project stack for testing strategy
     let stack = detect_stack(working_dir);
 
-    // Step 2: Get the planning prompt (default or override)
-    let system_prompt = get_plan_prompt(config)?;
+    // Step 2: Get the planning prompt for the specified mode
+    let system_prompt = get_plan_prompt_for_mode(mode);
 
     // Step 3: Build user input with stack context
     let full_input = format!(
@@ -379,6 +383,7 @@ async fn run_with_tracing(
 /// 5. Runs final planning with all gathered context
 pub async fn run_adaptive_planning(
     input: &str,
+    mode: PromptMode,
     config: &Config,
     working_dir: &Path,
     cancel_token: CancellationToken,
@@ -466,7 +471,7 @@ pub async fn run_adaptive_planning(
     // Step 6: Run final planning with all context
     println!("Generating final plan...\n");
 
-    let plan_prompt = get_plan_prompt(config)?;
+    let plan_prompt = get_plan_prompt_for_mode(mode);
     let final_input = format!(
         "## Detected Stack\n{}\n\n## Requirements\n{}\n\n## Clarifications\n{}\n\n## Testing Strategy\n{}",
         stack.to_summary(),
@@ -692,6 +697,7 @@ mod tests {
             "build something",
             false, // basic mode
             false, // no TUI
+            PromptMode::Basic,
             &config,
             dir.path(),
             token,
@@ -737,6 +743,7 @@ mod tests {
             "anything",
             false, // basic mode
             false, // no TUI
+            PromptMode::Basic,
             &config,
             dir.path(),
             token,
@@ -783,6 +790,7 @@ mod tests {
             "anything",
             false, // basic mode
             false, // no TUI
+            PromptMode::Basic,
             &config,
             dir.path(),
             token,
@@ -809,6 +817,7 @@ mod tests {
             "anything",
             false, // basic mode
             false, // no TUI
+            PromptMode::Basic,
             &config,
             dir.path(),
             token,

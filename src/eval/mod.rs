@@ -17,12 +17,15 @@ pub use test_runner::{load_test_cases, TestCase, TestResult, TestResults, TestRu
 
 use std::path::PathBuf;
 use crate::build::tokens::TokenUsage;
+use crate::prompts::PromptMode;
 
 /// Result of an eval run (EVAL-04, EVAL-05).
 #[derive(Debug, Clone)]
 pub struct EvalResult {
     /// Project that was evaluated
     pub project: String,
+    /// Prompt mode used for this trial
+    pub mode: PromptMode,
     /// Trial number (1-indexed)
     pub trial_num: u32,
     /// Total execution time in seconds

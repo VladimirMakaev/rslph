@@ -8,6 +8,7 @@ use tokio_util::sync::CancellationToken;
 
 use crate::config::Config;
 use crate::progress::ProgressFile;
+use crate::prompts::PromptMode;
 use crate::tui::SubprocessEvent;
 use crate::vcs::{create_vcs, Vcs};
 
@@ -93,6 +94,8 @@ pub struct BuildContext {
     pub progress: ProgressFile,
     /// Application configuration.
     pub config: Config,
+    /// Prompt mode for this build (Basic, Gsd, GsdTdd).
+    pub mode: PromptMode,
     /// Cancellation token for graceful shutdown.
     pub cancel_token: CancellationToken,
     /// Current iteration number (1-indexed).
@@ -128,11 +131,12 @@ impl BuildContext {
         progress_path: PathBuf,
         progress: ProgressFile,
         config: Config,
+        mode: PromptMode,
         cancel_token: CancellationToken,
         once_mode: bool,
         dry_run: bool,
     ) -> Self {
-        Self::with_tui(progress_path, progress, config, cancel_token, once_mode, dry_run, None)
+        Self::with_tui(progress_path, progress, config, mode, cancel_token, once_mode, dry_run, None)
     }
 
     /// Create a new build context with optional TUI sender.
@@ -140,6 +144,7 @@ impl BuildContext {
         progress_path: PathBuf,
         progress: ProgressFile,
         config: Config,
+        mode: PromptMode,
         cancel_token: CancellationToken,
         once_mode: bool,
         dry_run: bool,
@@ -167,6 +172,7 @@ impl BuildContext {
             progress_path,
             progress,
             config,
+            mode,
             cancel_token,
             current_iteration: 0,
             max_iterations,

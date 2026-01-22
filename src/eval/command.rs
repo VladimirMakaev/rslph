@@ -69,6 +69,9 @@ pub async fn run_eval_command(
     }
 
     // Single mode - use existing sequential behavior
+    // Get the single mode (we know there's exactly one)
+    let mode = resolved_modes[0];
+
     // Execute trials
     let mut trial_results = Vec::with_capacity(trials as usize);
 
@@ -76,7 +79,7 @@ pub async fn run_eval_command(
         if trials > 1 {
             println!("\n=== TRIAL {}/{} ===\n", trial_num, trials);
         }
-        let result = run_single_trial(&project, trial_num, no_tui, config, cancel_token.clone()).await?;
+        let result = run_single_trial(&project, trial_num, mode, no_tui, config, cancel_token.clone()).await?;
         trial_results.push(result);
     }
 
@@ -353,6 +356,7 @@ struct SerializableModeResult {
 async fn run_single_trial(
     project: &str,
     trial_num: u32,
+    mode: PromptMode,
     no_tui: bool,
     config: &Config,
     cancel_token: CancellationToken,
@@ -421,6 +425,7 @@ async fn run_single_trial(
         &prompt,
         false, // not adaptive
         false, // not tui
+        mode,
         config,
         &working_dir,
         cancel_token.clone(),
@@ -443,6 +448,7 @@ async fn run_single_trial(
         false,          // not once
         false,          // not dry-run
         no_tui || true, // force no-tui for eval to get clean output
+        mode,
         config,
         cancel_token.clone(),
     )
@@ -482,6 +488,7 @@ async fn run_single_trial(
     // Step 11: Save result.json to workspace (EVAL-06)
     let result = EvalResult {
         project: project.to_string(),
+        mode,
         trial_num,
         elapsed_secs,
         total_tokens: total_tokens.clone(),
@@ -516,14 +523,13 @@ async fn run_single_trial(
 pub async fn run_single_trial_with_mode(
     project: &str,
     trial_num: u32,
-    _mode: PromptMode,
+    mode: PromptMode,
     no_tui: bool,
     config: &Config,
     cancel_token: CancellationToken,
 ) -> color_eyre::Result<EvalResult> {
-    // TODO(Task 3): Pass mode to plan and build commands
-    // For now, forward to run_single_trial to enable parallel infrastructure
-    run_single_trial(project, trial_num, no_tui, config, cancel_token).await
+    // Forward to run_single_trial with the mode parameter
+    run_single_trial(project, trial_num, mode, no_tui, config, cancel_token).await
 }
 
 /// Re-run only the test phase on an existing eval workspace.
@@ -589,6 +595,7 @@ pub async fn run_retest_command(
     // Build result with original metrics but updated test results
     let result = EvalResult {
         project: existing_result.project,
+        mode: existing_result.mode,
         trial_num: 1, // Retest is always a single-trial operation
         elapsed_secs: existing_result.elapsed_secs, // Keep original timing
         total_tokens: TokenUsage {
@@ -622,6 +629,8 @@ fn load_result_json(path: &PathBuf) -> color_eyre::Result<StoredResult> {
 #[derive(Debug, Deserialize)]
 struct StoredResult {
     project: String,
+    #[serde(default)]
+    mode: PromptMode,
     elapsed_secs: f64,
     iterations: u32,
     tokens: StoredTokens,
@@ -649,6 +658,7 @@ struct StoredTestResults {
 #[derive(Debug, Serialize)]
 struct SerializableResult {
     project: String,
+    mode: PromptMode,
     elapsed_secs: f64,
     iterations: u32,
     tokens: SerializableTokens,
@@ -716,6 +726,7 @@ struct SerializableStatSummary {
 fn save_result_json(working_dir: &PathBuf, result: &EvalResult) -> color_eyre::Result<()> {
     let serializable = SerializableResult {
         project: result.project.clone(),
+        mode: result.mode,
         elapsed_secs: result.elapsed_secs,
         iterations: result.iterations,
         tokens: SerializableTokens {
@@ -1740,6 +1751,7 @@ version = "0.1.0"
         let dir = TempDir::new().expect("temp dir");
         let result = EvalResult {
             project: "test-project".to_string(),
+            mode: PromptMode::Basic,
             trial_num: 1,
             elapsed_secs: 123.45,
             total_tokens: TokenUsage {
@@ -1784,6 +1796,7 @@ version = "0.1.0"
         let dir = TempDir::new().expect("temp dir");
         let result = EvalResult {
             project: "external-project".to_string(),
+            mode: PromptMode::Basic,
             trial_num: 1,
             elapsed_secs: 50.0,
             total_tokens: TokenUsage {
@@ -1918,6 +1931,7 @@ version = "0.1.0"
         let trials = vec![
             EvalResult {
                 project: "test".to_string(),
+                mode: PromptMode::Basic,
                 trial_num: 1,
                 elapsed_secs: 10.0,
                 total_tokens: TokenUsage {
@@ -1936,6 +1950,7 @@ version = "0.1.0"
             },
             EvalResult {
                 project: "test".to_string(),
+                mode: PromptMode::Basic,
                 trial_num: 2,
                 elapsed_secs: 15.0,
                 total_tokens: TokenUsage {
@@ -1954,6 +1969,7 @@ version = "0.1.0"
             },
             EvalResult {
                 project: "test".to_string(),
+                mode: PromptMode::Basic,
                 trial_num: 3,
                 elapsed_secs: 12.5,
                 total_tokens: TokenUsage {
@@ -2011,6 +2027,7 @@ version = "0.1.0"
         let trials = vec![
             EvalResult {
                 project: "external".to_string(),
+                mode: PromptMode::Basic,
                 trial_num: 1,
                 elapsed_secs: 10.0,
                 total_tokens: TokenUsage {
@@ -2045,6 +2062,7 @@ version = "0.1.0"
         let trials = vec![
             EvalResult {
                 project: "calculator".to_string(),
+                mode: PromptMode::Basic,
                 trial_num: 1,
                 elapsed_secs: 10.0,
                 total_tokens: TokenUsage {
@@ -2063,6 +2081,7 @@ version = "0.1.0"
             },
             EvalResult {
                 project: "calculator".to_string(),
+                mode: PromptMode::Basic,
                 trial_num: 2,
                 elapsed_secs: 12.0,
                 total_tokens: TokenUsage {

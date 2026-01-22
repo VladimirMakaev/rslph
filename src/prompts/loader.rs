@@ -1,6 +1,7 @@
 //! Prompt loading with config override support.
 
 use crate::config::Config;
+use super::PromptMode;
 
 /// Get the planning prompt, using config override if specified.
 ///
@@ -21,6 +22,15 @@ pub fn get_plan_prompt(config: &Config) -> color_eyre::Result<String> {
     Ok(config.prompt_mode.plan_prompt().to_string())
 }
 
+/// Get the planning prompt for a specific mode.
+///
+/// This function bypasses config file overrides and returns the prompt
+/// for the specified mode directly. Used by eval to ensure different
+/// modes use their correct prompts.
+pub fn get_plan_prompt_for_mode(mode: PromptMode) -> String {
+    mode.plan_prompt().to_string()
+}
+
 /// Get the build prompt, using config override if specified.
 ///
 /// Precedence: file override > mode selection
@@ -38,6 +48,15 @@ pub fn get_build_prompt(config: &Config) -> color_eyre::Result<String> {
 
     // Mode-based selection
     Ok(config.prompt_mode.build_prompt().to_string())
+}
+
+/// Get the build prompt for a specific mode.
+///
+/// This function bypasses config file overrides and returns the prompt
+/// for the specified mode directly. Used by eval to ensure different
+/// modes use their correct prompts.
+pub fn get_build_prompt_for_mode(mode: PromptMode) -> String {
+    mode.build_prompt().to_string()
 }
 
 #[cfg(test)]

@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 
 ## Current Position
 
-Phase: 13 - Parallel Eval TUI
-Plan: 9 of 9 (all complete)
-Status: Phase 13 complete - all gap closures done
-Last activity: 2026-01-22 - Completed 13-08 iteration progress wiring
+Phase: 14 - TUI Visual Parity
+Plan: 1 of 6 complete
+Status: In progress
+Last activity: 2026-01-23 - Completed 14-01 centralized theme module
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#########.] 93% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 95% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -26,7 +26,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#########.] 93% v1.
 | 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Complete |
 | 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Complete |
 | 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | Complete |
-| 14 - TUI Visual Parity | Claude Code-style TUI design | TUI-01 to TUI-06 | Not Started |
+| 14 - TUI Visual Parity | Claude Code-style TUI design | TUI-01 to TUI-06 | In Progress (1/6) |
 
 ## Performance Metrics
 
@@ -43,9 +43,9 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#########.] 93% v1.
 - Shipped: 2026-01-19 (same day)
 
 **v1.2 Velocity:**
-- Total plans completed: 25
-- Average duration: 3m 08s
-- Total execution time: 81m 51s
+- Total plans completed: 26
+- Average duration: 3m 19s
+- Total execution time: 92m 51s
 
 **By Phase (v1.0):**
 
@@ -75,6 +75,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [#########.] 93% v1.
 | 11-prompt-engineering | 4/4 | 14m 16s | 3m 34s |
 | 12-multi-trial-results | 5/5 | 13m | 2m 36s |
 | 13-parallel-eval-tui | 9/9 | 27m | 3m |
+| 14-tui-visual-parity | 1/6 | 11m | 11m |
 
 *Updated after each plan completion*
 
@@ -156,6 +157,14 @@ All decisions are archived in milestone roadmap files:
 | hash-derive | PromptMode Hash | Added Hash to PromptMode for HashMap key usage |
 | multimode-filename | Multi-mode JSON filename | eval-results-{project}-multimode-{timestamp}.json |
 
+**v1.2 Decisions (Phase 14):**
+
+| ID | Decision | Choice |
+|----|----------|--------|
+| brand-color-encoding | Claude brand color format | RGB values from brand guidelines (CRAIL=#C15F3C, CLOUDY=#B1ADA1, PAMPAS=#F4F3EE) |
+| model-tier-detection | Model tier detection logic | Case-insensitive substring matching for "opus", "sonnet" |
+| style-composition | Style function pattern | Each style function returns complete Style object with colors and modifiers |
+
 **v1.2 Decisions (Phase 13 - Continued):**
 
 | ID | Decision | Choice |
@@ -184,8 +193,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-01-22
-Stopped at: Completed 13-08 iteration progress wiring, Phase 13 complete
+Last session: 2026-01-23
+Stopped at: Completed 14-01 centralized theme module
 Resume file: None
 
 ### Roadmap Evolution
@@ -203,3 +212,4 @@ Resume file: None
 - 13-08 complete: Iteration progress wired to dashboard TUI via ProgressCallback
 - Phase 13 complete: All 9 plans done, all PARA requirements fulfilled
 - Phase 14 added: TUI Visual Parity with Claude Code (brand colors, box-drawn elements, spinner, status bar)
+- 14-01 complete: Centralized theme module with Claude brand colors, model tier symbols, and style functions

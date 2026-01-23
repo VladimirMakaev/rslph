@@ -25,11 +25,20 @@ fn role_style(role: &MessageRole) -> Style {
     }
 }
 
-/// Format a tool message as a single line for grouped display.
-fn format_tool_line(msg: &Message, _is_last: bool, _is_collapsed_more: bool) -> String {
-    // All items use same prefix - tree connectors could be added later
-    let prefix = "   ";
+/// Unicode box-drawing characters for message group borders.
+mod box_chars {
+    /// Top-left corner
+    pub const TOP_LEFT: &str = "\u{250c}"; // ┌
+    /// Horizontal line
+    pub const HORIZONTAL: &str = "\u{2500}"; // ─
+    /// Vertical line
+    pub const VERTICAL: &str = "\u{2502}"; // │
+    /// Bottom-left corner
+    pub const BOTTOM_LEFT: &str = "\u{2514}"; // └
+}
 
+/// Format a tool message as a single line for grouped display.
+fn format_tool_line(msg: &Message) -> String {
     match &msg.role {
         MessageRole::Tool(name) => {
             // Get first line of content, truncated
@@ -39,7 +48,7 @@ fn format_tool_line(msg: &Message, _is_last: bool, _is_collapsed_more: bool) -> 
             } else {
                 first_line.to_string()
             };
-            format!("{}{}: {}", prefix, name, preview)
+            format!("{}: {}", name, preview)
         }
         MessageRole::Assistant => {
             let first_line = msg.content.lines().next().unwrap_or("");
@@ -48,54 +57,83 @@ fn format_tool_line(msg: &Message, _is_last: bool, _is_collapsed_more: bool) -> 
             } else {
                 first_line.to_string()
             };
-            format!("{}Claude: {}", prefix, preview)
+            format!("Claude: {}", preview)
         }
         _ => {
             let first_line = msg.content.lines().next().unwrap_or("");
-            format!("{}{}", prefix, first_line)
+            first_line.to_string()
         }
     }
 }
 
-/// Render a message group with Claude CLI-like tree structure.
+/// Render a message group with box-drawn borders.
 fn format_group(group: &MessageGroup, is_selected: bool) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
 
-    // Group header style - Claude groups use assistant color
+    // Border color - Claude groups use assistant color
+    let border_color = colors::ASSISTANT;
+    let border_style = Style::default().fg(border_color);
+
+    // Header style - bold for the text, with reversed if selected
     let header_style = if is_selected {
         Style::default()
-            .fg(colors::ASSISTANT)
+            .fg(border_color)
             .add_modifier(Modifier::BOLD | Modifier::REVERSED)
     } else {
-        Style::default().fg(colors::ASSISTANT).add_modifier(Modifier::BOLD)
+        Style::default().fg(border_color).add_modifier(Modifier::BOLD)
     };
 
-    // Header line
-    lines.push(Line::from(vec![Span::styled(
-        group.header.clone(),
-        header_style,
-    )]));
+    // Header line: ┌─ {header} ────
+    let header_text = format!(
+        "{}{} {} {}{}{}",
+        box_chars::TOP_LEFT,
+        box_chars::HORIZONTAL,
+        group.header,
+        box_chars::HORIZONTAL,
+        box_chars::HORIZONTAL,
+        box_chars::HORIZONTAL
+    );
+    lines.push(Line::from(vec![Span::styled(header_text, header_style)]));
 
     // Get visible messages
     let visible = group.visible_messages();
     let hidden = group.hidden_count();
 
-    // Render each visible message as a tree item
-    for (i, msg) in visible.iter().enumerate() {
-        let is_last = hidden == 0 && i == visible.len() - 1;
-        let line_text = format_tool_line(msg, is_last, false);
+    // Render each visible message with vertical border
+    for msg in visible.iter() {
+        let line_text = format_tool_line(msg);
         let style = role_style(&msg.role);
-        lines.push(Line::from(vec![Span::styled(line_text, style)]));
+
+        // │ {content}
+        lines.push(Line::from(vec![
+            Span::styled(format!("{} ", box_chars::VERTICAL), border_style),
+            Span::styled(line_text, style),
+        ]));
     }
 
     // Show "+N more" if collapsed with hidden items
     if hidden > 0 {
-        let more_text = format!("   +{} more tool uses (Tab to expand)", hidden);
-        lines.push(Line::from(vec![Span::styled(
-            more_text,
-            Style::default().fg(colors::THINKING).add_modifier(Modifier::ITALIC),
-        )]));
+        let more_text = format!("+{} more tool uses (Tab to expand)", hidden);
+        lines.push(Line::from(vec![
+            Span::styled(format!("{} ", box_chars::VERTICAL), border_style),
+            Span::styled(
+                more_text,
+                Style::default().fg(colors::THINKING).add_modifier(Modifier::ITALIC),
+            ),
+        ]));
     }
+
+    // Footer line: └───────
+    let footer_text = format!(
+        "{}{}{}{}{}{}",
+        box_chars::BOTTOM_LEFT,
+        box_chars::HORIZONTAL,
+        box_chars::HORIZONTAL,
+        box_chars::HORIZONTAL,
+        box_chars::HORIZONTAL,
+        box_chars::HORIZONTAL
+    );
+    lines.push(Line::from(vec![Span::styled(footer_text, border_style)]));
 
     // Blank separator
     lines.push(Line::from(""));
@@ -103,45 +141,75 @@ fn format_group(group: &MessageGroup, is_selected: bool) -> Vec<Line<'static>> {
     lines
 }
 
-/// Render a system message group with collapsible display.
+/// Render a system message group with box-drawn borders.
 fn format_system_group(group: &SystemGroup, is_selected: bool) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
 
-    // Group header style - uses Cloudy (system color)
+    // Border color - System groups use CLOUDY color
+    let border_color = colors::SYSTEM;
+    let border_style = Style::default().fg(border_color);
+
+    // Header style - bold for the text, with reversed if selected
     let header_style = if is_selected {
         Style::default()
-            .fg(colors::SYSTEM)
+            .fg(border_color)
             .add_modifier(Modifier::BOLD | Modifier::REVERSED)
     } else {
-        Style::default().fg(colors::SYSTEM).add_modifier(Modifier::BOLD)
+        Style::default().fg(border_color).add_modifier(Modifier::BOLD)
     };
 
-    // Header line
-    lines.push(Line::from(vec![Span::styled(
-        format!("System (Iteration {})", group.iteration),
-        header_style,
-    )]));
+    // Header line: ┌─ System (Iteration N) ────
+    let header_label = format!("System (Iteration {})", group.iteration);
+    let header_text = format!(
+        "{}{} {} {}{}{}",
+        box_chars::TOP_LEFT,
+        box_chars::HORIZONTAL,
+        header_label,
+        box_chars::HORIZONTAL,
+        box_chars::HORIZONTAL,
+        box_chars::HORIZONTAL
+    );
+    lines.push(Line::from(vec![Span::styled(header_text, header_style)]));
 
     // Get visible messages (most recent N)
     let visible = group.visible_messages();
     let hidden = group.hidden_count();
 
-    // Render each visible message as a single line
+    // Render each visible message with vertical border
     for msg in visible.iter() {
         let first_line = msg.content.lines().next().unwrap_or("");
-        let text = format!("   {}", first_line);
         let style = role_style(&msg.role);
-        lines.push(Line::from(vec![Span::styled(text, style)]));
+
+        // │ {content}
+        lines.push(Line::from(vec![
+            Span::styled(format!("{} ", box_chars::VERTICAL), border_style),
+            Span::styled(first_line.to_string(), style),
+        ]));
     }
 
     // Show "+N more" if collapsed with hidden items
     if hidden > 0 {
-        let more_text = format!("   +{} more system messages (Tab to expand)", hidden);
-        lines.push(Line::from(vec![Span::styled(
-            more_text,
-            Style::default().fg(colors::THINKING).add_modifier(Modifier::ITALIC),
-        )]));
+        let more_text = format!("+{} more system messages (Tab to expand)", hidden);
+        lines.push(Line::from(vec![
+            Span::styled(format!("{} ", box_chars::VERTICAL), border_style),
+            Span::styled(
+                more_text,
+                Style::default().fg(colors::THINKING).add_modifier(Modifier::ITALIC),
+            ),
+        ]));
     }
+
+    // Footer line: └───────
+    let footer_text = format!(
+        "{}{}{}{}{}{}",
+        box_chars::BOTTOM_LEFT,
+        box_chars::HORIZONTAL,
+        box_chars::HORIZONTAL,
+        box_chars::HORIZONTAL,
+        box_chars::HORIZONTAL,
+        box_chars::HORIZONTAL
+    );
+    lines.push(Line::from(vec![Span::styled(footer_text, border_style)]));
 
     // Blank separator
     lines.push(Line::from(""));
@@ -379,8 +447,8 @@ mod tests {
 
         let lines = format_group(&group, false);
 
-        // Should have: header + 3 visible messages + "+2 more" + blank = 6 lines
-        assert_eq!(lines.len(), 6);
+        // Should have: header + 3 visible messages + "+2 more" + footer + blank = 7 lines
+        assert_eq!(lines.len(), 7);
     }
 
     #[test]
@@ -395,8 +463,8 @@ mod tests {
 
         let lines = format_group(&group, false);
 
-        // Should have: header + 5 messages + blank = 7 lines (no "+N more")
-        assert_eq!(lines.len(), 7);
+        // Should have: header + 5 messages + footer + blank = 8 lines (no "+N more")
+        assert_eq!(lines.len(), 8);
     }
 
     #[test]
@@ -407,8 +475,8 @@ mod tests {
 
         let lines = format_group(&group, false);
 
-        // Should have: header + 2 messages + blank = 4 lines (no "+N more" needed)
-        assert_eq!(lines.len(), 4);
+        // Should have: header + 2 messages + footer + blank = 5 lines (no "+N more" needed)
+        assert_eq!(lines.len(), 5);
     }
 
     #[test]

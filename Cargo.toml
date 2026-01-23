@@ -23,6 +23,7 @@ strum = "0.26"
 strum_macros = "0.26"
 tempfile = "3"
 thiserror = "2.0"
+throbber-widgets-tui = "0.10.0"
 tokio = { version = "1.49", features = ["full"] }
 tokio-util = "0.7"
 

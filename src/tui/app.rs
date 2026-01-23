@@ -369,6 +369,7 @@ impl Default for App {
             conversation_scroll: 0,
             show_conversation: false,
             selected_message: None,
+            thinking_collapsed: HashMap::new(),
             session_start: Instant::now(),
         }
     }
@@ -807,6 +808,44 @@ impl App {
                 }
             })
             .sum()
+    }
+
+    /// Toggle the collapsed state of a thinking block.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The index of the thinking block in the conversation buffer.
+    pub fn toggle_thinking_collapse(&mut self, index: usize) {
+        let current = self.thinking_collapsed.get(&index).copied().unwrap_or(false);
+        self.thinking_collapsed.insert(index, !current);
+    }
+
+    /// Check if a thinking block is collapsed.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The index of the thinking block in the conversation buffer.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the thinking block is collapsed, `false` otherwise.
+    pub fn is_thinking_collapsed(&self, index: usize) -> bool {
+        self.thinking_collapsed.get(&index).copied().unwrap_or(false)
+    }
+
+    /// Toggle collapsed state for all thinking blocks.
+    ///
+    /// If any thinking block is expanded, collapse all. Otherwise, expand all.
+    pub fn toggle_all_thinking_collapsed(&mut self) {
+        // Check if any thinking block is currently expanded (not in map or false)
+        let any_expanded = self.thinking_collapsed.values().any(|&v| !v)
+            || self.thinking_collapsed.is_empty();
+
+        // If any are expanded, collapse all known ones
+        // If all are collapsed, expand all
+        for value in self.thinking_collapsed.values_mut() {
+            *value = any_expanded;
+        }
     }
 }
 
@@ -1267,5 +1306,51 @@ mod tests {
         assert_eq!(app.conversation.len(), 0);
         assert_eq!(app.conversation_scroll, 0);
         assert!(!app.show_conversation);
+    }
+
+    #[test]
+    fn test_thinking_collapsed_default() {
+        let app = App::default();
+        assert!(app.thinking_collapsed.is_empty());
+        assert!(!app.is_thinking_collapsed(0));
+        assert!(!app.is_thinking_collapsed(42));
+    }
+
+    #[test]
+    fn test_toggle_thinking_collapse() {
+        let mut app = App::default();
+
+        // Initially not collapsed
+        assert!(!app.is_thinking_collapsed(0));
+
+        // Toggle to collapsed
+        app.toggle_thinking_collapse(0);
+        assert!(app.is_thinking_collapsed(0));
+
+        // Toggle back to expanded
+        app.toggle_thinking_collapse(0);
+        assert!(!app.is_thinking_collapsed(0));
+    }
+
+    #[test]
+    fn test_toggle_all_thinking_collapsed() {
+        let mut app = App::default();
+
+        // Set some thinking blocks with different states
+        app.thinking_collapsed.insert(0, false); // expanded
+        app.thinking_collapsed.insert(1, true);  // collapsed
+        app.thinking_collapsed.insert(2, false); // expanded
+
+        // Since some are expanded, toggle should collapse all
+        app.toggle_all_thinking_collapsed();
+        assert!(app.is_thinking_collapsed(0));
+        assert!(app.is_thinking_collapsed(1));
+        assert!(app.is_thinking_collapsed(2));
+
+        // Now all are collapsed, toggle should expand all
+        app.toggle_all_thinking_collapsed();
+        assert!(!app.is_thinking_collapsed(0));
+        assert!(!app.is_thinking_collapsed(1));
+        assert!(!app.is_thinking_collapsed(2));
     }
 }

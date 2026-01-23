@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 14 - TUI Visual Parity
-Plan: 5 of 6 complete
-Status: In progress
-Last activity: 2026-01-23 - Completed 14-02 animated braille spinner
+Plan: 6 of 6 complete
+Status: Complete
+Last activity: 2026-01-23 - Completed 14-06 integration of visual parity components
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 95% v1.2
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2
 
 ## Phase Summary (v1.2)
 
@@ -26,7 +26,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 95% v1.
 | 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Complete |
 | 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Complete |
 | 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | Complete |
-| 14 - TUI Visual Parity | Claude Code-style TUI design | TUI-01 to TUI-06 | In Progress (5/6) |
+| 14 - TUI Visual Parity | Claude Code-style TUI design | TUI-01 to TUI-06 | Complete |
 
 ## Performance Metrics
 
@@ -43,9 +43,9 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 95% v1.
 - Shipped: 2026-01-19 (same day)
 
 **v1.2 Velocity:**
-- Total plans completed: 26
-- Average duration: 3m 19s
-- Total execution time: 92m 51s
+- Total plans completed: 27
+- Average duration: 3m 17s
+- Total execution time: 96m 51s
 
 **By Phase (v1.0):**
 
@@ -75,7 +75,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 95% v1.
 | 11-prompt-engineering | 4/4 | 14m 16s | 3m 34s |
 | 12-multi-trial-results | 5/5 | 13m | 2m 36s |
 | 13-parallel-eval-tui | 9/9 | 27m | 3m |
-| 14-tui-visual-parity | 5/6 | 33m | 6m 36s |
+| 14-tui-visual-parity | 6/6 | 37m | 6m 10s |
 
 *Updated after each plan completion*
 
@@ -170,6 +170,10 @@ All decisions are archived in milestone roadmap files:
 | spinner-color | Spinner color | CRAIL from theme (Claude brand orange) |
 | tick-location | Where to tick | Before render in event loop for up-to-date animation state |
 | tick-rate | Animation rate | 30 FPS (matches existing event handler tick rate) |
+| spinner-area-position | Spinner render location | Right side of header area, 20 chars wide when streaming |
+| streaming-state-trigger | Streaming state detection | Start on first non-empty StreamEvent content, stop on IterationComplete |
+| thinking-toggle-key | Thinking block toggle | Key 't' toggles all thinking blocks collapsed/expanded |
+| render-mutability | Render function signature | Changed from &App to &mut App for stateful spinner widget |
 
 **v1.2 Decisions (Phase 13 - Continued):**
 
@@ -200,7 +204,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-23
-Stopped at: Completed 14-02 animated braille spinner
+Stopped at: Completed 14-06 integration of visual parity components
 Resume file: None
 
 ### Roadmap Evolution
@@ -223,3 +227,5 @@ Resume file: None
 - 14-04 complete: Box-drawn containers for thinking blocks and tool calls with collapse state tracking
 - 14-03 complete: Enhanced status bar with model tier indicator and session timer
 - 14-02 complete: Animated braille spinner widget with ThrobberState and tick integration
+- 14-06 complete: Integration of visual parity components (spinner, streaming events, thinking toggle)
+- Phase 14 complete: All 6 plans done, all TUI requirements fulfilled

@@ -2,14 +2,14 @@
 source: tests/e2e/tui_tests.rs
 expression: terminal.backend()
 ---
-"rslph                                          calculator-eval (claude-sonnet-4)"
+"rslph                                                  ◇ claude-sonnet-4 | 00:00"
 "Iter 2/5 | Task 1/1 | In: 4.5k | Out: 1.1k | CacheW: 100.0 | CacheR: 100.0 | 0% "
 "────────────────────────────────────────────────────────────────────────────────"
-"Claude (Iteration 2)                                                            "
-"   Read: main.py                                                                "
-"   Write: main.py                                                               "
-"   Claude: Fixed the calculator to handle integer division...                   "
-"                                                                                "
+"┌─ Claude (Iteration 2) ───                                                     "
+"│ Read: main.py                                                                 "
+"│ Write: main.py                                                                "
+"│ Claude: Fixed the calculator to handle integer division...                    "
+"└─────                                                                          "
 "                                                                                "
 "                                                                                "
 "                                                                                "

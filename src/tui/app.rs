@@ -8,6 +8,8 @@ use std::fmt;
 use std::path::PathBuf;
 use std::time::Instant;
 
+use throbber_widgets_tui::ThrobberState;
+
 use crate::build::tokens::TokenUsage;
 use crate::subprocess::StreamEvent;
 use crate::tui::conversation::ConversationBuffer;
@@ -341,6 +343,12 @@ pub struct App {
     // Session timing
     /// When the session started (for timer display).
     pub session_start: Instant,
+
+    // Spinner state for LLM streaming indication
+    /// Animated spinner state for streaming indication.
+    pub spinner_state: ThrobberState,
+    /// Whether Claude is currently streaming a response.
+    pub is_streaming: bool,
 }
 
 impl Default for App {
@@ -371,6 +379,8 @@ impl Default for App {
             selected_message: None,
             thinking_collapsed: HashMap::new(),
             session_start: Instant::now(),
+            spinner_state: ThrobberState::default(),
+            is_streaming: false,
         }
     }
 }
@@ -845,6 +855,30 @@ impl App {
         // If all are collapsed, expand all
         for value in self.thinking_collapsed.values_mut() {
             *value = any_expanded;
+        }
+    }
+
+    /// Start the streaming spinner.
+    ///
+    /// Call this when Claude begins streaming a response.
+    pub fn start_streaming(&mut self) {
+        self.is_streaming = true;
+    }
+
+    /// Stop the streaming spinner.
+    ///
+    /// Call this when Claude finishes streaming a response.
+    pub fn stop_streaming(&mut self) {
+        self.is_streaming = false;
+    }
+
+    /// Advance the spinner animation by one frame.
+    ///
+    /// Should be called on each tick (e.g., 30 FPS) to animate the spinner.
+    /// Only advances when is_streaming is true.
+    pub fn tick_spinner(&mut self) {
+        if self.is_streaming {
+            self.spinner_state.calc_next();
         }
     }
 }

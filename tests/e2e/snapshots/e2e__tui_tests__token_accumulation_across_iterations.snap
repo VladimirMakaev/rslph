@@ -2,11 +2,11 @@
 source: tests/e2e/tui_tests.rs
 expression: terminal.backend()
 ---
-"rslph                                             test-project (claude-opus-4-5)"
+"rslph                                                  ◆ claude-opus-4-5 | 00:00"
 "Iter 2/10 | Task 1/0 | In: 3.5k | Out: 1.8k | CacheW: 500.0 | CacheR: 1.2k | 0% "
 "────────────────────────────────────────────────────────────────────────────────"
-"Claude (Iteration 2)                                                            "
-"                                                                                "
+"┌─ Claude (Iteration 2) ───                                                     "
+"└─────                                                                          "
 "                                                                                "
 "                                                                                "
 "                                                                                "

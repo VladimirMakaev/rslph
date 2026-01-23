@@ -11,6 +11,7 @@ use ratatui::{
 
 use super::app::App;
 use super::conversation::render_conversation;
+use super::widgets::spinner::render_spinner;
 use super::widgets::status_bar::render_header;
 use super::widgets::thread_view::render_thread;
 
@@ -27,9 +28,9 @@ use super::widgets::thread_view::render_thread;
 /// # Arguments
 ///
 /// * `frame` - The frame to render to
-/// * `app` - Application state
+/// * `app` - Application state (mutable for spinner animation state)
 /// * `recent_count` - Number of recent messages to display
-pub fn render(frame: &mut Frame, app: &App, recent_count: usize) {
+pub fn render(frame: &mut Frame, app: &mut App, recent_count: usize) {
     let [header, body, footer] = Layout::vertical([
         Constraint::Length(2),  // 2-line header
         Constraint::Fill(1),    // Main output area
@@ -38,6 +39,17 @@ pub fn render(frame: &mut Frame, app: &App, recent_count: usize) {
     .areas(frame.area());
 
     render_header(frame, header, app);
+
+    // Render spinner in header area when streaming
+    if app.is_streaming {
+        let spinner_area = Rect {
+            x: header.x + header.width.saturating_sub(20),
+            y: header.y,
+            width: 20.min(header.width),
+            height: 1,
+        };
+        render_spinner(frame, spinner_area, &mut app.spinner_state, "");
+    }
 
     if app.show_conversation {
         // Split body: conversation on left, main view on right
@@ -83,7 +95,7 @@ fn render_body(frame: &mut Frame, area: Rect, app: &App, recent_count: usize) {
 
 /// Render the footer with key binding hints and log path.
 fn render_footer(frame: &mut Frame, area: Rect, app: &App) {
-    let key_hints = "j/k:scroll  Tab:select  Enter:toggle  {/}:iteration  c:conversation  p:pause  Ctrl+C:quit";
+    let key_hints = "j/k:scroll  Tab:select  Enter:toggle  {/}:iteration  c:conversation  t:thinking  p:pause  Ctrl+C:quit";
 
     // If log_path exists, show it on the right
     let log_display = app

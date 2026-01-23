@@ -50,7 +50,7 @@ pub async fn run_tui(
                 .map(|s| s.height.saturating_sub(4)) // Subtract header + footer
                 .unwrap_or(20);
 
-            if let Err(e) = terminal.draw(|frame| render(frame, &app, recent_count)) {
+            if let Err(e) = terminal.draw(|frame| render(frame, &mut app, recent_count)) {
                 eprintln!("[TUI] Render error: {}", e);
                 break;
             }
@@ -111,7 +111,7 @@ pub async fn run_tui_blocking(
             .unwrap_or(20);
 
         terminal
-            .draw(|frame| render(frame, &app, recent_count))
+            .draw(|frame| render(frame, &mut app, recent_count))
             .map_err(|e| RslphError::Subprocess(format!("Render failed: {}", e)))?;
 
         // Wait for next event

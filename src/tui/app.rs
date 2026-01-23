@@ -443,6 +443,9 @@ impl App {
             AppEvent::ToggleConversation => {
                 self.show_conversation = !self.show_conversation;
             }
+            AppEvent::ToggleThinkingCollapse => {
+                self.toggle_all_thinking_collapsed();
+            }
             AppEvent::ConversationScrollUp(lines) => {
                 self.conversation_scroll = self.conversation_scroll.saturating_sub(lines);
             }
@@ -453,6 +456,12 @@ impl App {
             AppEvent::StreamEvent(stream_event) => {
                 // Extract conversation items from the stream event
                 let items = stream_event.extract_conversation_items();
+
+                // Start streaming if we receive any content
+                if !items.is_empty() && !self.is_streaming {
+                    self.start_streaming();
+                }
+
                 for item in items {
                     self.conversation.push(item);
                 }
@@ -516,6 +525,8 @@ impl App {
                 self.viewing_iteration = self.current_iteration;
                 self.selected_message = None;
                 self.selected_group = None;
+                // Stop streaming spinner when iteration completes
+                self.stop_streaming();
             }
             AppEvent::LogMessage(content) => {
                 // Finalize Claude group first (system messages interrupt Claude output)
@@ -913,6 +924,8 @@ pub enum AppEvent {
     // Conversation view events
     /// Toggle enhanced conversation view display.
     ToggleConversation,
+    /// Toggle all thinking blocks collapsed/expanded.
+    ToggleThinkingCollapse,
     /// Scroll conversation up by N lines.
     ConversationScrollUp(usize),
     /// Scroll conversation down by N lines.

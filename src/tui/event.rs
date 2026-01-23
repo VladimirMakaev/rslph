@@ -204,6 +204,7 @@ impl EventHandler {
                     KeyCode::Char('p') => Some(AppEvent::TogglePause),
                     KeyCode::Char('q') => Some(AppEvent::Quit),
                     KeyCode::Char('c') => Some(AppEvent::ToggleConversation),
+                    KeyCode::Char('t') => Some(AppEvent::ToggleThinkingCollapse),
                     KeyCode::PageUp => Some(AppEvent::ConversationScrollUp(10)),
                     KeyCode::PageDown => Some(AppEvent::ConversationScrollDown(10)),
                     KeyCode::Esc => Some(AppEvent::Quit),

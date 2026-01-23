@@ -10,9 +10,6 @@ use throbber_widgets_tui::{Throbber, ThrobberState, BRAILLE_SIX};
 
 use crate::tui::theme::colors::CRAIL;
 
-// Re-export ThrobberState for use in app.rs
-pub use throbber_widgets_tui::ThrobberState as SpinnerState;
-
 /// Render an animated braille spinner.
 ///
 /// The spinner uses the BRAILLE_SIX pattern (6-dot braille animation)
@@ -48,14 +45,14 @@ mod tests {
 
     #[test]
     fn test_spinner_state_creation() {
-        let state = SpinnerState::default();
+        let state = ThrobberState::default();
         // ThrobberState is created successfully
         assert!(std::mem::size_of_val(&state) > 0);
     }
 
     #[test]
     fn test_spinner_state_can_be_ticked() {
-        let mut state = SpinnerState::default();
+        let mut state = ThrobberState::default();
         // Tick the spinner (should not panic)
         state.calc_next();
     }

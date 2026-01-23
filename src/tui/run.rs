@@ -41,6 +41,9 @@ pub async fn run_tui(
     // Spawn the main event loop
     tokio::spawn(async move {
         loop {
+            // Advance spinner animation (runs at 30 FPS)
+            app.tick_spinner();
+
             // Render current state
             let viewport_height = terminal
                 .size()
@@ -98,6 +101,9 @@ pub async fn run_tui_blocking(
     let (mut event_handler, _subprocess_tx) = EventHandler::new(30);
 
     loop {
+        // Advance spinner animation (runs at 30 FPS)
+        app.tick_spinner();
+
         // Render current state
         let viewport_height = terminal
             .size()

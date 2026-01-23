@@ -233,12 +233,12 @@ Plans:
 **Plans:** 6 plans
 
 Plans:
-- [ ] 14-01-PLAN.md — Centralized theme module with Claude brand colors (TUI-01)
-- [ ] 14-02-PLAN.md — Animated braille spinner widget (TUI-04)
-- [ ] 14-03-PLAN.md — Enhanced status bar with model tier and timer (TUI-05)
-- [ ] 14-04-PLAN.md — Box-drawn thinking blocks and tool containers (TUI-02, TUI-03)
-- [ ] 14-05-PLAN.md — Themed message borders in thread view (TUI-06)
-- [ ] 14-06-PLAN.md — Integration and key bindings for visual features
+- [x] 14-01-PLAN.md — Centralized theme module with Claude brand colors (TUI-01)
+- [x] 14-02-PLAN.md — Animated braille spinner widget (TUI-04)
+- [x] 14-03-PLAN.md — Enhanced status bar with model tier and timer (TUI-05)
+- [x] 14-04-PLAN.md — Box-drawn thinking blocks and tool containers (TUI-02, TUI-03)
+- [x] 14-05-PLAN.md — Themed message borders in thread view (TUI-06)
+- [x] 14-06-PLAN.md — Integration and key bindings for visual features
 
 ---
 
@@ -260,7 +260,7 @@ Plans:
 | 11. Prompt Engineering | v1.2 | 4/4 | Complete | 2026-01-21 |
 | 12. Multi-Trial Results | v1.2 | 5/5 | Complete | 2026-01-22 |
 | 13. Parallel Eval TUI | v1.2 | 9/9 | Complete | 2026-01-22 |
-| 14. TUI Visual Parity | v1.2 | 0/6 | Planned | - |
+| 14. TUI Visual Parity | v1.2 | 6/6 | Complete | 2026-01-23 |
 
 ---
 
@@ -302,4 +302,4 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full details.
 
 ---
 
-*Last updated: 2026-01-23 — Phase 14 planned (6 plans in 4 waves)*
+*Last updated: 2026-01-23 — Phase 14 complete (6/6 plans)*

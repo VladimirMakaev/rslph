@@ -1,8 +1,10 @@
 //! Status bar header widget.
 //!
 //! Renders the 2-line header showing:
-//! - Line 1: "rslph" branding on left, "project (model)" on right
+//! - Line 1: "rslph" branding on left, "◆ model | HH:MM:SS" on right
 //! - Line 2: Iteration/task counts, token usage, and context usage bar
+
+use std::time::Instant;
 
 use ratatui::{
     layout::{Alignment, Constraint, Layout, Rect},
@@ -13,7 +15,22 @@ use ratatui::{
 
 use crate::build::tokens::format_tokens;
 use crate::tui::app::App;
+use crate::tui::theme::symbols::model_tier_indicator;
 use crate::tui::widgets::progress_bar::render_context_bar;
+
+/// Format session duration as HH:MM:SS or MM:SS.
+fn format_session_time(start: Instant) -> String {
+    let elapsed = start.elapsed();
+    let secs = elapsed.as_secs();
+    let mins = secs / 60;
+    let hours = mins / 60;
+
+    if hours > 0 {
+        format!("{:02}:{:02}:{:02}", hours, mins % 60, secs % 60)
+    } else {
+        format!("{:02}:{:02}", mins, secs % 60)
+    }
+}
 
 /// Render the 2-line status bar header.
 pub fn render_header(frame: &mut Frame, area: Rect, app: &App) {
@@ -23,7 +40,7 @@ pub fn render_header(frame: &mut Frame, area: Rect, app: &App) {
     render_status_line(frame, row2, app);
 }
 
-/// Render the first line: "rslph" left, "project (model)" right.
+/// Render the first line: "rslph" left, "◆ model | HH:MM:SS" right.
 fn render_branding_line(frame: &mut Frame, area: Rect, app: &App) {
     let [left, right] =
         Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)]).areas(area);
@@ -33,9 +50,13 @@ fn render_branding_line(frame: &mut Frame, area: Rect, app: &App) {
         left,
     );
 
-    let project_model = format!("{} ({})", app.project_name, app.model_name);
+    // Format: "◆ claude-opus-4 | 05:23"
+    let tier_symbol = model_tier_indicator(&app.model_name);
+    let session_time = format_session_time(app.session_start);
+    let right_text = format!("{} {} | {}", tier_symbol, app.model_name, session_time);
+
     frame.render_widget(
-        Paragraph::new(project_model).alignment(Alignment::Right),
+        Paragraph::new(right_text).alignment(Alignment::Right),
         right,
     );
 }

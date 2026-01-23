@@ -52,6 +52,7 @@ pub fn render(frame: &mut Frame, app: &App, recent_count: usize) {
             conv_area,
             app.conversation.items(),
             app.conversation_scroll,
+            &app.thinking_collapsed,
         );
         render_body(frame, main_area, app, recent_count);
     } else {

@@ -3,6 +3,7 @@
 //! Provides streaming display of LLM output during planning, including
 //! thinking blocks, tool calls, and generated plan preview.
 
+use std::collections::HashMap;
 use std::time::Instant;
 
 use ratatui::{
@@ -119,12 +120,14 @@ pub fn render_plan_tui(frame: &mut Frame, state: &PlanTuiState) {
     // Render header with status and elapsed time
     render_header(frame, header_area, state);
 
-    // Render conversation view
+    // Render conversation view (plan TUI doesn't support collapse, pass empty map)
+    let empty_collapsed: HashMap<usize, bool> = HashMap::new();
     render_conversation(
         frame,
         main_area,
         state.conversation.items(),
         state.scroll_offset,
+        &empty_collapsed,
     );
 
     // Render plan preview footer

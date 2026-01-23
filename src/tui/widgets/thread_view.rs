@@ -6,21 +6,22 @@
 
 use ratatui::{
     layout::Rect,
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Paragraph, Wrap},
     Frame,
 };
 
 use crate::tui::app::{App, DisplayItem, Message, MessageGroup, MessageRole, SystemGroup};
+use crate::tui::theme::{colors, styles};
 
 /// Role colors matching Claude CLI style.
 fn role_style(role: &MessageRole) -> Style {
     match role {
-        MessageRole::User => Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
-        MessageRole::Assistant => Style::default().fg(Color::Green),
-        MessageRole::System => Style::default().fg(Color::DarkGray),
-        MessageRole::Tool(_) => Style::default().fg(Color::Magenta),
+        MessageRole::User => styles::user(),
+        MessageRole::Assistant => styles::assistant(),
+        MessageRole::System => styles::system(),
+        MessageRole::Tool(_) => styles::tool_header(),
     }
 }
 
@@ -60,13 +61,13 @@ fn format_tool_line(msg: &Message, _is_last: bool, _is_collapsed_more: bool) -> 
 fn format_group(group: &MessageGroup, is_selected: bool) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
 
-    // Group header style
+    // Group header style - Claude groups use assistant color
     let header_style = if is_selected {
         Style::default()
-            .fg(Color::Green)
+            .fg(colors::ASSISTANT)
             .add_modifier(Modifier::BOLD | Modifier::REVERSED)
     } else {
-        Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
+        Style::default().fg(colors::ASSISTANT).add_modifier(Modifier::BOLD)
     };
 
     // Header line
@@ -92,7 +93,7 @@ fn format_group(group: &MessageGroup, is_selected: bool) -> Vec<Line<'static>> {
         let more_text = format!("   +{} more tool uses (Tab to expand)", hidden);
         lines.push(Line::from(vec![Span::styled(
             more_text,
-            Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC),
+            Style::default().fg(colors::THINKING).add_modifier(Modifier::ITALIC),
         )]));
     }
 
@@ -106,13 +107,13 @@ fn format_group(group: &MessageGroup, is_selected: bool) -> Vec<Line<'static>> {
 fn format_system_group(group: &SystemGroup, is_selected: bool) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
 
-    // Group header style - grey like system messages
+    // Group header style - uses Cloudy (system color)
     let header_style = if is_selected {
         Style::default()
-            .fg(Color::DarkGray)
+            .fg(colors::SYSTEM)
             .add_modifier(Modifier::BOLD | Modifier::REVERSED)
     } else {
-        Style::default().fg(Color::DarkGray).add_modifier(Modifier::BOLD)
+        Style::default().fg(colors::SYSTEM).add_modifier(Modifier::BOLD)
     };
 
     // Header line
@@ -138,7 +139,7 @@ fn format_system_group(group: &SystemGroup, is_selected: bool) -> Vec<Line<'stat
         let more_text = format!("   +{} more system messages (Tab to expand)", hidden);
         lines.push(Line::from(vec![Span::styled(
             more_text,
-            Style::default().fg(Color::DarkGray).add_modifier(Modifier::ITALIC),
+            Style::default().fg(colors::THINKING).add_modifier(Modifier::ITALIC),
         )]));
     }
 
@@ -299,26 +300,27 @@ mod tests {
     #[test]
     fn test_role_style_user() {
         let style = role_style(&MessageRole::User);
-        assert_eq!(style.fg, Some(Color::Cyan));
+        assert_eq!(style.fg, Some(colors::USER));
         assert!(style.add_modifier.contains(Modifier::BOLD));
     }
 
     #[test]
     fn test_role_style_assistant() {
         let style = role_style(&MessageRole::Assistant);
-        assert_eq!(style.fg, Some(Color::Green));
+        assert_eq!(style.fg, Some(colors::ASSISTANT));
     }
 
     #[test]
     fn test_role_style_system() {
         let style = role_style(&MessageRole::System);
-        assert_eq!(style.fg, Some(Color::DarkGray));
+        assert_eq!(style.fg, Some(colors::SYSTEM));
     }
 
     #[test]
     fn test_role_style_tool() {
         let style = role_style(&MessageRole::Tool("Read".to_string()));
-        assert_eq!(style.fg, Some(Color::Magenta));
+        assert_eq!(style.fg, Some(colors::TOOL_CALL));
+        assert!(style.add_modifier.contains(Modifier::BOLD));
     }
 
     #[test]

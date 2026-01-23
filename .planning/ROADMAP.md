@@ -201,8 +201,8 @@ Plans:
 - [x] 13-05-PLAN.md — Make plan TUI default with --no-tui to disable (UAT Gap 1)
 - [x] 13-06-PLAN.md — Fix task description truncation in progress parser (UAT Gap 2)
 - [x] 13-07-PLAN.md — Wire StreamEvent to conversation view (UAT Gap 3)
-- [ ] 13-08-PLAN.md — Wire iteration progress to dashboard TUI (Audit Gap 0 - blocker)
-- [ ] 13-09-PLAN.md — Mode passthrough to plan/build commands (Audit Gap 1)
+- [x] 13-08-PLAN.md — Wire iteration progress to dashboard TUI (Audit Gap 0 - blocker)
+- [x] 13-09-PLAN.md — Mode passthrough to plan/build commands (Audit Gap 1)
 
 ---
 
@@ -257,7 +257,7 @@ Plans:
 | 10. Eval Projects and Testing | v1.2 | 4/4 | Complete | 2026-01-20 |
 | 11. Prompt Engineering | v1.2 | 4/4 | Complete | 2026-01-21 |
 | 12. Multi-Trial Results | v1.2 | 5/5 | Complete | 2026-01-22 |
-| 13. Parallel Eval TUI | v1.2 | 7/9 | In Progress | - |
+| 13. Parallel Eval TUI | v1.2 | 9/9 | Complete | 2026-01-22 |
 | 14. TUI Visual Parity | v1.2 | 0/6 | Not Started | - |
 
 ---

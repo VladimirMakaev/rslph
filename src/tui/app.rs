@@ -3,8 +3,10 @@
 //! Implements the Model part of The Elm Architecture (TEA).
 //! Contains all state needed to render the UI and respond to events.
 
+use std::collections::HashMap;
 use std::fmt;
 use std::path::PathBuf;
+use std::time::Instant;
 
 use crate::build::tokens::TokenUsage;
 use crate::subprocess::StreamEvent;
@@ -331,6 +333,14 @@ pub struct App {
     // Backwards compatibility - keep for existing code
     /// Currently selected message index (deprecated, use selected_group).
     pub selected_message: Option<usize>,
+
+    // Thinking block collapse state
+    /// Tracks which thinking blocks are collapsed by index.
+    pub thinking_collapsed: HashMap<usize, bool>,
+
+    // Session timing
+    /// When the session started (for timer display).
+    pub session_start: Instant,
 }
 
 impl Default for App {
@@ -359,6 +369,7 @@ impl Default for App {
             conversation_scroll: 0,
             show_conversation: false,
             selected_message: None,
+            session_start: Instant::now(),
         }
     }
 }

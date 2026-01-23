@@ -4,8 +4,6 @@
 //! for consistent visual presentation across the TUI. All colors are derived
 //! from Claude's brand guidelines.
 
-use ratatui::style::{Color, Modifier, Style};
-
 /// Color constants for the TUI.
 ///
 /// Defines both Claude brand colors and semantic role colors for consistent
@@ -160,6 +158,7 @@ pub mod styles {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ratatui::style::Modifier;
 
     #[test]
     fn test_model_tier_indicator_opus() {

@@ -11,6 +11,7 @@ mod keybindings;
 pub mod plan_tui;
 mod run;
 mod terminal;
+pub mod theme;
 mod ui;
 mod widgets;
 

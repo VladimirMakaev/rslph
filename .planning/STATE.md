@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 14 - TUI Visual Parity
-Plan: 2 of 6 complete
+Plan: 4 of 6 complete
 Status: In progress
-Last activity: 2026-01-23 - Completed 14-05 thread view theme integration
+Last activity: 2026-01-23 - Completed 14-04 box-drawn containers
 
 Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 95% v1.2
 
@@ -26,7 +26,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 95% v1.
 | 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Complete |
 | 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Complete |
 | 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | Complete |
-| 14 - TUI Visual Parity | Claude Code-style TUI design | TUI-01 to TUI-06 | In Progress (2/6) |
+| 14 - TUI Visual Parity | Claude Code-style TUI design | TUI-01 to TUI-06 | In Progress (4/6) |
 
 ## Performance Metrics
 
@@ -75,7 +75,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 95% v1.
 | 11-prompt-engineering | 4/4 | 14m 16s | 3m 34s |
 | 12-multi-trial-results | 5/5 | 13m | 2m 36s |
 | 13-parallel-eval-tui | 9/9 | 27m | 3m |
-| 14-tui-visual-parity | 2/6 | 23m | 11m 30s |
+| 14-tui-visual-parity | 4/6 | 28m | 7m |
 
 *Updated after each plan completion*
 
@@ -196,7 +196,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-23
-Stopped at: Completed 14-05 thread view theme integration
+Stopped at: Completed 14-04 box-drawn containers
 Resume file: None
 
 ### Roadmap Evolution
@@ -216,3 +216,5 @@ Resume file: None
 - Phase 14 added: TUI Visual Parity with Claude Code (brand colors, box-drawn elements, spinner, status bar)
 - 14-01 complete: Centralized theme module with Claude brand colors, model tier symbols, and style functions
 - 14-05 complete: Thread view uses theme colors and box-drawn borders for message groups
+- 14-04 complete: Box-drawn containers for thinking blocks and tool calls with collapse state tracking
+- 14-03 complete: Enhanced status bar with model tier indicator and session timer

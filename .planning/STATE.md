@@ -208,6 +208,7 @@ None.
 |---|-------------|------|--------|-----------|
 | 001 | Add comprehensive README with installation and usage guide | 2026-01-30 | ecae3ba | [001-add-comprehensive-readme-with-installati](./quick/001-add-comprehensive-readme-with-installati/) |
 | 002 | Setup GitHub CI to run all tests and crates.io release workflow | 2026-01-30 | e942fb1 | [002-setup-github-ci-to-run-all-tests-setup-r](./quick/002-setup-github-ci-to-run-all-tests-setup-r/) |
+| 003 | Add CI status badge and crates.io version badge to README | 2026-01-30 | dda1526 | [003-create-a-badge-on-readme-with-ci-status-](./quick/003-create-a-badge-on-readme-with-ci-status-/) |
 
 ## Session Continuity
 

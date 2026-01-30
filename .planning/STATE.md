@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 Phase: 13.1 - Clippy & Crates.io
 Plan: 1 of 1 complete
 Status: Complete
-Last activity: 2026-01-30 - Completed quick task 007: Remove ignored doctest from spinner widget
+Last activity: 2026-01-30 - Completed quick task 008: Force adaptive mode to always ask clarifications
 
 Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2
 
@@ -212,6 +212,7 @@ None.
 | 005 | Add RSLPH_CLAUDE_CMD env var and --no-dsp CLI flag | 2026-01-30 | 6b81eee | [005-add-rslph-claude-cmd-env-and-no-dsp-flag](./quick/005-add-rslph-claude-cmd-env-and-no-dsp-flag/) |
 | 006 | Make all tests run and pass on cargo test | 2026-01-30 | be01f96 | [006-make-all-tests-run-and-pass-on-cargo-tes](./quick/006-make-all-tests-run-and-pass-on-cargo-tes/) |
 | 007 | Remove ignored doctest from spinner widget | 2026-01-30 | 5e53332 | [007-remove-ignored-doctest-from-spinner](./quick/007-remove-ignored-doctest-from-spinner/) |
+| 008 | Force adaptive mode to always ask clarifications | 2026-01-30 | 8007a9b | [008-force-adaptive-mode-to-always-ask-clarif](./quick/008-force-adaptive-mode-to-always-ask-clarif/) |
 
 ## Session Continuity
 

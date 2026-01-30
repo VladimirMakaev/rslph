@@ -283,7 +283,7 @@ mod tests {
     #[test]
     fn test_default_parallel_limit() {
         // Verify the constant is a reasonable value
-        assert!(DEFAULT_PARALLEL_LIMIT >= 1);
-        assert!(DEFAULT_PARALLEL_LIMIT <= 10);
+        const { assert!(DEFAULT_PARALLEL_LIMIT >= 1) };
+        const { assert!(DEFAULT_PARALLEL_LIMIT <= 10) };
     }
 }

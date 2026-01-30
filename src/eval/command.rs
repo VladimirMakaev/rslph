@@ -1127,7 +1127,7 @@ fn print_delta(name: &str, baseline: f64, comparison: f64, unit: &str, higher_is
 }
 
 /// Copy directory contents recursively.
-fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> std::io::Result<()> {
+fn copy_dir_recursive(src: &Path, dst: &Path) -> std::io::Result<()> {
     if !dst.exists() {
         std::fs::create_dir_all(dst)?;
     }
@@ -1571,7 +1571,7 @@ mod tests {
         std::fs::write(src_dir.path().join(".git/config"), "git stuff").expect("write git config");
 
         // Copy
-        copy_dir_recursive(&src_dir.path().to_path_buf(), &dst_dir.path().to_path_buf())
+        copy_dir_recursive(src_dir.path(), dst_dir.path())
             .expect("copy");
 
         // Verify
@@ -1588,18 +1588,18 @@ mod tests {
         let dir = TempDir::new().expect("temp dir");
 
         // No prompt file
-        let result = detect_eval_prompt(&dir.path().to_path_buf());
+        let result = detect_eval_prompt(dir.path());
         assert!(result.is_err());
 
         // Add README.md
         std::fs::write(dir.path().join("README.md"), "readme content").expect("write readme");
-        let result = detect_eval_prompt(&dir.path().to_path_buf());
+        let result = detect_eval_prompt(dir.path());
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "readme content");
 
         // Add prompt.txt (should take priority)
         std::fs::write(dir.path().join("prompt.txt"), "prompt content").expect("write prompt");
-        let result = detect_eval_prompt(&dir.path().to_path_buf());
+        let result = detect_eval_prompt(dir.path());
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "prompt content");
     }
@@ -1620,13 +1620,13 @@ mod tests {
 
         // Add PROMPT.md (priority 3)
         std::fs::write(dir.path().join("PROMPT.md"), "prompt md content").expect("write prompt md");
-        let result = detect_eval_prompt(&dir.path().to_path_buf());
+        let result = detect_eval_prompt(dir.path());
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "prompt md content");
 
         // Add README.md (should take priority over PROMPT.md)
         std::fs::write(dir.path().join("README.md"), "readme content").expect("write readme");
-        let result = detect_eval_prompt(&dir.path().to_path_buf());
+        let result = detect_eval_prompt(dir.path());
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "readme content");
     }
@@ -1637,7 +1637,7 @@ mod tests {
         let dst_dir = TempDir::new().expect("dst temp dir");
 
         // Copy empty directory
-        copy_dir_recursive(&src_dir.path().to_path_buf(), &dst_dir.path().to_path_buf())
+        copy_dir_recursive(src_dir.path(), dst_dir.path())
             .expect("copy");
 
         // Verify destination exists and is empty
@@ -1662,7 +1662,7 @@ version = "0.1.0"
         std::fs::create_dir_all(dir.path().join("target/debug")).expect("create target/debug");
         std::fs::write(dir.path().join("target/debug/myapp"), "binary").expect("write binary");
 
-        let result = find_built_program(&dir.path().to_path_buf());
+        let result = find_built_program(dir.path());
         assert!(result.is_some(), "Should find Cargo binary");
         assert!(
             result.unwrap().ends_with("myapp"),
@@ -1689,7 +1689,7 @@ version = "0.1.0"
         std::fs::write(dir.path().join("target/release/myrelease"), "binary")
             .expect("write binary");
 
-        let result = find_built_program(&dir.path().to_path_buf());
+        let result = find_built_program(dir.path());
         assert!(result.is_some(), "Should find release binary");
         assert!(
             result.unwrap().to_str().unwrap().contains("release"),
@@ -1704,7 +1704,7 @@ version = "0.1.0"
         // Create main.py
         std::fs::write(dir.path().join("main.py"), "print('hello')").expect("write main.py");
 
-        let result = find_built_program(&dir.path().to_path_buf());
+        let result = find_built_program(dir.path());
         assert!(result.is_some(), "Should find Python script");
         assert!(
             result.unwrap().ends_with("main.py"),
@@ -1720,7 +1720,7 @@ version = "0.1.0"
         std::fs::write(dir.path().join("main.sh"), "#!/bin/bash\necho hello")
             .expect("write main.sh");
 
-        let result = find_built_program(&dir.path().to_path_buf());
+        let result = find_built_program(dir.path());
         assert!(result.is_some(), "Should find shell script");
         assert!(
             result.unwrap().ends_with("main.sh"),
@@ -1735,7 +1735,7 @@ version = "0.1.0"
         // Create "calculator" executable
         std::fs::write(dir.path().join("calculator"), "#!/bin/bash").expect("write calculator");
 
-        let result = find_built_program(&dir.path().to_path_buf());
+        let result = find_built_program(dir.path());
         assert!(result.is_some(), "Should find calculator");
         assert!(
             result.unwrap().ends_with("calculator"),
@@ -1750,7 +1750,7 @@ version = "0.1.0"
         // Create a random file that doesn't match any pattern
         std::fs::write(dir.path().join("random.txt"), "content").expect("write");
 
-        let result = find_built_program(&dir.path().to_path_buf());
+        let result = find_built_program(dir.path());
         assert!(result.is_none(), "Should not find any program");
     }
 
@@ -1774,7 +1774,7 @@ version = "0.1.0"
         std::fs::write(dir.path().join("target/debug/myapp"), "debug").expect("write debug");
         std::fs::write(dir.path().join("target/release/myapp"), "release").expect("write release");
 
-        let result = find_built_program(&dir.path().to_path_buf());
+        let result = find_built_program(dir.path());
         assert!(result.is_some(), "Should find binary");
         // Debug should be preferred over release
         assert!(
@@ -1817,7 +1817,7 @@ version = "0.1.0"
             }),
         };
 
-        save_result_json(&dir.path().to_path_buf(), &result).expect("save result");
+        save_result_json(dir.path(), &result).expect("save result");
 
         // Verify file was created
         let result_path = dir.path().join("result.json");
@@ -1858,7 +1858,7 @@ version = "0.1.0"
             test_results: None,
         };
 
-        save_result_json(&dir.path().to_path_buf(), &result).expect("save result");
+        save_result_json(dir.path(), &result).expect("save result");
 
         let content = std::fs::read_to_string(dir.path().join("result.json")).expect("read");
         let json: serde_json::Value = serde_json::from_str(&content).expect("parse");

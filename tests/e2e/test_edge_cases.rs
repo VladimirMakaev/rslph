@@ -113,7 +113,6 @@ fn test_fake_claude_custom_exit_code() {
 
     #[cfg(unix)]
     {
-        use std::os::unix::process::ExitStatusExt;
         assert_eq!(
             output.status.code(),
             Some(42),

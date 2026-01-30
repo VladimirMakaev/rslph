@@ -142,6 +142,7 @@ impl UsageOutput {
     }
 }
 
+#[allow(dead_code)]
 impl ContentBlockOutput {
     /// Create a text content block.
     pub fn text(text: &str) -> Self {

@@ -5,6 +5,8 @@
 
 use super::scenario::ScenarioBuilder;
 
+// Allow dead code for prebuilt scenarios that may not all be used in every test
+#[allow(dead_code)]
 /// Progress file content for a simple calculator project.
 /// Uses RALPH_DONE to signal immediate completion after one iteration.
 const CALCULATOR_PROGRESS: &str = r#"# Progress: Calculator
@@ -24,6 +26,7 @@ In Progress
 Run the calculator with test inputs and verify outputs.
 "#;
 
+#[allow(dead_code)]
 /// Progress file content that signals build is complete (with RALPH_DONE).
 const CALCULATOR_PROGRESS_DONE: &str = r#"# Progress: Calculator
 
@@ -42,6 +45,7 @@ RALPH_DONE - All tasks complete
 Run the calculator with test inputs and verify outputs.
 "#;
 
+#[allow(dead_code)]
 /// Python calculator that uses eval() for computation.
 /// Handles integer division by converting results to int.
 const PYTHON_CALCULATOR: &str = r#"#!/usr/bin/env python3
@@ -55,6 +59,7 @@ if isinstance(result, float) and result.is_integer():
 print(result)
 "#;
 
+#[allow(dead_code)]
 /// Create a fake Claude scenario that builds a working Python calculator.
 ///
 /// This scenario simulates:
@@ -95,6 +100,7 @@ pub fn calculator() -> ScenarioBuilder {
         .respond_with_text("#!/bin/sh\npython main.py")
 }
 
+#[allow(dead_code)]
 /// Create a fake Claude scenario that builds a working FizzBuzz program.
 ///
 /// Similar to calculator(), but for the fizzbuzz eval project.
@@ -163,6 +169,7 @@ else:
         .respond_with_text("#!/bin/sh\npython main.py")
 }
 
+#[allow(dead_code)]
 /// Create a fake Claude scenario that times out on first iteration, then succeeds.
 ///
 /// This scenario is designed for testing timeout retry behavior:
@@ -252,6 +259,7 @@ print(result)
         .respond_with_text("#!/bin/sh\npython main.py")
 }
 
+#[allow(dead_code)]
 /// Create a fake Claude scenario that times out on all retries.
 ///
 /// This scenario is designed for testing timeout exhaustion:
@@ -295,6 +303,7 @@ Run the calculator with test inputs and verify outputs.
 
 #[cfg(test)]
 mod tests {
+    #[allow(unused_imports)]
     use super::*;
 
     #[test]
@@ -348,10 +357,9 @@ mod tests {
     #[test]
     fn test_python_calculator_logic() {
         // Verify the calculator code handles integer division
-        use std::io::Write;
         use std::process::{Command, Stdio};
 
-        let mut child = Command::new("python3")
+        let child = Command::new("python3")
             .arg("-c")
             .arg(PYTHON_CALCULATOR.replace("input()", "\"20 / 4\""))
             .stdin(Stdio::piped())
@@ -359,7 +367,7 @@ mod tests {
             .spawn();
 
         // This test may fail if python3 isn't available, which is fine
-        if let Ok(mut child) = child {
+        if let Ok(child) = child {
             let output = child.wait_with_output().ok();
             if let Some(out) = output {
                 let result = String::from_utf8_lossy(&out.stdout);

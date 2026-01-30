@@ -10,6 +10,7 @@ use super::config::{FakeClaudeConfig, InvocationConfig, TokenConfig};
 use super::stream_json::StreamEventOutput;
 
 /// Builder for configuring fake Claude scenarios.
+#[allow(dead_code)]
 pub struct ScenarioBuilder {
     /// Completed invocation configurations.
     invocations: Vec<InvocationConfig>,
@@ -18,9 +19,11 @@ pub struct ScenarioBuilder {
     current_invocation: InvocationConfig,
 
     /// Temporary directory for config and counter files.
+    #[allow(dead_code)]
     temp_dir: TempDir,
 }
 
+#[allow(dead_code)]
 impl ScenarioBuilder {
     /// Create a new scenario builder.
     pub fn new() -> Self {
@@ -273,6 +276,7 @@ impl Default for ScenarioBuilder {
 }
 
 /// Handle to a configured fake Claude scenario.
+#[allow(dead_code)]
 pub struct FakeClaudeHandle {
     /// Path to the fake_claude binary.
     pub executable_path: PathBuf,
@@ -287,6 +291,7 @@ pub struct FakeClaudeHandle {
     _temp_dir: TempDir,
 }
 
+#[allow(dead_code)]
 impl FakeClaudeHandle {
     /// Get the number of times fake Claude has been invoked.
     pub fn invocation_count(&self) -> usize {
@@ -316,6 +321,7 @@ impl FakeClaudeHandle {
 }
 
 /// Get the path to the fake_claude test binary.
+#[allow(dead_code)]
 fn get_fake_claude_path() -> PathBuf {
     // Try using CARGO_BIN_EXE environment variable (set during cargo test)
     if let Ok(path) = std::env::var("CARGO_BIN_EXE_fake_claude") {

@@ -995,8 +995,10 @@ mod tests {
 
     #[test]
     fn test_app_update_scroll() {
-        let mut app = App::default();
-        app.scroll_offset = 5;
+        let mut app = App {
+            scroll_offset: 5,
+            ..Default::default()
+        };
 
         app.update(AppEvent::ScrollUp);
         assert_eq!(app.scroll_offset, 4);
@@ -1080,8 +1082,10 @@ mod tests {
 
     #[test]
     fn test_app_update_claude_output() {
-        let mut app = App::default();
-        app.current_iteration = 1;
+        let mut app = App {
+            current_iteration: 1,
+            ..Default::default()
+        };
 
         app.update(AppEvent::ClaudeOutput("Hello".to_string()));
 
@@ -1162,8 +1166,10 @@ mod tests {
 
     #[test]
     fn test_scroll_down_clamped() {
-        let mut app = App::default();
-        app.scroll_offset = 0;
+        let mut app = App {
+            scroll_offset: 0,
+            ..Default::default()
+        };
 
         // Content of 10 lines, viewport of 5 lines => max offset is 5
         app.scroll_down(5, 10);
@@ -1178,8 +1184,10 @@ mod tests {
 
     #[test]
     fn test_scroll_down_empty_content() {
-        let mut app = App::default();
-        app.scroll_offset = 0;
+        let mut app = App {
+            scroll_offset: 0,
+            ..Default::default()
+        };
 
         // Empty content (0 lines), viewport of 10 lines => max offset is 0
         app.scroll_down(10, 0);
@@ -1188,8 +1196,10 @@ mod tests {
 
     #[test]
     fn test_scroll_up_saturating() {
-        let mut app = App::default();
-        app.scroll_offset = 0;
+        let mut app = App {
+            scroll_offset: 0,
+            ..Default::default()
+        };
 
         app.scroll_up();
         assert_eq!(app.scroll_offset, 0); // Should not go negative
@@ -1201,8 +1211,10 @@ mod tests {
 
     #[test]
     fn test_scroll_to_bottom() {
-        let mut app = App::default();
-        app.scroll_offset = 0;
+        let mut app = App {
+            scroll_offset: 0,
+            ..Default::default()
+        };
 
         // Content of 20 lines, viewport of 5 lines => max offset is 15
         app.scroll_to_bottom(5, 20);
@@ -1211,8 +1223,10 @@ mod tests {
 
     #[test]
     fn test_content_height_for_iteration() {
-        let mut app = App::default();
-        app.current_iteration = 1;
+        let mut app = App {
+            current_iteration: 1,
+            ..Default::default()
+        };
 
         // Add messages with multiline content
         app.messages.push(Message::new("assistant", "Line 1", 1));
@@ -1231,8 +1245,10 @@ mod tests {
 
     #[test]
     fn test_content_height_collapsed() {
-        let mut app = App::default();
-        app.current_iteration = 1;
+        let mut app = App {
+            current_iteration: 1,
+            ..Default::default()
+        };
 
         // Add a multiline message and collapse it
         app.messages
@@ -1246,9 +1262,11 @@ mod tests {
 
     #[test]
     fn test_system_rolling_limit() {
-        let mut app = App::default();
-        app.current_iteration = 1;
-        app.max_system_expanded = 3;
+        let mut app = App {
+            current_iteration: 1,
+            max_system_expanded: 3,
+            ..Default::default()
+        };
 
         // Add 5 system messages
         for i in 0..5 {
@@ -1267,8 +1285,10 @@ mod tests {
 
     #[test]
     fn test_select_next_prev_message() {
-        let mut app = App::default();
-        app.viewing_iteration = 1;
+        let mut app = App {
+            viewing_iteration: 1,
+            ..Default::default()
+        };
         app.messages.push(Message::new("assistant", "msg1", 1));
         app.messages.push(Message::new("assistant", "msg2", 1));
         app.messages.push(Message::new("assistant", "msg3", 1));
@@ -1295,8 +1315,10 @@ mod tests {
 
     #[test]
     fn test_toggle_selected_message() {
-        let mut app = App::default();
-        app.viewing_iteration = 1;
+        let mut app = App {
+            viewing_iteration: 1,
+            ..Default::default()
+        };
         app.messages.push(Message::new("assistant", "msg1", 1));
 
         app.selected_message = Some(0);
@@ -1340,8 +1362,10 @@ mod tests {
 
     #[test]
     fn test_conversation_scroll_up() {
-        let mut app = App::default();
-        app.conversation_scroll = 20;
+        let mut app = App {
+            conversation_scroll: 20,
+            ..Default::default()
+        };
 
         app.update(AppEvent::ConversationScrollUp(10));
         assert_eq!(app.conversation_scroll, 10);

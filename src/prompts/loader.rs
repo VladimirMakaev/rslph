@@ -76,8 +76,10 @@ mod tests {
 
     #[test]
     fn test_get_plan_prompt_respects_mode() {
-        let mut config = Config::default();
-        config.prompt_mode = PromptMode::Gsd;
+        let config = Config {
+            prompt_mode: PromptMode::Gsd,
+            ..Default::default()
+        };
         let prompt = get_plan_prompt(&config).expect("Should get GSD prompt");
         // GSD prompt should have different content
         assert!(!prompt.is_empty());
@@ -107,8 +109,10 @@ mod tests {
 
     #[test]
     fn test_get_build_prompt_respects_mode() {
-        let mut config = Config::default();
-        config.prompt_mode = PromptMode::GsdTdd;
+        let config = Config {
+            prompt_mode: PromptMode::GsdTdd,
+            ..Default::default()
+        };
         let prompt = get_build_prompt(&config).expect("Should get TDD prompt");
         assert!(prompt.contains("TDD") || prompt.contains("tdd"));
     }

@@ -20,10 +20,7 @@ Given a project idea and detected stack, identify:
 
 ## Output Format
 
-If the requirements are clear enough, respond with:
-REQUIREMENTS_CLEAR
-
-If clarification is needed, output numbered questions:
+Output numbered questions:
 1. [First question about unclear aspect]
 2. [Second question about unclear aspect]
 ...

@@ -210,7 +210,7 @@ None.
 | 003 | Add CI status badge and crates.io version badge to README | 2026-01-30 | dda1526 | [003-create-a-badge-on-readme-with-ci-status-](./quick/003-create-a-badge-on-readme-with-ci-status-/) |
 | 004 | Remove --internet flag workaround from all Claude CLI invocations | 2026-01-30 | 33607d1 | [004-remove-internet-flag-everywhere-from-the](./quick/004-remove-internet-flag-everywhere-from-the/) |
 | 005 | Add RSLPH_CLAUDE_CMD env var and --no-dsp CLI flag | 2026-01-30 | 6b81eee | [005-add-rslph-claude-cmd-env-and-no-dsp-flag](./quick/005-add-rslph-claude-cmd-env-and-no-dsp-flag/) |
-| 006 | Make all tests run and pass on cargo test | 2026-01-30 | 02b6063 | [006-make-all-tests-run-and-pass-on-cargo-tes](./quick/006-make-all-tests-run-and-pass-on-cargo-tes/) |
+| 006 | Make all tests run and pass on cargo test | 2026-01-30 | a8f993e | [006-make-all-tests-run-and-pass-on-cargo-tes](./quick/006-make-all-tests-run-and-pass-on-cargo-tes/) |
 
 ## Session Continuity
 

@@ -21,15 +21,6 @@ use crate::tui::theme::colors::CRAIL;
 /// * `area` - The rectangular area to render the spinner
 /// * `state` - Mutable reference to the spinner state (for animation)
 /// * `label` - Text label to display next to the spinner
-///
-/// # Example
-///
-/// ```ignore
-/// // In your render function:
-/// if app.is_streaming {
-///     render_spinner(frame, spinner_area, &mut app.spinner_state, "Thinking...");
-/// }
-/// ```
 pub fn render_spinner(frame: &mut Frame, area: Rect, state: &mut ThrobberState, label: &str) {
     let spinner = Throbber::default()
         .throbber_set(BRAILLE_SIX)

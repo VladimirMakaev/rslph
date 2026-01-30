@@ -1,5 +1,9 @@
 # rslph
 
+[![CI](https://github.com/VladimirMakaev/rslph/actions/workflows/ci.yml/badge.svg)](https://github.com/VladimirMakaev/rslph/actions/workflows/ci.yml)
+[![Crates.io](https://img.shields.io/crates/v/rslph.svg)](https://crates.io/crates/rslph)
+[![License](https://img.shields.io/crates/l/rslph.svg)](https://crates.io/crates/rslph)
+
 **Ralph Wiggum Loop - Autonomous AI Coding Agent**
 
 rslph is a Rust CLI application that implements the Ralph Wiggum Loop pattern: an autonomous AI coding agent that breaks down complex tasks into iterative steps and executes them using Claude AI. Each iteration starts with fresh context to prevent context pollution while preserving accumulated learnings through a persistent progress file. Features a rich TUI for real-time monitoring of execution.
@@ -34,7 +38,7 @@ Before installing rslph, ensure you have:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/rslph.git
+git clone https://github.com/VladimirMakaev/rslph.git
 cd rslph
 
 # Build release binary
@@ -44,6 +48,12 @@ cargo build --release
 
 # Optional: Add to PATH or create symlink
 sudo ln -s $(pwd)/target/release/rslph /usr/local/bin/rslph
+```
+
+### From crates.io
+
+```bash
+cargo install rslph
 ```
 
 ## Quick Start

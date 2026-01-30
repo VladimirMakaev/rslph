@@ -52,9 +52,9 @@ completed: 2026-01-30
 - **Files modified:** 2
 
 ## Accomplishments
-- All 294 unit tests passing with 0 failures
+- All 294 unit tests + 99 integration tests passing with 0 failures
 - Fixed Figment env var deserialization conflict with serde(skip) fields
-- Updated tests to use modern ClaudeCommand struct instead of deprecated claude_path
+- Updated 4 tests to use modern ClaudeCommand struct instead of deprecated claude_path
 - Eliminated mutex poisoning cascade from config test failures
 
 ## Task Commits
@@ -64,6 +64,10 @@ Each task was committed atomically:
 1. **Task 1: Filter claude_cmd from Figment Env provider** - `27aa068` (fix)
 2. **Task 2: Fix test_run_plan_command_nonexistent_command to use claude_cmd** - `02b6063` (fix)
 3. **Task 3: Verify all tests pass** - ✓ (verification only, no commit)
+4. **Task 4: Fix 3 additional tests using claude_path** - `5f3231d` (fix)
+   - `test_run_plan_command_spawns_and_writes_file`
+   - `test_run_plan_command_timeout`
+   - `test_run_plan_command_cancellation`
 
 ## Files Created/Modified
 - `src/config.rs` - Added .filter(|key| key != "claude_cmd") to Env providers

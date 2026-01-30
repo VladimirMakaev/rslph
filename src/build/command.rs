@@ -600,13 +600,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_build_command_with_echo_mock() {
+        use crate::config::ClaudeCommand;
+
         // This test uses echo as a mock for Claude.
         // Echo outputs garbage but ProgressFile::parse is lenient.
         let dir = TempDir::new().expect("temp dir");
         let progress_path = create_test_progress_file(&dir);
 
         let config = Config {
-            claude_path: Some("/bin/echo".to_string()),
+            claude_cmd: ClaudeCommand {
+                command: "/bin/echo".to_string(),
+                base_args: vec![],
+            },
             ..Default::default()
         };
 
@@ -656,6 +661,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_build_command_timeout() {
+        use crate::config::ClaudeCommand;
+
         let dir = TempDir::new().expect("temp dir");
         let progress_path = create_test_progress_file(&dir);
 
@@ -672,7 +679,10 @@ mod tests {
         }
 
         let config = Config {
-            claude_path: Some(script_path.to_string_lossy().to_string()),
+            claude_cmd: ClaudeCommand {
+                command: script_path.to_string_lossy().to_string(),
+                base_args: vec![],
+            },
             max_iterations: 1, // Limit iterations
             ..Default::default()
         };
@@ -707,6 +717,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_build_command_cancellation() {
+        use crate::config::ClaudeCommand;
+
         let dir = TempDir::new().expect("temp dir");
         let progress_path = create_test_progress_file(&dir);
 
@@ -723,7 +735,10 @@ mod tests {
         }
 
         let config = Config {
-            claude_path: Some(script_path.to_string_lossy().to_string()),
+            claude_cmd: ClaudeCommand {
+                command: script_path.to_string_lossy().to_string(),
+                base_args: vec![],
+            },
             ..Default::default()
         };
 
@@ -925,6 +940,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_once_mode_stops_after_one_iteration() {
+        use crate::config::ClaudeCommand;
         use crate::progress::{Task, TaskPhase};
 
         let dir = TempDir::new().expect("temp dir");
@@ -960,7 +976,10 @@ mod tests {
 
         // Use echo mock that outputs the progress unchanged
         let config = Config {
-            claude_path: Some("/bin/echo".to_string()),
+            claude_cmd: ClaudeCommand {
+                command: "/bin/echo".to_string(),
+                base_args: vec![],
+            },
             ..Default::default()
         };
 
@@ -1026,6 +1045,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_ralph_done_stops_immediately() {
+        use crate::config::ClaudeCommand;
         use crate::progress::{Task, TaskPhase};
 
         let dir = TempDir::new().expect("temp dir");
@@ -1058,7 +1078,10 @@ mod tests {
         }
 
         let config = Config {
-            claude_path: Some(script_path.to_string_lossy().to_string()),
+            claude_cmd: ClaudeCommand {
+                command: script_path.to_string_lossy().to_string(),
+                base_args: vec![],
+            },
             ..Default::default()
         };
 
@@ -1091,6 +1114,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_all_tasks_complete_stops_immediately() {
+        use crate::config::ClaudeCommand;
         use crate::progress::{Task, TaskPhase};
 
         let dir = TempDir::new().expect("temp dir");
@@ -1129,7 +1153,10 @@ mod tests {
         }
 
         let config = Config {
-            claude_path: Some(script_path.to_string_lossy().to_string()),
+            claude_cmd: ClaudeCommand {
+                command: script_path.to_string_lossy().to_string(),
+                base_args: vec![],
+            },
             ..Default::default()
         };
 
@@ -1160,6 +1187,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_max_iterations_enforced() {
+        use crate::config::ClaudeCommand;
         use crate::progress::{Task, TaskPhase};
 
         let dir = TempDir::new().expect("temp dir");
@@ -1190,7 +1218,10 @@ mod tests {
 
         // Use echo mock - outputs garbage but loop will run max_iterations times
         let config = Config {
-            claude_path: Some("/bin/echo".to_string()),
+            claude_cmd: ClaudeCommand {
+                command: "/bin/echo".to_string(),
+                base_args: vec![],
+            },
             max_iterations: 2, // Only run 2 iterations
             ..Default::default()
         };
@@ -1227,6 +1258,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_resume_from_partial_progress() {
+        use crate::config::ClaudeCommand;
         use crate::progress::{Attempt, IterationEntry, Task, TaskPhase};
 
         let dir = TempDir::new().expect("temp dir");
@@ -1297,7 +1329,10 @@ mod tests {
 
         // Run build with once mode using echo mock
         let config = Config {
-            claude_path: Some("/bin/echo".to_string()),
+            claude_cmd: ClaudeCommand {
+                command: "/bin/echo".to_string(),
+                base_args: vec![],
+            },
             max_iterations: 1, // Will run 1 iteration
             ..Default::default()
         };

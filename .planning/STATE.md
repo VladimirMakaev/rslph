@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 
 ## Current Position
 
-Phase: 14 - TUI Visual Parity
-Plan: 6 of 6 complete
+Phase: 13.1 - Clippy & Crates.io
+Plan: 1 of 1 complete
 Status: Complete
-Last activity: 2026-01-30 - Completed quick task 002: Setup GitHub CI to run all tests and crates.io release workflow
+Last activity: 2026-01-30 - Published rslph v0.1.0 to crates.io
 
 Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2
 
@@ -27,6 +27,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1
 | 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Complete |
 | 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | Complete |
 | 14 - TUI Visual Parity | Claude Code-style TUI design | TUI-01 to TUI-06 | Complete |
+| 13.1 - Clippy & Crates.io | Fix clippy, publish to crates.io | CLIP-01, CLIP-02, CLIP-03 | Complete |
 
 ## Performance Metrics
 
@@ -211,7 +212,7 @@ None.
 ## Session Continuity
 
 Last session: 2026-01-30
-Stopped at: Completed quick-002 GitHub CI setup
+Stopped at: Phase 13.1 complete - rslph v0.1.0 published to crates.io
 Resume file: None
 
 ### Roadmap Evolution
@@ -236,3 +237,6 @@ Resume file: None
 - 14-02 complete: Animated braille spinner widget with ThrobberState and tick integration
 - 14-06 complete: Integration of visual parity components (spinner, streaming events, thinking toggle)
 - Phase 14 complete: All 6 plans done, all TUI requirements fulfilled
+- Phase 13.1 added: Clippy fixes and crates.io release (inserted after Phase 14)
+- 13.1-01 complete: Fixed clippy warnings, configured package exclusions, published rslph v0.1.0 to crates.io
+- v1.2 milestone complete: All phases (8-14, 13.1) done, rslph v0.1.0 published

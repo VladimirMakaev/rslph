@@ -263,7 +263,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 13.1-01-PLAN.md — Fix clippy warnings and configure package exclusions
+- [x] 13.1-01-PLAN.md — Fix clippy warnings and configure package exclusions
 
 ---
 
@@ -286,7 +286,7 @@ Plans:
 | 12. Multi-Trial Results | v1.2 | 5/5 | Complete | 2026-01-22 |
 | 13. Parallel Eval TUI | v1.2 | 9/9 | Complete | 2026-01-22 |
 | 14. TUI Visual Parity | v1.2 | 6/6 | Complete | 2026-01-23 |
-| 13.1 Clippy & Crates.io | v1.2 | 0/1 | Ready | — |
+| 13.1 Clippy & Crates.io | v1.2 | 1/1 | Complete | 2026-01-30 |
 
 ---
 
@@ -328,4 +328,4 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full details.
 
 ---
 
-*Last updated: 2026-01-30 — Phase 13.1 planned (1 plan in 1 wave)*
+*Last updated: 2026-01-30 — Phase 13.1 complete, rslph v0.1.0 published to crates.io*

@@ -2,6 +2,12 @@
 name = "rslph"
 version = "0.1.0"
 edition = "2021"
+description = "CLI tool for LLM-powered autonomous task execution"
+license = "MIT"
+repository = "https://github.com/VladimirMakaev/rslph"
+readme = "README.md"
+keywords = ["cli", "llm", "automation", "claude", "ai"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 atomicwrites = "0.4"

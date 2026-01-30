@@ -8,6 +8,11 @@ repository = "https://github.com/VladimirMakaev/rslph"
 readme = "README.md"
 keywords = ["cli", "llm", "automation", "claude", "ai"]
 categories = ["command-line-utilities", "development-tools"]
+exclude = [
+    ".planning/*",
+    ".github/*",
+    "scripts/*",
+]
 
 [dependencies]
 atomicwrites = "0.4"

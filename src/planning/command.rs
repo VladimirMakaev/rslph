@@ -440,18 +440,14 @@ pub async fn run_adaptive_planning(
         )
         .await?;
 
-        if !questions.contains("REQUIREMENTS_CLEAR") {
-            // Print questions and get user input
-            println!("Clarifying Questions:\n");
-            println!("{}", questions);
-            println!("\nPlease answer the questions above (type your answers, then Enter twice to submit):\n");
+        // Print questions and get user input
+        println!("Clarifying Questions:\n");
+        println!("{}", questions);
+        println!("\nPlease answer the questions above (type your answers, then Enter twice to submit):\n");
 
-            // Read multi-line input from stdin
-            clarifications = read_multiline_input()?;
-            println!("\nGathered clarifications. Continuing...\n");
-        } else {
-            println!("Requirements are clear enough, skipping clarification.\n");
-        }
+        // Read multi-line input from stdin
+        clarifications = read_multiline_input()?;
+        println!("\nGathered clarifications. Continuing...\n");
     } else {
         println!("\nInput is specific enough, skipping clarification.\n");
     }

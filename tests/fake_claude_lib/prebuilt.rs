@@ -309,13 +309,15 @@ mod tests {
     #[test]
     fn test_calculator_scenario_builds() {
         let handle = calculator().build();
-        assert!(handle.executable_path.exists() || true); // May not exist yet in some test environments
+        // Handle may or may not exist yet depending on test environment
+        let _ = handle.executable_path.exists();
     }
 
     #[test]
     fn test_fizzbuzz_scenario_builds() {
         let handle = fizzbuzz().build();
-        assert!(handle.executable_path.exists() || true);
+        // Handle may or may not exist yet depending on test environment
+        let _ = handle.executable_path.exists();
     }
 
     #[test]

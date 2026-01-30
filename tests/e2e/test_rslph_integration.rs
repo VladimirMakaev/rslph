@@ -6,6 +6,8 @@
 //! The integration point is RSLPH_CLAUDE_PATH env var which overrides the
 //! claude_path config option, allowing rslph to use our fake Claude binary.
 
+#![allow(deprecated)] // Command::cargo_bin is deprecated but still functional
+
 use crate::fake_claude_lib::{FakeClaudeHandle, ScenarioBuilder};
 use crate::fixtures::WorkspaceBuilder;
 use assert_cmd::Command;
@@ -150,8 +152,7 @@ fn test_rslph_build_handles_claude_crash() {
     // without the test framework crashing
     let _ = output;
 
-    // The fact that we got here means rslph didn't panic
-    assert!(true, "rslph handled Claude crash without panicking");
+    // The fact that we got here means rslph didn't panic - test passes implicitly
 }
 
 #[test]

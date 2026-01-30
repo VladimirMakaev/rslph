@@ -3,6 +3,8 @@
 //! These tests verify that token usage is correctly captured from fake Claude
 //! responses and made available to the application.
 
+#![allow(deprecated)] // Command::cargo_bin is deprecated but still functional
+
 use crate::fake_claude_lib::ScenarioBuilder;
 use crate::fixtures::WorkspaceBuilder;
 use assert_cmd::Command;

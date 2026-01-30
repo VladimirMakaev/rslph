@@ -1571,8 +1571,7 @@ mod tests {
         std::fs::write(src_dir.path().join(".git/config"), "git stuff").expect("write git config");
 
         // Copy
-        copy_dir_recursive(src_dir.path(), dst_dir.path())
-            .expect("copy");
+        copy_dir_recursive(src_dir.path(), dst_dir.path()).expect("copy");
 
         // Verify
         assert!(dst_dir.path().join("file.txt").exists());
@@ -1637,8 +1636,7 @@ mod tests {
         let dst_dir = TempDir::new().expect("dst temp dir");
 
         // Copy empty directory
-        copy_dir_recursive(src_dir.path(), dst_dir.path())
-            .expect("copy");
+        copy_dir_recursive(src_dir.path(), dst_dir.path()).expect("copy");
 
         // Verify destination exists and is empty
         assert!(dst_dir.path().exists());

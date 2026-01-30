@@ -4,6 +4,8 @@
 //! Full integration tests with fake Claude require the eval project patterns
 //! established in Phase 10.
 
+#![allow(deprecated)] // Command::cargo_bin is deprecated but still functional
+
 use assert_cmd::Command;
 use predicates::prelude::*;
 use tempfile::TempDir;

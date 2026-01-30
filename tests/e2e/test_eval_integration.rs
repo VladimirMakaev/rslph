@@ -4,6 +4,8 @@
 //! Full end-to-end testing with working test execution requires more
 //! complex subprocess coordination.
 
+#![allow(deprecated)] // Command::cargo_bin is deprecated but still functional
+
 use assert_cmd::Command;
 use tempfile::TempDir;
 
@@ -596,7 +598,7 @@ fn test_eval_trials_zero() {
         // If it succeeds, it should mention running 0 trials or complete immediately
         // This is acceptable behavior
         assert!(
-            stdout.contains("Running 0") || stdout.contains("complete") || stdout.len() == 0,
+            stdout.contains("Running 0") || stdout.contains("complete") || stdout.is_empty(),
             "Zero trials should either complete immediately or show no output. stdout:\n{}",
             stdout
         );

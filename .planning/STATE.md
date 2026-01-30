@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 Phase: 13.1 - Clippy & Crates.io
 Plan: 1 of 1 complete
 Status: Complete
-Last activity: 2026-01-30 - Completed quick task 004: Remove --internet flag workaround from all Claude CLI invocations
+Last activity: 2026-01-30 - Completed quick task 005: Add RSLPH_CLAUDE_CMD env var and --no-dsp CLI flag
 
 Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2
 
@@ -209,6 +209,7 @@ None.
 | 002 | Setup GitHub CI to run all tests and crates.io release workflow | 2026-01-30 | e942fb1 | [002-setup-github-ci-to-run-all-tests-setup-r](./quick/002-setup-github-ci-to-run-all-tests-setup-r/) |
 | 003 | Add CI status badge and crates.io version badge to README | 2026-01-30 | dda1526 | [003-create-a-badge-on-readme-with-ci-status-](./quick/003-create-a-badge-on-readme-with-ci-status-/) |
 | 004 | Remove --internet flag workaround from all Claude CLI invocations | 2026-01-30 | 33607d1 | [004-remove-internet-flag-everywhere-from-the](./quick/004-remove-internet-flag-everywhere-from-the/) |
+| 005 | Add RSLPH_CLAUDE_CMD env var and --no-dsp CLI flag | 2026-01-30 | 6b81eee | [005-add-rslph-claude-cmd-env-and-no-dsp-flag](./quick/005-add-rslph-claude-cmd-env-and-no-dsp-flag/) |
 
 ## Session Continuity
 

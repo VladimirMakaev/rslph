@@ -617,4 +617,56 @@ mod tests {
         let result = build_claude_args(&base, &additional, true);
         assert_eq!(result, vec!["--internet", "--dangerously-skip-permissions"]);
     }
+
+    #[tokio::test]
+    async fn test_run_to_completion_returns_error_on_failure() {
+        let mut runner = ClaudeRunner::spawn(
+            "/bin/sh",
+            &["-c".to_string(), "echo error >&2; exit 1".to_string()],
+            &PathBuf::from("/tmp"),
+        )
+        .await
+        .expect("spawn should succeed");
+
+        let token = CancellationToken::new();
+        let result = runner.run_to_completion(token).await;
+
+        assert!(result.is_err(), "Should return error on non-zero exit");
+        let err = result.unwrap_err();
+        let err_msg = err.to_string();
+        assert!(
+            err_msg.contains("1"),
+            "Error should contain exit code: {}",
+            err_msg
+        );
+        assert!(
+            err_msg.contains("error"),
+            "Error should contain stderr output: {}",
+            err_msg
+        );
+    }
+
+    #[tokio::test]
+    async fn test_run_with_channel_returns_error_on_failure() {
+        let mut runner = ClaudeRunner::spawn(
+            "/bin/sh",
+            &["-c".to_string(), "exit 42".to_string()],
+            &PathBuf::from("/tmp"),
+        )
+        .await
+        .expect("spawn should succeed");
+
+        let (tx, _rx) = mpsc::unbounded_channel();
+        let token = CancellationToken::new();
+        let result = runner.run_with_channel(tx, token).await;
+
+        assert!(result.is_err(), "Should return error on non-zero exit");
+        let err = result.unwrap_err();
+        let err_msg = err.to_string();
+        assert!(
+            err_msg.contains("42"),
+            "Error should contain exit code 42: {}",
+            err_msg
+        );
+    }
 }

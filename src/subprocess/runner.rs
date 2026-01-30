@@ -197,8 +197,26 @@ impl ClaudeRunner {
             }
         }
 
-        // Reap child to prevent zombie
-        let _ = self.child.wait().await;
+        // Reap child and check exit status
+        let status = self.child.wait().await
+            .map_err(|e| RslphError::Subprocess(e.to_string()))?;
+
+        if !status.success() {
+            let exit_code = status.code().unwrap_or(-1);
+            let stderr_content: String = output
+                .iter()
+                .filter_map(|l| match l {
+                    OutputLine::Stderr(s) => Some(s.as_str()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            return Err(RslphError::Subprocess(format!(
+                "Process exited with code {}: {}",
+                exit_code, stderr_content
+            )));
+        }
+
         Ok(output)
     }
 
@@ -265,8 +283,18 @@ impl ClaudeRunner {
             }
         }
 
-        // Reap child to prevent zombie
-        let _ = self.child.wait().await;
+        // Reap child and check exit status
+        let status = self.child.wait().await
+            .map_err(|e| RslphError::Subprocess(e.to_string()))?;
+
+        if !status.success() {
+            let exit_code = status.code().unwrap_or(-1);
+            return Err(RslphError::Subprocess(format!(
+                "Process exited with code {}",
+                exit_code
+            )));
+        }
+
         Ok(())
     }
 }

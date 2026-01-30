@@ -827,10 +827,15 @@ mod tests {
 
     #[tokio::test]
     async fn test_run_plan_command_nonexistent_command() {
+        use crate::config::ClaudeCommand;
+
         let dir = TempDir::new().expect("temp dir");
 
         let config = Config {
-            claude_path: Some("/nonexistent/command".to_string()),
+            claude_cmd: ClaudeCommand {
+                command: "/nonexistent/command".to_string(),
+                base_args: vec![],
+            },
             ..Default::default()
         };
 

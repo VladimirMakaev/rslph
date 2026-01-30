@@ -32,6 +32,7 @@ pub type ProgressCallback = Arc<dyn Fn(u32, u32) + Send + Sync>;
 /// * `dry_run` - If true, preview what would be done without executing
 /// * `no_tui` - If true, disable TUI and use headless output
 /// * `mode` - The prompt mode to use for this build
+/// * `no_dsp` - If true, append --dangerously-skip-permissions to Claude
 /// * `config` - Application configuration
 /// * `cancel_token` - Token for graceful cancellation
 /// * `progress_callback` - Optional callback for iteration progress updates
@@ -47,6 +48,7 @@ pub async fn run_build_command(
     dry_run: bool,
     no_tui: bool,
     mode: PromptMode,
+    no_dsp: bool,
     config: &Config,
     cancel_token: CancellationToken,
     progress_callback: Option<ProgressCallback>,
@@ -75,6 +77,7 @@ pub async fn run_build_command(
         cancel_token.clone(),
         once,
         dry_run,
+        no_dsp,
     );
 
     // Dry-run mode: preview and exit
@@ -90,6 +93,7 @@ pub async fn run_build_command(
             progress_path,
             ctx.progress.clone(),
             mode,
+            no_dsp,
             config,
             cancel_token,
         )
@@ -326,6 +330,7 @@ async fn run_build_with_tui(
     progress_path: PathBuf,
     progress: ProgressFile,
     mode: PromptMode,
+    no_dsp: bool,
     config: &Config,
     cancel_token: CancellationToken,
 ) -> color_eyre::Result<TokenUsage> {
@@ -355,6 +360,7 @@ async fn run_build_with_tui(
         cancel_token.clone(),
         false, // once_mode - TUI always runs full loop
         false, // dry_run - already handled before this function
+        no_dsp,
         Some(subprocess_tx.clone()),
     );
 
@@ -600,7 +606,7 @@ mod tests {
         let progress_path = create_test_progress_file(&dir);
 
         let config = Config {
-            claude_path: "/bin/echo".to_string(),
+            claude_path: Some("/bin/echo".to_string()),
             ..Default::default()
         };
 
@@ -613,6 +619,7 @@ mod tests {
             false,
             true, // no_tui
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             token,
             None,
@@ -637,6 +644,7 @@ mod tests {
             true, // dry_run
             true, // no_tui
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             token,
             None,
@@ -664,7 +672,7 @@ mod tests {
         }
 
         let config = Config {
-            claude_path: script_path.to_string_lossy().to_string(),
+            claude_path: Some(script_path.to_string_lossy().to_string()),
             max_iterations: 1, // Limit iterations
             ..Default::default()
         };
@@ -685,6 +693,7 @@ mod tests {
             false,
             true, // no_tui
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             token,
             None,
@@ -714,7 +723,7 @@ mod tests {
         }
 
         let config = Config {
-            claude_path: script_path.to_string_lossy().to_string(),
+            claude_path: Some(script_path.to_string_lossy().to_string()),
             ..Default::default()
         };
 
@@ -733,6 +742,7 @@ mod tests {
             false,
             true,
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             token,
             None,
@@ -754,6 +764,7 @@ mod tests {
             false,
             true, // no_tui
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             token,
             None,
@@ -803,6 +814,7 @@ mod tests {
             true, // dry_run
             true, // no_tui
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             token,
             None,
@@ -850,6 +862,7 @@ mod tests {
             true, // dry_run
             true, // no_tui
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             token,
             None,
@@ -902,6 +915,7 @@ mod tests {
             token,
             true, // once_mode
             true, // dry_run
+            false, // no_dsp
         );
 
         // Verify dry run function succeeds
@@ -946,7 +960,7 @@ mod tests {
 
         // Use echo mock that outputs the progress unchanged
         let config = Config {
-            claude_path: "/bin/echo".to_string(),
+            claude_path: Some("/bin/echo".to_string()),
             ..Default::default()
         };
 
@@ -959,6 +973,7 @@ mod tests {
             false, // not dry-run
             true,  // no_tui
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             token,
             None,
@@ -1001,7 +1016,8 @@ mod tests {
             PromptMode::Basic,
             token,
             true, // once_mode - this is what we're testing
-            false,
+            false, // dry_run
+            false, // no_dsp
         );
 
         // Verify once_mode is set correctly
@@ -1042,7 +1058,7 @@ mod tests {
         }
 
         let config = Config {
-            claude_path: script_path.to_string_lossy().to_string(),
+            claude_path: Some(script_path.to_string_lossy().to_string()),
             ..Default::default()
         };
 
@@ -1057,6 +1073,7 @@ mod tests {
             false,
             true, // no_tui
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             token,
             None,
@@ -1112,7 +1129,7 @@ mod tests {
         }
 
         let config = Config {
-            claude_path: script_path.to_string_lossy().to_string(),
+            claude_path: Some(script_path.to_string_lossy().to_string()),
             ..Default::default()
         };
 
@@ -1125,6 +1142,7 @@ mod tests {
             false,
             true, // no_tui
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             token,
             None,
@@ -1172,7 +1190,7 @@ mod tests {
 
         // Use echo mock - outputs garbage but loop will run max_iterations times
         let config = Config {
-            claude_path: "/bin/echo".to_string(),
+            claude_path: Some("/bin/echo".to_string()),
             max_iterations: 2, // Only run 2 iterations
             ..Default::default()
         };
@@ -1185,6 +1203,7 @@ mod tests {
             false,
             true, // no_tui
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             token,
             None,
@@ -1278,7 +1297,7 @@ mod tests {
 
         // Run build with once mode using echo mock
         let config = Config {
-            claude_path: "/bin/echo".to_string(),
+            claude_path: Some("/bin/echo".to_string()),
             max_iterations: 1, // Will run 1 iteration
             ..Default::default()
         };
@@ -1296,6 +1315,7 @@ mod tests {
             false,
             true, // no_tui
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             token,
             None,

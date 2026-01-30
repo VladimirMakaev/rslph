@@ -22,7 +22,7 @@ use crate::eval::{load_test_cases, TestResults, TestRunner};
 use crate::planning::run_plan_command;
 use crate::progress::ProgressFile;
 use crate::prompts::{test_discovery_prompt, PromptMode};
-use crate::subprocess::{ClaudeRunner, OutputLine, StreamResponse};
+use crate::subprocess::{build_claude_args, ClaudeRunner, OutputLine, StreamResponse};
 use crate::tui::run_dashboard_tui;
 
 use super::parallel::{run_parallel_evals, TrialEvent, TrialResult as ParallelTrialResult};
@@ -444,6 +444,7 @@ async fn run_single_trial(
         false, // not adaptive
         false, // not tui
         mode,
+        false, // no_dsp
         config,
         &working_dir,
         cancel_token.clone(),
@@ -467,6 +468,7 @@ async fn run_single_trial(
         false, // not dry-run
         true,  // force no-tui for eval to get clean output
         mode,
+        false, // no_dsp
         config,
         cancel_token.clone(),
         progress_callback,
@@ -1235,7 +1237,7 @@ async fn run_project_tests(
     }
 
     // Try to discover run script using Claude
-    let run_script = match discover_run_script(&config.claude_path, working_dir, cancel_token).await
+    let run_script = match discover_run_script(config, working_dir, cancel_token).await
     {
         Ok(script_path) => Some(script_path),
         Err(e) => {
@@ -1346,7 +1348,7 @@ fn find_built_program(working_dir: &Path) -> Option<PathBuf> {
 /// * `Ok(PathBuf)` - Path to the generated run script
 /// * `Err(e)` - Discovery failed
 async fn discover_run_script(
-    claude_path: &str,
+    config: &Config,
     working_dir: &Path,
     cancel_token: CancellationToken,
 ) -> color_eyre::Result<PathBuf> {
@@ -1368,7 +1370,8 @@ async fn discover_run_script(
     ];
 
     // Spawn Claude
-    let mut runner = ClaudeRunner::spawn(claude_path, &args, working_dir)
+    let combined_args = build_claude_args(&config.claude_cmd.base_args, &args, false);
+    let mut runner = ClaudeRunner::spawn(&config.claude_cmd.command, &combined_args, working_dir)
         .await
         .map_err(|e| eyre!("Failed to spawn claude for test discovery: {}", e))?;
 

@@ -16,7 +16,7 @@ use crate::planning::{
 };
 use crate::progress::ProgressFile;
 use crate::prompts::{get_plan_prompt_for_mode, PromptMode};
-use crate::subprocess::{ClaudeRunner, OutputLine, StreamEvent, StreamResponse};
+use crate::subprocess::{build_claude_args, ClaudeRunner, OutputLine, StreamEvent, StreamResponse};
 use crate::tui::plan_tui::run_plan_tui;
 
 /// Run the planning command.
@@ -30,6 +30,7 @@ use crate::tui::plan_tui::run_plan_tui;
 /// * `adaptive` - Whether to use adaptive mode with clarifying questions
 /// * `tui` - Whether to use TUI mode with streaming output
 /// * `mode` - The prompt mode to use (Basic, Gsd, GsdTdd)
+/// * `no_dsp` - If true, append --dangerously-skip-permissions to Claude
 /// * `config` - Application configuration
 /// * `working_dir` - Directory to use as working directory and output location
 /// * `cancel_token` - Token for graceful cancellation
@@ -44,6 +45,7 @@ pub async fn run_plan_command(
     adaptive: bool,
     tui: bool,
     mode: PromptMode,
+    no_dsp: bool,
     config: &Config,
     working_dir: &Path,
     cancel_token: CancellationToken,
@@ -51,23 +53,24 @@ pub async fn run_plan_command(
 ) -> color_eyre::Result<(PathBuf, TokenUsage)> {
     // If TUI mode, run the TUI planning flow
     if tui {
-        return run_tui_planning(input, mode, config, working_dir, cancel_token, timeout).await;
+        return run_tui_planning(input, mode, no_dsp, config, working_dir, cancel_token, timeout).await;
     }
 
     // If adaptive mode, run the adaptive planning flow
     if adaptive {
-        return run_adaptive_planning(input, mode, config, working_dir, cancel_token, timeout)
+        return run_adaptive_planning(input, mode, no_dsp, config, working_dir, cancel_token, timeout)
             .await;
     }
 
     // Basic mode: direct planning without clarification
-    run_basic_planning(input, mode, config, working_dir, cancel_token, timeout).await
+    run_basic_planning(input, mode, no_dsp, config, working_dir, cancel_token, timeout).await
 }
 
 /// Run basic (non-adaptive) planning mode.
 async fn run_basic_planning(
     input: &str,
     mode: PromptMode,
+    no_dsp: bool,
     config: &Config,
     working_dir: &Path,
     cancel_token: CancellationToken,
@@ -99,12 +102,13 @@ async fn run_basic_planning(
 
     eprintln!(
         "[TRACE] Spawning: {} {:?}",
-        config.claude_path,
+        config.claude_cmd.command,
         args.iter().take(4).collect::<Vec<_>>()
     );
 
     // Step 5: Spawn Claude
-    let mut runner = ClaudeRunner::spawn(&config.claude_path, &args, working_dir)
+    let combined_args = build_claude_args(&config.claude_cmd.base_args, &args, no_dsp);
+    let mut runner = ClaudeRunner::spawn(&config.claude_cmd.command, &combined_args, working_dir)
         .await
         .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
 
@@ -153,8 +157,9 @@ async fn run_basic_planning(
     if progress_file.name.is_empty() {
         eprintln!("[TRACE] Progress file has no name, generating one...");
         let generated_name = generate_project_name(
-            &config.claude_path,
             input,
+            no_dsp,
+            config,
             working_dir,
             cancel_token.clone(),
             timeout,
@@ -191,6 +196,7 @@ async fn run_basic_planning(
 async fn run_tui_planning(
     input: &str,
     mode: PromptMode,
+    no_dsp: bool,
     config: &Config,
     working_dir: &Path,
     cancel_token: CancellationToken,
@@ -223,7 +229,8 @@ async fn run_tui_planning(
     ];
 
     // Step 5: Spawn Claude
-    let mut runner = ClaudeRunner::spawn(&config.claude_path, &args, working_dir)
+    let combined_args = build_claude_args(&config.claude_cmd.base_args, &args, no_dsp);
+    let mut runner = ClaudeRunner::spawn(&config.claude_cmd.command, &combined_args, working_dir)
         .await
         .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
 
@@ -300,8 +307,9 @@ async fn run_tui_planning(
     // Step 12: Generate project name if empty (non-TUI for simplicity)
     if progress_file.name.is_empty() {
         let generated_name = generate_project_name(
-            &config.claude_path,
             input,
+            no_dsp,
+            config,
             working_dir,
             cancel_token.clone(),
             timeout,
@@ -391,6 +399,7 @@ async fn run_with_tracing(
 pub async fn run_adaptive_planning(
     input: &str,
     mode: PromptMode,
+    no_dsp: bool,
     config: &Config,
     working_dir: &Path,
     cancel_token: CancellationToken,
@@ -421,9 +430,10 @@ pub async fn run_adaptive_planning(
         );
 
         let questions = run_claude_headless(
-            &config.claude_path,
             REQUIREMENTS_CLARIFIER_PERSONA,
             &clarifier_input,
+            no_dsp,
+            config,
             working_dir,
             cancel_token.clone(),
             timeout,
@@ -461,9 +471,10 @@ pub async fn run_adaptive_planning(
     );
 
     let testing_strategy = run_claude_headless(
-        &config.claude_path,
         TESTING_STRATEGIST_PERSONA,
         &testing_input,
+        no_dsp,
+        config,
         working_dir,
         cancel_token.clone(),
         timeout,
@@ -496,7 +507,8 @@ pub async fn run_adaptive_planning(
     ];
 
     // Spawn Claude
-    let mut runner = ClaudeRunner::spawn(&config.claude_path, &args, working_dir)
+    let combined_args = build_claude_args(&config.claude_cmd.base_args, &args, no_dsp);
+    let mut runner = ClaudeRunner::spawn(&config.claude_cmd.command, &combined_args, working_dir)
         .await
         .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
 
@@ -530,8 +542,9 @@ pub async fn run_adaptive_planning(
     if progress_file.name.is_empty() {
         eprintln!("[TRACE] Progress file has no name, generating one...");
         let generated_name = generate_project_name(
-            &config.claude_path,
             input,
+            no_dsp,
+            config,
             working_dir,
             cancel_token.clone(),
             timeout,
@@ -558,9 +571,10 @@ pub async fn run_adaptive_planning(
 
 /// Run Claude CLI in headless mode with a system prompt and return the response.
 async fn run_claude_headless(
-    claude_path: &str,
     system_prompt: &str,
     user_input: &str,
+    no_dsp: bool,
+    config: &Config,
     working_dir: &Path,
     cancel_token: CancellationToken,
     timeout: Duration,
@@ -575,7 +589,8 @@ async fn run_claude_headless(
         user_input.to_string(),
     ];
 
-    let mut runner = ClaudeRunner::spawn(claude_path, &args, working_dir)
+    let combined_args = build_claude_args(&config.claude_cmd.base_args, &args, no_dsp);
+    let mut runner = ClaudeRunner::spawn(&config.claude_cmd.command, &combined_args, working_dir)
         .await
         .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
 
@@ -596,8 +611,9 @@ async fn run_claude_headless(
 ///
 /// Asks Claude to summarize the project in 2 words max, formatted as kebab-case.
 async fn generate_project_name(
-    claude_path: &str,
     user_input: &str,
+    no_dsp: bool,
+    config: &Config,
     working_dir: &Path,
     cancel_token: CancellationToken,
     timeout: Duration,
@@ -617,9 +633,10 @@ Example outputs:
 - chat-bot"#;
 
     let response = run_claude_headless(
-        claude_path,
         NAME_GENERATOR_PROMPT,
         user_input,
+        no_dsp,
+        config,
         working_dir,
         cancel_token,
         timeout,
@@ -689,7 +706,7 @@ mod tests {
 
         // Create a config pointing to echo instead of claude
         let config = Config {
-            claude_path: "/bin/echo".to_string(),
+            claude_path: Some("/bin/echo".to_string()),
             ..Default::default()
         };
 
@@ -700,6 +717,7 @@ mod tests {
             false, // basic mode
             false, // no TUI
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             dir.path(),
             token,
@@ -736,7 +754,7 @@ mod tests {
         }
 
         let config = Config {
-            claude_path: script_path.to_string_lossy().to_string(),
+            claude_path: Some(script_path.to_string_lossy().to_string()),
             ..Default::default()
         };
 
@@ -746,6 +764,7 @@ mod tests {
             false, // basic mode
             false, // no TUI
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             dir.path(),
             token,
@@ -775,7 +794,7 @@ mod tests {
         }
 
         let config = Config {
-            claude_path: script_path.to_string_lossy().to_string(),
+            claude_path: Some(script_path.to_string_lossy().to_string()),
             ..Default::default()
         };
 
@@ -793,6 +812,7 @@ mod tests {
             false, // basic mode
             false, // no TUI
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             dir.path(),
             token,
@@ -810,7 +830,7 @@ mod tests {
         let dir = TempDir::new().expect("temp dir");
 
         let config = Config {
-            claude_path: "/nonexistent/command".to_string(),
+            claude_path: Some("/nonexistent/command".to_string()),
             ..Default::default()
         };
 
@@ -820,6 +840,7 @@ mod tests {
             false, // basic mode
             false, // no TUI
             PromptMode::Basic,
+            false, // no_dsp
             &config,
             dir.path(),
             token,

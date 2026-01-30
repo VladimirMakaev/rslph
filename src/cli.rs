@@ -26,6 +26,10 @@ pub struct Cli {
     #[arg(long, global = true, value_parser = clap::value_parser!(PromptMode))]
     pub mode: Option<PromptMode>,
 
+    /// Append --dangerously-skip-permissions to all Claude invocations
+    #[arg(long, global = true)]
+    pub no_dsp: bool,
+
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -501,5 +505,18 @@ mod tests {
             }
             _ => panic!("Expected Compare command"),
         }
+    }
+
+    #[test]
+    fn test_parse_no_dsp_flag() {
+        let cli = Cli::try_parse_from(["rslph", "--no-dsp", "plan", "idea.txt"])
+            .expect("Should parse");
+        assert!(cli.no_dsp);
+    }
+
+    #[test]
+    fn test_no_dsp_default_false() {
+        let cli = Cli::try_parse_from(["rslph", "plan", "idea.txt"]).expect("Should parse");
+        assert!(!cli.no_dsp);
     }
 }

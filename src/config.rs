@@ -28,11 +28,49 @@ fn resolve_command_path(command: &str) -> String {
         .unwrap_or_else(|| command.to_string())
 }
 
+/// Claude command configuration with optional arguments
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ClaudeCommand {
+    /// Base command (e.g., "claude" or "/usr/bin/claude")
+    pub command: String,
+    /// Base arguments to always include (e.g., ["--internet"])
+    pub base_args: Vec<String>,
+}
+
+impl Default for ClaudeCommand {
+    fn default() -> Self {
+        Self {
+            command: "claude".to_string(),
+            base_args: vec![],
+        }
+    }
+}
+
+/// Parse a command string into ClaudeCommand.
+/// Splits by whitespace - first element is command, rest are base_args.
+fn parse_claude_cmd(raw: &str) -> ClaudeCommand {
+    let parts: Vec<&str> = raw.split_whitespace().collect();
+    if parts.is_empty() {
+        return ClaudeCommand::default();
+    }
+
+    let command = resolve_command_path(parts[0]);
+    let base_args = parts[1..].iter().map(|s| s.to_string()).collect();
+
+    ClaudeCommand { command, base_args }
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(default, deny_unknown_fields)]
 pub struct Config {
     /// Path to claude CLI executable (CFG-03)
-    pub claude_path: String,
+    /// Deprecated: use claude_cmd instead
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub claude_path: Option<String>,
+
+    /// Claude command configuration (replaces claude_path)
+    #[serde(skip)]
+    pub claude_cmd: ClaudeCommand,
 
     /// Maximum iterations before stopping (CFG-06)
     pub max_iterations: u32,
@@ -80,7 +118,8 @@ impl Default for Config {
             .unwrap_or_else(|| PathBuf::from(".rslph/evals"));
 
         Self {
-            claude_path: "claude".to_string(),
+            claude_path: None, // Deprecated - use claude_cmd
+            claude_cmd: ClaudeCommand::default(),
             max_iterations: 20,
             recent_threads: 5,
             notify_interval: 10,
@@ -122,7 +161,21 @@ impl Config {
         figment = figment.merge(Env::prefixed("RSLPH_").lowercase(true));
 
         let mut config: Config = figment.extract()?;
-        config.claude_path = resolve_command_path(&config.claude_path);
+
+        // Handle RSLPH_CLAUDE_CMD env var (takes precedence over claude_path)
+        if let Ok(claude_cmd_raw) = std::env::var("RSLPH_CLAUDE_CMD") {
+            config.claude_cmd = parse_claude_cmd(&claude_cmd_raw);
+        } else if let Some(ref path) = config.claude_path {
+            // Backward compatibility: if claude_path is set in config, use it
+            config.claude_cmd = ClaudeCommand {
+                command: resolve_command_path(path),
+                base_args: vec![],
+            };
+        } else {
+            // No env var, no config - use default but resolve path
+            config.claude_cmd.command = resolve_command_path(&config.claude_cmd.command);
+        }
+
         Ok(config)
     }
 
@@ -149,7 +202,21 @@ impl Config {
         figment = figment.merge(Serialized::defaults(overrides));
 
         let mut config: Config = figment.extract()?;
-        config.claude_path = resolve_command_path(&config.claude_path);
+
+        // Handle RSLPH_CLAUDE_CMD env var (takes precedence over claude_path)
+        if let Ok(claude_cmd_raw) = std::env::var("RSLPH_CLAUDE_CMD") {
+            config.claude_cmd = parse_claude_cmd(&claude_cmd_raw);
+        } else if let Some(ref path) = config.claude_path {
+            // Backward compatibility: if claude_path is set in config, use it
+            config.claude_cmd = ClaudeCommand {
+                command: resolve_command_path(path),
+                base_args: vec![],
+            };
+        } else {
+            // No env var, no config - use default but resolve path
+            config.claude_cmd.command = resolve_command_path(&config.claude_cmd.command);
+        }
+
         Ok(config)
     }
 }
@@ -196,7 +263,8 @@ mod tests {
     #[test]
     fn test_default_config() {
         let config = Config::default();
-        assert_eq!(config.claude_path, "claude");
+        assert_eq!(config.claude_cmd.command, "claude");
+        assert_eq!(config.claude_cmd.base_args.len(), 0);
         assert_eq!(config.max_iterations, 20);
         assert_eq!(config.recent_threads, 5);
         assert_eq!(config.notify_interval, 10);
@@ -292,5 +360,50 @@ mod tests {
     fn test_default_prompt_mode() {
         let config = Config::default();
         assert_eq!(config.prompt_mode, PromptMode::Basic);
+    }
+
+    #[test]
+    fn test_parse_claude_cmd_simple() {
+        let result = parse_claude_cmd("claude");
+        assert!(result.command.ends_with("claude"));
+        assert_eq!(result.base_args.len(), 0);
+    }
+
+    #[test]
+    fn test_parse_claude_cmd_with_args() {
+        let result = parse_claude_cmd("claude --internet");
+        assert!(result.command.ends_with("claude"));
+        assert_eq!(result.base_args, vec!["--internet"]);
+    }
+
+    #[test]
+    fn test_parse_claude_cmd_multiple_args() {
+        let result = parse_claude_cmd("claude --internet --verbose");
+        assert!(result.command.ends_with("claude"));
+        assert_eq!(result.base_args, vec!["--internet", "--verbose"]);
+    }
+
+    #[test]
+    fn test_parse_claude_cmd_absolute_path() {
+        let result = parse_claude_cmd("/usr/bin/claude --flag");
+        assert_eq!(result.command, "/usr/bin/claude");
+        assert_eq!(result.base_args, vec!["--flag"]);
+    }
+
+    #[test]
+    fn test_parse_claude_cmd_empty() {
+        let result = parse_claude_cmd("");
+        assert!(result.command.ends_with("claude"));
+        assert_eq!(result.base_args.len(), 0);
+    }
+
+    #[test]
+    fn test_claude_cmd_env_override() {
+        let _guard = ENV_MUTEX.lock().unwrap();
+        std::env::set_var("RSLPH_CLAUDE_CMD", "claude --internet");
+        let config = Config::load(None).expect("Should load");
+        assert!(config.claude_cmd.command.ends_with("claude"));
+        assert_eq!(config.claude_cmd.base_args, vec!["--internet"]);
+        std::env::remove_var("RSLPH_CLAUDE_CMD");
     }
 }

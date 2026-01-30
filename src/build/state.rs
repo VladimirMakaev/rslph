@@ -106,6 +106,8 @@ pub struct BuildContext {
     pub once_mode: bool,
     /// Dry run mode (--dry-run flag).
     pub dry_run: bool,
+    /// Append --dangerously-skip-permissions to Claude invocations.
+    pub no_dsp: bool,
     /// Iteration start time for duration tracking.
     pub iteration_start: Option<std::time::Instant>,
     /// VCS for auto-commit after iterations (None if not in a repository).
@@ -127,6 +129,7 @@ pub struct BuildContext {
 
 impl BuildContext {
     /// Create a new build context.
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         progress_path: PathBuf,
         progress: ProgressFile,
@@ -135,6 +138,7 @@ impl BuildContext {
         cancel_token: CancellationToken,
         once_mode: bool,
         dry_run: bool,
+        no_dsp: bool,
     ) -> Self {
         Self::with_tui(
             progress_path,
@@ -144,6 +148,7 @@ impl BuildContext {
             cancel_token,
             once_mode,
             dry_run,
+            no_dsp,
             None,
         )
     }
@@ -158,6 +163,7 @@ impl BuildContext {
         cancel_token: CancellationToken,
         once_mode: bool,
         dry_run: bool,
+        no_dsp: bool,
         tui_tx: Option<mpsc::UnboundedSender<SubprocessEvent>>,
     ) -> Self {
         let max_iterations = config.max_iterations;
@@ -188,6 +194,7 @@ impl BuildContext {
             max_iterations,
             once_mode,
             dry_run,
+            no_dsp,
             iteration_start: None,
             vcs,
             project_name: project_name.clone(),

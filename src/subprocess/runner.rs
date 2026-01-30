@@ -10,6 +10,32 @@ use tokio_util::sync::CancellationToken;
 use super::OutputLine;
 use crate::error::RslphError;
 
+/// Build complete args for Claude invocation.
+///
+/// Combines base_args, optional --dangerously-skip-permissions, and additional_args.
+///
+/// # Arguments
+///
+/// * `base_args` - Base arguments from config (e.g., ["--internet"])
+/// * `additional_args` - Command-specific arguments (e.g., ["-p", "--verbose"])
+/// * `no_dsp` - Whether to append --dangerously-skip-permissions
+///
+/// # Returns
+///
+/// Combined argument vector in order: base_args, dsp (if enabled), additional_args
+pub fn build_claude_args(
+    base_args: &[String],
+    additional_args: &[String],
+    no_dsp: bool,
+) -> Vec<String> {
+    let mut args = base_args.to_vec();
+    if no_dsp {
+        args.push("--dangerously-skip-permissions".to_string());
+    }
+    args.extend_from_slice(additional_args);
+    args
+}
+
 pub struct ClaudeRunner {
     child: Child,
     stdout: Lines<BufReader<ChildStdout>>,
@@ -527,5 +553,40 @@ mod tests {
             let result = kill(Pid::from_raw(pid as i32), Signal::SIGCONT);
             assert!(result.is_err(), "Process should not exist after kill");
         }
+    }
+
+    #[test]
+    fn test_build_args_no_dsp_false() {
+        let base = vec!["--internet".to_string()];
+        let additional = vec!["--verbose".to_string()];
+        let result = build_claude_args(&base, &additional, false);
+        assert_eq!(result, vec!["--internet", "--verbose"]);
+    }
+
+    #[test]
+    fn test_build_args_no_dsp_true() {
+        let base = vec!["--internet".to_string()];
+        let additional = vec!["--verbose".to_string()];
+        let result = build_claude_args(&base, &additional, true);
+        assert_eq!(
+            result,
+            vec!["--internet", "--dangerously-skip-permissions", "--verbose"]
+        );
+    }
+
+    #[test]
+    fn test_build_args_empty_base() {
+        let base = vec![];
+        let additional = vec!["--verbose".to_string()];
+        let result = build_claude_args(&base, &additional, true);
+        assert_eq!(result, vec!["--dangerously-skip-permissions", "--verbose"]);
+    }
+
+    #[test]
+    fn test_build_args_empty_additional() {
+        let base = vec!["--internet".to_string()];
+        let additional = vec![];
+        let result = build_claude_args(&base, &additional, true);
+        assert_eq!(result, vec!["--internet", "--dangerously-skip-permissions"]);
     }
 }

@@ -11,7 +11,7 @@ use crate::error::RslphError;
 use crate::progress::ProgressFile;
 use crate::prompts::get_build_prompt_for_mode;
 use crate::subprocess::{
-    format_tool_summary, ClaudeRunner, OutputLine, StreamEvent, StreamResponse,
+    build_claude_args, format_tool_summary, ClaudeRunner, OutputLine, StreamEvent, StreamResponse,
 };
 use crate::tui::SubprocessEvent;
 
@@ -148,7 +148,10 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
         ctx.current_iteration
     ));
 
-    let runner_result = ClaudeRunner::spawn(&ctx.config.claude_path, &args, working_dir).await;
+    // Build combined args: base_args + dsp (if enabled) + command args
+    let combined_args = build_claude_args(&ctx.config.claude_cmd.base_args, &args, ctx.no_dsp);
+
+    let runner_result = ClaudeRunner::spawn(&ctx.config.claude_cmd.command, &combined_args, working_dir).await;
 
     let mut runner = match runner_result {
         Ok(r) => r,
@@ -165,8 +168,8 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
             ctx.progress.write(&ctx.progress_path)?;
             let path_env = std::env::var("PATH").unwrap_or_else(|_| "(not set)".to_string());
             return Err(RslphError::Subprocess(format!(
-                "Failed to spawn '{}': {}. Ensure claude is in PATH or set claude_path to absolute path in config. PATH: {}",
-                ctx.config.claude_path, e, path_env
+                "Failed to spawn '{}': {}. Ensure claude is in PATH or set RSLPH_CLAUDE_CMD environment variable. PATH: {}",
+                ctx.config.claude_cmd.command, e, path_env
             )));
         }
     };
@@ -419,6 +422,7 @@ mod tests {
             token,
             false,
             false,
+            false,
         );
         ctx.current_iteration = 1;
 
@@ -459,6 +463,7 @@ mod tests {
             config,
             PromptMode::Basic,
             token,
+            false,
             false,
             false,
         );

@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 Phase: 14 - TUI Visual Parity
 Plan: 6 of 6 complete
 Status: Complete
-Last activity: 2026-01-23 - Completed 14-06 integration of visual parity components
+Last activity: 2026-01-30 - Completed quick task 001: Add comprehensive README with installation and usage guide
 
 Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2
 
@@ -200,6 +200,12 @@ None currently.
 ### Blockers/Concerns
 
 None.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 001 | Add comprehensive README with installation and usage guide | 2026-01-30 | ecae3ba | [001-add-comprehensive-readme-with-installati](./quick/001-add-comprehensive-readme-with-installati/) |
 
 ## Session Continuity
 

@@ -87,9 +87,7 @@ async fn run_basic_planning(
     );
 
     // Step 4: Build Claude CLI args for headless mode
-    // TODO: Remove --internet flag once we fix the underlying issue with Claude CLI hanging without it
     let args = vec![
-        "--internet".to_string(), // WORKAROUND: Required to prevent Claude CLI from hanging
         "-p".to_string(),         // Print mode (headless)
         "--verbose".to_string(),  // Required for stream-json with -p
         "--output-format".to_string(), // Output format
@@ -215,7 +213,6 @@ async fn run_tui_planning(
 
     // Step 4: Build Claude CLI args for streaming mode
     let args = vec![
-        "--internet".to_string(),
         "-p".to_string(),
         "--verbose".to_string(),
         "--output-format".to_string(),
@@ -488,9 +485,7 @@ pub async fn run_adaptive_planning(
     );
 
     // Build Claude CLI args for headless mode
-    // TODO: Remove --internet flag once we fix the underlying issue with Claude CLI hanging without it
     let args = vec![
-        "--internet".to_string(), // WORKAROUND: Required to prevent Claude CLI from hanging
         "-p".to_string(),
         "--verbose".to_string(), // Required for stream-json with -p
         "--output-format".to_string(),
@@ -570,9 +565,7 @@ async fn run_claude_headless(
     cancel_token: CancellationToken,
     timeout: Duration,
 ) -> color_eyre::Result<String> {
-    // TODO: Remove --internet flag once we fix the underlying issue with Claude CLI hanging without it
     let args = vec![
-        "--internet".to_string(), // WORKAROUND: Required to prevent Claude CLI from hanging
         "-p".to_string(),
         "--verbose".to_string(), // Required for stream-json with -p
         "--output-format".to_string(),

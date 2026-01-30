@@ -125,9 +125,7 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
     );
 
     // Step 4: Build Claude CLI args for headless mode
-    // TODO: Remove --internet flag once we fix the underlying issue with Claude CLI hanging without it
     let args = vec![
-        "--internet".to_string(), // WORKAROUND: Required to prevent Claude CLI from hanging
         "-p".to_string(),         // Print mode (headless)
         "--verbose".to_string(),  // Required for stream-json with -p
         "--output-format".to_string(),

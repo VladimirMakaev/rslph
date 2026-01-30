@@ -1358,7 +1358,6 @@ async fn discover_run_script(
     // Prepare Claude args
     let system_prompt = test_discovery_prompt();
     let args = vec![
-        "--internet".to_string(),
         "-p".to_string(),
         "--verbose".to_string(),
         "--output-format".to_string(),

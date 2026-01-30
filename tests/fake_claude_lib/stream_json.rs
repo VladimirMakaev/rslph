@@ -270,7 +270,11 @@ impl StreamEventOutput {
     }
 
     /// Create a tool_use assistant event with custom token usage.
-    pub fn tool_use_with_tokens(name: &str, input: serde_json::Value, tokens: &TokenConfig) -> Self {
+    pub fn tool_use_with_tokens(
+        name: &str,
+        input: serde_json::Value,
+        tokens: &TokenConfig,
+    ) -> Self {
         let id = next_tool_id();
         Self::assistant_with_blocks_and_tokens(
             vec![ContentBlockOutput::tool_use(&id, name, input)],
@@ -280,7 +284,10 @@ impl StreamEventOutput {
     }
 
     /// Create an assistant event with multiple content blocks.
-    pub fn assistant_with_blocks(blocks: Vec<ContentBlockOutput>, stop_reason: Option<&str>) -> Self {
+    pub fn assistant_with_blocks(
+        blocks: Vec<ContentBlockOutput>,
+        stop_reason: Option<&str>,
+    ) -> Self {
         Self::assistant_with_blocks_and_tokens(blocks, stop_reason, &TokenConfig::default())
     }
 

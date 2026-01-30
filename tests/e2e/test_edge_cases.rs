@@ -26,10 +26,7 @@ fn test_fake_claude_crash_after_events() {
 
     // Should have output the first event before crashing
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        !stdout.is_empty(),
-        "Expected some output before crash"
-    );
+    assert!(!stdout.is_empty(), "Expected some output before crash");
 }
 
 /// Test that fake Claude respects delay between events.

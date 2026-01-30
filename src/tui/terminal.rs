@@ -66,11 +66,7 @@ pub fn init_terminal() -> io::Result<Tui> {
 /// Returns an error if terminal restoration fails.
 pub fn restore_terminal() -> io::Result<()> {
     disable_raw_mode()?;
-    execute!(
-        io::stderr(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
+    execute!(io::stderr(), LeaveAlternateScreen, DisableMouseCapture)?;
     Ok(())
 }
 

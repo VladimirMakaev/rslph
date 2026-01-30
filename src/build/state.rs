@@ -136,10 +136,20 @@ impl BuildContext {
         once_mode: bool,
         dry_run: bool,
     ) -> Self {
-        Self::with_tui(progress_path, progress, config, mode, cancel_token, once_mode, dry_run, None)
+        Self::with_tui(
+            progress_path,
+            progress,
+            config,
+            mode,
+            cancel_token,
+            once_mode,
+            dry_run,
+            None,
+        )
     }
 
     /// Create a new build context with optional TUI sender.
+    #[allow(clippy::too_many_arguments)]
     pub fn with_tui(
         progress_path: PathBuf,
         progress: ProgressFile,

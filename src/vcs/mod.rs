@@ -79,9 +79,9 @@ pub fn detect_vcs(start_path: &Path) -> Result<Option<VcsDetection>, VcsError> {
     };
 
     // Canonicalize path for consistent detection
-    let canonical = search_path.canonicalize().map_err(|e| {
-        VcsError::Detection(format!("Failed to canonicalize path: {}", e))
-    })?;
+    let canonical = search_path
+        .canonicalize()
+        .map_err(|e| VcsError::Detection(format!("Failed to canonicalize path: {}", e)))?;
 
     // Try Sapling first via `sl root`
     if let Ok(output) = Command::new("sl")

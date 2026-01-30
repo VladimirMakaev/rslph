@@ -40,9 +40,9 @@ fn test_eval_missing_project() {
     let mut cmd = Command::cargo_bin("rslph").expect("binary");
     cmd.args(["eval", "/nonexistent/project/path"]);
 
-    cmd.assert()
-        .failure()
-        .stderr(predicate::str::contains("is neither a built-in project nor a valid path"));
+    cmd.assert().failure().stderr(predicate::str::contains(
+        "is neither a built-in project nor a valid path",
+    ));
 }
 
 #[test]
@@ -113,7 +113,9 @@ fn test_eval_unknown_project_fails() {
     cmd.args(["eval", "nonexistent-project-xyz"])
         .assert()
         .failure()
-        .stderr(predicate::str::contains("neither a built-in project nor a valid path"));
+        .stderr(predicate::str::contains(
+            "neither a built-in project nor a valid path",
+        ));
 }
 
 #[test]
@@ -142,7 +144,9 @@ fn test_eval_help_shows_flags() {
     cmd.args(["eval", "--help"])
         .assert()
         .success()
-        .stdout(predicate::str::contains("Run evaluation in isolated environment"))
+        .stdout(predicate::str::contains(
+            "Run evaluation in isolated environment",
+        ))
         .stdout(predicate::str::contains("--list"))
         .stdout(predicate::str::contains("--keep"));
 }

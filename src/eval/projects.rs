@@ -72,9 +72,7 @@ fn extract_dir_recursive(dir: &Dir<'static>, dest: &Path) -> std::io::Result<()>
 pub fn get_test_data(project: &Dir<'static>) -> Option<&'static str> {
     // File paths in include_dir include the project directory prefix
     let test_path = project.path().join("tests.jsonl");
-    project
-        .get_file(test_path)
-        .and_then(|f| f.contents_utf8())
+    project.get_file(test_path).and_then(|f| f.contents_utf8())
 }
 
 #[cfg(test)]

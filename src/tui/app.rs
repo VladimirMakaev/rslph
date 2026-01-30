@@ -199,6 +199,7 @@ impl MessageRole {
     }
 
     /// Parse from string (for backwards compatibility).
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Self {
         match s {
             "user" => MessageRole::User,
@@ -582,7 +583,8 @@ impl App {
 
     /// Get display items for the currently viewed iteration.
     pub fn display_items_for_viewing(&self) -> Vec<&DisplayItem> {
-        let items: Vec<&DisplayItem> = self.display_items
+        let items: Vec<&DisplayItem> = self
+            .display_items
             .iter()
             .filter(|item| item.iteration() == self.viewing_iteration)
             .collect();
@@ -662,7 +664,8 @@ impl App {
         let limit = self.max_system_expanded;
 
         // Find all system message indices for current iteration (newest first)
-        let system_indices: Vec<usize> = self.messages
+        let system_indices: Vec<usize> = self
+            .messages
             .iter()
             .enumerate()
             .filter(|(_, m)| m.iteration == iteration && matches!(m.role, MessageRole::System))
@@ -729,7 +732,8 @@ impl App {
 
     /// Get the count of display items for the viewing iteration (including current groups).
     fn display_item_count_for_viewing(&self) -> usize {
-        let count = self.display_items
+        let count = self
+            .display_items
             .iter()
             .filter(|item| item.iteration() == self.viewing_iteration)
             .count();
@@ -777,7 +781,8 @@ impl App {
     /// Toggle expand/collapse of the currently selected group.
     pub fn toggle_selected_group(&mut self) {
         if let Some(sel_idx) = self.selected_group {
-            let items_for_iter: Vec<usize> = self.display_items
+            let items_for_iter: Vec<usize> = self
+                .display_items
                 .iter()
                 .enumerate()
                 .filter(|(_, item)| item.iteration() == self.viewing_iteration)
@@ -837,7 +842,11 @@ impl App {
     ///
     /// * `index` - The index of the thinking block in the conversation buffer.
     pub fn toggle_thinking_collapse(&mut self, index: usize) {
-        let current = self.thinking_collapsed.get(&index).copied().unwrap_or(false);
+        let current = self
+            .thinking_collapsed
+            .get(&index)
+            .copied()
+            .unwrap_or(false);
         self.thinking_collapsed.insert(index, !current);
     }
 
@@ -851,7 +860,10 @@ impl App {
     ///
     /// `true` if the thinking block is collapsed, `false` otherwise.
     pub fn is_thinking_collapsed(&self, index: usize) -> bool {
-        self.thinking_collapsed.get(&index).copied().unwrap_or(false)
+        self.thinking_collapsed
+            .get(&index)
+            .copied()
+            .unwrap_or(false)
     }
 
     /// Toggle collapsed state for all thinking blocks.
@@ -859,8 +871,8 @@ impl App {
     /// If any thinking block is expanded, collapse all. Otherwise, expand all.
     pub fn toggle_all_thinking_collapsed(&mut self) {
         // Check if any thinking block is currently expanded (not in map or false)
-        let any_expanded = self.thinking_collapsed.values().any(|&v| !v)
-            || self.thinking_collapsed.is_empty();
+        let any_expanded =
+            self.thinking_collapsed.values().any(|&v| !v) || self.thinking_collapsed.is_empty();
 
         // If any are expanded, collapse all known ones
         // If all are collapsed, expand all
@@ -1132,7 +1144,10 @@ mod tests {
         let _ = AppEvent::SelectNextMessage;
         let _ = AppEvent::ToggleMessage;
         let _ = AppEvent::ClaudeOutput("test".to_string());
-        let _ = AppEvent::ToolMessage { tool_name: "Read".to_string(), content: "file".to_string() };
+        let _ = AppEvent::ToolMessage {
+            tool_name: "Read".to_string(),
+            content: "file".to_string(),
+        };
         let _ = AppEvent::ContextUsage(0.5);
         let _ = AppEvent::TokenUsage {
             input_tokens: 100,
@@ -1201,8 +1216,10 @@ mod tests {
 
         // Add messages with multiline content
         app.messages.push(Message::new("assistant", "Line 1", 1));
-        app.messages.push(Message::new("assistant", "Line 1\nLine 2\nLine 3", 1));
-        app.messages.push(Message::new("assistant", "Different iteration", 2));
+        app.messages
+            .push(Message::new("assistant", "Line 1\nLine 2\nLine 3", 1));
+        app.messages
+            .push(Message::new("assistant", "Different iteration", 2));
 
         // Iteration 1:
         // - "Line 1" = 1 line + 2 (role + blank) = 3
@@ -1218,7 +1235,8 @@ mod tests {
         app.current_iteration = 1;
 
         // Add a multiline message and collapse it
-        app.messages.push(Message::new("assistant", "Line 1\nLine 2\nLine 3", 1));
+        app.messages
+            .push(Message::new("assistant", "Line 1\nLine 2\nLine 3", 1));
         app.messages[0].collapsed = true;
 
         // Collapsed message shows as 1 line
@@ -1234,7 +1252,8 @@ mod tests {
 
         // Add 5 system messages
         for i in 0..5 {
-            app.messages.push(Message::new("system", format!("Log {}", i), 1));
+            app.messages
+                .push(Message::new("system", format!("Log {}", i), 1));
         }
         app.enforce_system_rolling_limit();
 
@@ -1292,7 +1311,10 @@ mod tests {
         assert_eq!(MessageRole::from_str("user"), MessageRole::User);
         assert_eq!(MessageRole::from_str("assistant"), MessageRole::Assistant);
         assert_eq!(MessageRole::from_str("system"), MessageRole::System);
-        assert_eq!(MessageRole::from_str("tool:Read"), MessageRole::Tool("Read".to_string()));
+        assert_eq!(
+            MessageRole::from_str("tool:Read"),
+            MessageRole::Tool("Read".to_string())
+        );
         assert_eq!(MessageRole::from_str("unknown"), MessageRole::System); // Default
     }
 
@@ -1335,7 +1357,8 @@ mod tests {
         let mut app = App::default();
         // Push some items so we have content to scroll
         for i in 0..30 {
-            app.conversation.push(ConversationItem::Text(format!("Item {}", i)));
+            app.conversation
+                .push(ConversationItem::Text(format!("Item {}", i)));
         }
         app.conversation_scroll = 0;
 
@@ -1385,7 +1408,7 @@ mod tests {
 
         // Set some thinking blocks with different states
         app.thinking_collapsed.insert(0, false); // expanded
-        app.thinking_collapsed.insert(1, true);  // collapsed
+        app.thinking_collapsed.insert(1, true); // collapsed
         app.thinking_collapsed.insert(2, false); // expanded
 
         // Since some are expanded, toggle should collapse all

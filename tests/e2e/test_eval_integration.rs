@@ -131,7 +131,10 @@ fn test_eval_persists_workspace_and_results() {
     assert_eq!(json["project"], "calculator");
     assert!(json["elapsed_secs"].is_number(), "Should have elapsed_secs");
     assert!(json["iterations"].is_number(), "Should have iterations");
-    assert!(json["tokens"]["input"].is_number(), "Should have token metrics");
+    assert!(
+        json["tokens"]["input"].is_number(),
+        "Should have token metrics"
+    );
 
     // Verify workspace name has timestamp format (project-YYYYMMDD-HHMMSS)
     let workspace_name = workspace.file_name().unwrap().to_str().unwrap();
@@ -156,9 +159,7 @@ fn test_eval_dir_config_via_env() {
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     // Verify workspace was created in custom eval_dir
-    let workspace_line = stdout
-        .lines()
-        .find(|line| line.contains("Eval workspace:"));
+    let workspace_line = stdout.lines().find(|line| line.contains("Eval workspace:"));
 
     assert!(
         workspace_line.is_some(),
@@ -279,8 +280,8 @@ fn test_timeout_retry_succeeds() {
 
     let mut cmd = rslph_with_fake_claude(&handle);
     cmd.env("RSLPH_EVAL_DIR", eval_dir.path().to_str().unwrap());
-    cmd.env("RSLPH_ITERATION_TIMEOUT", "2");  // 2 second timeout
-    cmd.env("RSLPH_TIMEOUT_RETRIES", "3");    // Allow up to 3 retries
+    cmd.env("RSLPH_ITERATION_TIMEOUT", "2"); // 2 second timeout
+    cmd.env("RSLPH_TIMEOUT_RETRIES", "3"); // Allow up to 3 retries
     cmd.args(["eval", "calculator", "--no-tui"]);
 
     let output = cmd.output().expect("Failed to run rslph eval");
@@ -343,8 +344,8 @@ fn test_timeout_exhausted_fails() {
 
     let mut cmd = rslph_with_fake_claude(&handle);
     cmd.env("RSLPH_EVAL_DIR", eval_dir.path().to_str().unwrap());
-    cmd.env("RSLPH_ITERATION_TIMEOUT", "2");  // 2 second timeout
-    cmd.env("RSLPH_TIMEOUT_RETRIES", "2");    // Only 2 retries (will be exhausted)
+    cmd.env("RSLPH_ITERATION_TIMEOUT", "2"); // 2 second timeout
+    cmd.env("RSLPH_TIMEOUT_RETRIES", "2"); // Only 2 retries (will be exhausted)
     cmd.args(["eval", "calculator", "--no-tui"]);
 
     let output = cmd.output().expect("Failed to run rslph eval");
@@ -646,7 +647,11 @@ fn test_compare_help() {
 #[test]
 fn test_compare_missing_file() {
     let mut cmd = Command::cargo_bin("rslph").expect("rslph binary should exist");
-    cmd.args(["compare", "/nonexistent/file1.json", "/nonexistent/file2.json"]);
+    cmd.args([
+        "compare",
+        "/nonexistent/file1.json",
+        "/nonexistent/file2.json",
+    ]);
 
     let output = cmd.output().expect("Failed to run rslph compare");
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -659,7 +664,9 @@ fn test_compare_missing_file() {
 
     // Verify error message mentions file issue
     assert!(
-        stderr.contains("Failed to read") || stderr.contains("nonexistent") || stderr.contains("file"),
+        stderr.contains("Failed to read")
+            || stderr.contains("nonexistent")
+            || stderr.contains("file"),
         "Error should mention file issue. stderr:\n{}",
         stderr
     );
@@ -743,11 +750,7 @@ fn test_compare_valid_files() {
     std::fs::write(&file2, json2).expect("write file2");
 
     let mut cmd = Command::cargo_bin("rslph").expect("rslph binary should exist");
-    cmd.args([
-        "compare",
-        file1.to_str().unwrap(),
-        file2.to_str().unwrap(),
-    ]);
+    cmd.args(["compare", file1.to_str().unwrap(), file2.to_str().unwrap()]);
 
     let output = cmd.output().expect("Failed to run rslph compare");
     let stdout = String::from_utf8_lossy(&output.stdout);

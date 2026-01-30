@@ -1,7 +1,7 @@
 //! Prompt loading with config override support.
 
-use crate::config::Config;
 use super::PromptMode;
+use crate::config::Config;
 
 /// Get the planning prompt, using config override if specified.
 ///

@@ -15,9 +15,9 @@ pub use projects::{extract_project_files, get_project, get_test_data, is_builtin
 pub use statistics::{StatSummary, TrialStatistics};
 pub use test_runner::{load_test_cases, TestCase, TestResult, TestResults, TestRunner};
 
-use std::path::PathBuf;
 use crate::build::tokens::TokenUsage;
 use crate::prompts::PromptMode;
+use std::path::PathBuf;
 
 /// Result of an eval run (EVAL-04, EVAL-05).
 #[derive(Debug, Clone)]

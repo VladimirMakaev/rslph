@@ -239,7 +239,7 @@ print(result)
         .next_invocation()
         // Invocation 1: Build phase attempt 1 - delays 5 seconds (will timeout with 2s timeout)
         .with_initial_delay_ms(5000)
-        .respond_with_text(progress)  // Returns same progress since it times out
+        .respond_with_text(progress) // Returns same progress since it times out
         .next_invocation()
         // Invocation 2: Build phase attempt 2 (retry) - quick response with RALPH_DONE
         .uses_write("main.py", python_calculator)
@@ -323,7 +323,10 @@ mod tests {
         // Verify phase structure
         assert_eq!(pf.tasks.len(), 1, "Should have 1 phase");
         assert_eq!(pf.tasks[0].name, "Phase 1: Implementation");
-        assert_eq!(pf.tasks[0].tasks[0].description, "Create calculator program");
+        assert_eq!(
+            pf.tasks[0].tasks[0].description,
+            "Create calculator program"
+        );
     }
 
     #[test]
@@ -333,7 +336,10 @@ mod tests {
             .expect("Calculator done progress should parse");
 
         assert_eq!(pf.name, "Calculator");
-        assert!(pf.status.contains("RALPH_DONE"), "Status should contain RALPH_DONE");
+        assert!(
+            pf.status.contains("RALPH_DONE"),
+            "Status should contain RALPH_DONE"
+        );
         assert!(pf.is_done(), "Should be detected as done");
         assert_eq!(pf.total_tasks(), 1, "Should have 1 task");
         assert_eq!(pf.completed_tasks(), 1, "Task should be completed");
@@ -342,8 +348,8 @@ mod tests {
     #[test]
     fn test_python_calculator_logic() {
         // Verify the calculator code handles integer division
-        use std::process::{Command, Stdio};
         use std::io::Write;
+        use std::process::{Command, Stdio};
 
         let mut child = Command::new("python3")
             .arg("-c")

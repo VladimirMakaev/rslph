@@ -66,14 +66,22 @@ mod tests {
     fn test_format_tokens_thousands() {
         // Should abbreviate with k suffix
         let result = format_tokens(5200);
-        assert!(result.contains("5.2") || result.contains("5,2"), "Expected 5.2k-like in {}", result);
+        assert!(
+            result.contains("5.2") || result.contains("5,2"),
+            "Expected 5.2k-like in {}",
+            result
+        );
     }
 
     #[test]
     fn test_format_tokens_millions() {
         // Should abbreviate with M suffix
         let result = format_tokens(1_234_567);
-        assert!(result.contains("1.2") || result.contains("1."), "Expected 1.2M-like in {}", result);
+        assert!(
+            result.contains("1.2") || result.contains("1."),
+            "Expected 1.2M-like in {}",
+            result
+        );
     }
 
     #[test]

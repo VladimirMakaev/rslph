@@ -348,13 +348,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_process_id_available() {
-        let mut runner = ClaudeRunner::spawn(
-            "/bin/sleep",
-            &["0.1".to_string()],
-            &PathBuf::from("/tmp"),
-        )
-        .await
-        .expect("spawn should succeed");
+        let mut runner =
+            ClaudeRunner::spawn("/bin/sleep", &["0.1".to_string()], &PathBuf::from("/tmp"))
+                .await
+                .expect("spawn should succeed");
 
         // Process ID should be available
         assert!(runner.id().is_some());
@@ -367,25 +364,17 @@ mod tests {
 
     #[tokio::test]
     async fn test_nonexistent_command_fails() {
-        let result = ClaudeRunner::spawn(
-            "/nonexistent/command",
-            &[],
-            &PathBuf::from("/tmp"),
-        )
-        .await;
+        let result = ClaudeRunner::spawn("/nonexistent/command", &[], &PathBuf::from("/tmp")).await;
 
         assert!(result.is_err());
     }
 
     #[tokio::test]
     async fn test_terminate_gracefully_on_sleeping_process() {
-        let mut runner = ClaudeRunner::spawn(
-            "/bin/sleep",
-            &["60".to_string()],
-            &PathBuf::from("/tmp"),
-        )
-        .await
-        .expect("spawn should succeed");
+        let mut runner =
+            ClaudeRunner::spawn("/bin/sleep", &["60".to_string()], &PathBuf::from("/tmp"))
+                .await
+                .expect("spawn should succeed");
 
         let pid = runner.id().expect("should have PID");
 
@@ -420,13 +409,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_run_with_timeout_expires() {
-        let mut runner = ClaudeRunner::spawn(
-            "/bin/sleep",
-            &["60".to_string()],
-            &PathBuf::from("/tmp"),
-        )
-        .await
-        .expect("spawn should succeed");
+        let mut runner =
+            ClaudeRunner::spawn("/bin/sleep", &["60".to_string()], &PathBuf::from("/tmp"))
+                .await
+                .expect("spawn should succeed");
 
         let token = CancellationToken::new();
         let result = runner
@@ -438,13 +424,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_run_with_timeout_completes_before_timeout() {
-        let mut runner = ClaudeRunner::spawn(
-            "/bin/echo",
-            &["test".to_string()],
-            &PathBuf::from("/tmp"),
-        )
-        .await
-        .expect("spawn should succeed");
+        let mut runner =
+            ClaudeRunner::spawn("/bin/echo", &["test".to_string()], &PathBuf::from("/tmp"))
+                .await
+                .expect("spawn should succeed");
 
         let token = CancellationToken::new();
         let result = runner
@@ -459,13 +442,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_cancellation_token_stops_execution() {
-        let mut runner = ClaudeRunner::spawn(
-            "/bin/sleep",
-            &["60".to_string()],
-            &PathBuf::from("/tmp"),
-        )
-        .await
-        .expect("spawn should succeed");
+        let mut runner =
+            ClaudeRunner::spawn("/bin/sleep", &["60".to_string()], &PathBuf::from("/tmp"))
+                .await
+                .expect("spawn should succeed");
 
         let token = CancellationToken::new();
         let token_clone = token.clone();
@@ -519,13 +499,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_kill_immediately_terminates() {
-        let mut runner = ClaudeRunner::spawn(
-            "/bin/sleep",
-            &["60".to_string()],
-            &PathBuf::from("/tmp"),
-        )
-        .await
-        .expect("spawn should succeed");
+        let mut runner =
+            ClaudeRunner::spawn("/bin/sleep", &["60".to_string()], &PathBuf::from("/tmp"))
+                .await
+                .expect("spawn should succeed");
 
         let pid = runner.id().expect("should have PID");
 

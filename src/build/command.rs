@@ -40,6 +40,7 @@ pub type ProgressCallback = Arc<dyn Fn(u32, u32) + Send + Sync>;
 ///
 /// * `Ok(TokenUsage)` - Build completed with token usage
 /// * `Err(e)` - Build failed with error
+#[allow(clippy::too_many_arguments)]
 pub async fn run_build_command(
     progress_path: PathBuf,
     once: bool,
@@ -57,10 +58,7 @@ pub async fn run_build_command(
     let use_tui = config.tui_enabled && !no_tui && !dry_run;
 
     if !use_tui {
-        println!(
-            "Build started: {}",
-            progress_path.display()
-        );
+        println!("Build started: {}", progress_path.display());
         println!(
             "Tasks: {}/{} complete",
             progress.completed_tasks(),
@@ -88,7 +86,14 @@ pub async fn run_build_command(
     // Note: Full subprocess integration requires refactoring iteration.rs to use channels.
     // For now, TUI runs with initial state and headless build runs in parallel.
     if use_tui {
-        return run_build_with_tui(progress_path, ctx.progress.clone(), mode, config, cancel_token).await;
+        return run_build_with_tui(
+            progress_path,
+            ctx.progress.clone(),
+            mode,
+            config,
+            cancel_token,
+        )
+        .await;
     }
 
     // Main iteration loop with state machine
@@ -156,10 +161,7 @@ pub async fn run_build_command(
                 tasks_completed,
             } => {
                 // Log iteration result
-                let duration = ctx
-                    .iteration_start
-                    .map(|s| s.elapsed())
-                    .unwrap_or_default();
+                let duration = ctx.iteration_start.map(|s| s.elapsed()).unwrap_or_default();
                 ctx.log(&format!(
                     "[BUILD] Iteration {} complete: {} task(s) completed in {:.1}s",
                     iteration,
@@ -181,7 +183,10 @@ pub async fn run_build_command(
                         reason: DoneReason::SingleIterationComplete,
                     }
                 } else if iteration >= ctx.max_iterations {
-                    ctx.log(&format!("[BUILD] Max iterations ({}) reached", ctx.max_iterations));
+                    ctx.log(&format!(
+                        "[BUILD] Max iterations ({}) reached",
+                        ctx.max_iterations
+                    ));
                     BuildState::Done {
                         reason: DoneReason::MaxIterationsReached,
                     }
@@ -327,11 +332,7 @@ async fn run_build_with_tui(
     use crate::tui::{run_tui, App, SubprocessEvent};
 
     // Initialize app state from progress
-    let mut app = App::new(
-        config.max_iterations,
-        "Claude",
-        progress.name.clone(),
-    );
+    let mut app = App::new(config.max_iterations, "Claude", progress.name.clone());
     app.current_task = progress.completed_tasks() as u32;
     app.total_tasks = progress.total_tasks() as u32;
     app.log_path = Some(progress_path.clone());
@@ -425,10 +426,7 @@ async fn run_build_with_tui(
                 tasks_completed,
             } => {
                 // Log iteration result
-                let duration = ctx
-                    .iteration_start
-                    .map(|s| s.elapsed())
-                    .unwrap_or_default();
+                let duration = ctx.iteration_start.map(|s| s.elapsed()).unwrap_or_default();
 
                 // Send iteration complete to TUI
                 let _ = tui_tx.send(SubprocessEvent::IterationDone {
@@ -462,7 +460,9 @@ async fn run_build_with_tui(
                     ctx.current_iteration = iteration + 1;
                     ctx.iteration_start = Some(std::time::Instant::now());
 
-                    let _ = tui_tx.send(SubprocessEvent::IterationStart { iteration: iteration + 1 });
+                    let _ = tui_tx.send(SubprocessEvent::IterationStart {
+                        iteration: iteration + 1,
+                    });
                     let _ = tui_tx.send(SubprocessEvent::Log(format!(
                         "--- Iteration {} ---",
                         iteration + 1
@@ -475,18 +475,12 @@ async fn run_build_with_tui(
             }
 
             BuildState::Done { reason } => {
-                let _ = tui_tx.send(SubprocessEvent::Log(format!(
-                    "Build complete: {}",
-                    reason
-                )));
+                let _ = tui_tx.send(SubprocessEvent::Log(format!("Build complete: {}", reason)));
                 break Ok(ctx.total_tokens.clone());
             }
 
             BuildState::Failed { error } => {
-                let _ = tui_tx.send(SubprocessEvent::Log(format!(
-                    "Build failed: {}",
-                    error
-                )));
+                let _ = tui_tx.send(SubprocessEvent::Log(format!("Build failed: {}", error)));
                 break Err(color_eyre::eyre::eyre!("Build failed: {}", error));
             }
         };
@@ -558,13 +552,8 @@ fn log_iteration(
         format!("{} task(s) completed", tasks_completed)
     };
 
-    ctx.progress.log_iteration(
-        iteration,
-        &started,
-        &duration,
-        tasks_completed,
-        &notes,
-    );
+    ctx.progress
+        .log_iteration(iteration, &started, &duration, tasks_completed, &notes);
 
     ctx.progress.write(&ctx.progress_path)?;
 
@@ -738,7 +727,17 @@ mod tests {
             token_clone.cancel();
         });
 
-        let result = run_build_command(progress_path, false, false, true, PromptMode::Basic, &config, token, None).await;
+        let result = run_build_command(
+            progress_path,
+            false,
+            false,
+            true,
+            PromptMode::Basic,
+            &config,
+            token,
+            None,
+        )
+        .await;
 
         // Should complete with user cancelled status
         assert!(result.is_ok(), "Should handle cancellation: {:?}", result);
@@ -847,9 +846,9 @@ mod tests {
         // When both once and dry_run are true, dry_run takes precedence
         let result = run_build_command(
             progress_path,
-            true,  // once mode
-            true,  // dry_run
-            true,  // no_tui
+            true, // once mode
+            true, // dry_run
+            true, // no_tui
             PromptMode::Basic,
             &config,
             token,
@@ -901,8 +900,8 @@ mod tests {
             config,
             PromptMode::Basic,
             token,
-            true,  // once_mode
-            true,  // dry_run
+            true, // once_mode
+            true, // dry_run
         );
 
         // Verify dry run function succeeds
@@ -1001,7 +1000,7 @@ mod tests {
             config,
             PromptMode::Basic,
             token,
-            true,  // once_mode - this is what we're testing
+            true, // once_mode - this is what we're testing
             false,
         );
 
@@ -1293,9 +1292,9 @@ mod tests {
 
         let result = run_build_command(
             progress_path.clone(),
-            true,  // once mode to limit execution
+            true, // once mode to limit execution
             false,
-            true,  // no_tui
+            true, // no_tui
             PromptMode::Basic,
             &config,
             token,

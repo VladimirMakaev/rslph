@@ -34,9 +34,7 @@ fn test_fake_claude_outputs_text() {
 /// Verify tool calls output correct stream-json format.
 #[test]
 fn test_fake_claude_tool_call_format() {
-    let handle = ScenarioBuilder::new()
-        .uses_read("/test/file.txt")
-        .build();
+    let handle = ScenarioBuilder::new().uses_read("/test/file.txt").build();
 
     let output = std::process::Command::new(&handle.executable_path)
         .env("FAKE_CLAUDE_CONFIG", &handle.config_path)

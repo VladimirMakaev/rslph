@@ -65,7 +65,13 @@ pub fn assess_vagueness(input: &str) -> VaguenessScore {
     let action_verbs = ["must", "should", "requires", "needs to"];
     let implementation = ["using", "with", "implement", "add", "create"];
     let technical = [
-        "endpoint", "api", "database", "component", "module", "function", "class",
+        "endpoint",
+        "api",
+        "database",
+        "component",
+        "module",
+        "function",
+        "class",
     ];
 
     let has_action = action_verbs.iter().any(|&m| input_lower.contains(m));
@@ -197,8 +203,9 @@ mod tests {
     #[test]
     fn test_score_clamped() {
         // Very vague input with multiple markers
-        let result =
-            assess_vagueness("maybe something somehow with stuff and things and whatever basically");
+        let result = assess_vagueness(
+            "maybe something somehow with stuff and things and whatever basically",
+        );
         assert!(
             result.score <= 1.0,
             "Score should be clamped to 1.0: {}",

@@ -150,9 +150,7 @@ fn detect_node_stack(dir: &Path) -> DetectedStack {
 }
 
 fn has_dep(pkg: &serde_json::Value, dep_type: &str, name: &str) -> bool {
-    pkg.get(dep_type)
-        .and_then(|deps| deps.get(name))
-        .is_some()
+    pkg.get(dep_type).and_then(|deps| deps.get(name)).is_some()
 }
 
 fn detect_python_stack(dir: &Path) -> DetectedStack {

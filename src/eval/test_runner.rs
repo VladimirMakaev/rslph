@@ -160,9 +160,7 @@ impl TestRunner {
         // Wait for output (with implicit timeout via wait_with_output)
         match child.wait_with_output() {
             Ok(output) => {
-                let actual = String::from_utf8_lossy(&output.stdout)
-                    .trim()
-                    .to_string();
+                let actual = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 let expected = test.expected.trim();
                 TestResult {
                     input: test.input.clone(),
@@ -322,8 +320,8 @@ this is not json
 
     #[test]
     fn test_runner_with_timeout() {
-        let runner = TestRunner::new(PathBuf::from("/bin/cat"))
-            .with_timeout(Duration::from_secs(10));
+        let runner =
+            TestRunner::new(PathBuf::from("/bin/cat")).with_timeout(Duration::from_secs(10));
         assert_eq!(runner.timeout(), Duration::from_secs(10));
     }
 
@@ -404,7 +402,8 @@ echo "$result"
 
         // All 10 tests should pass
         assert_eq!(
-            results.passed, 10,
+            results.passed,
+            10,
             "All calculator tests should pass. Failed cases: {:?}",
             results
                 .cases

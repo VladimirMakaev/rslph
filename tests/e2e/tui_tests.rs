@@ -52,11 +52,9 @@ fn app_with_messages() -> App {
 #[test]
 fn test_initial_render() {
     let mut terminal = test_terminal();
-    let app = App::new(5, "claude-sonnet-4", "test-project");
+    let mut app = App::new(5, "claude-sonnet-4", "test-project");
 
-    terminal
-        .draw(|frame| render(frame, &app, 10))
-        .unwrap();
+    terminal.draw(|frame| render(frame, &mut app, 10)).unwrap();
 
     // TestBackend implements Display - outputs buffer content
     assert_snapshot!(terminal.backend());
@@ -65,11 +63,9 @@ fn test_initial_render() {
 #[test]
 fn test_with_messages() {
     let mut terminal = test_terminal();
-    let app = app_with_messages();
+    let mut app = app_with_messages();
 
-    terminal
-        .draw(|frame| render(frame, &app, 10))
-        .unwrap();
+    terminal.draw(|frame| render(frame, &mut app, 10)).unwrap();
 
     assert_snapshot!(terminal.backend());
 }
@@ -83,9 +79,7 @@ fn test_paused_state() {
     app.update(AppEvent::TogglePause);
     assert!(app.is_paused);
 
-    terminal
-        .draw(|frame| render(frame, &app, 10))
-        .unwrap();
+    terminal.draw(|frame| render(frame, &mut app, 10)).unwrap();
 
     // Snapshot should show PAUSED overlay
     assert_snapshot!(terminal.backend());
@@ -112,9 +106,7 @@ fn test_scroll_navigation() {
     }
 
     // Initial render
-    terminal
-        .draw(|frame| render(frame, &app, 20))
-        .unwrap();
+    terminal.draw(|frame| render(frame, &mut app, 20)).unwrap();
 
     // Scroll down several times
     app.update(AppEvent::ScrollDown);
@@ -122,9 +114,7 @@ fn test_scroll_navigation() {
     app.update(AppEvent::ScrollDown);
 
     // Re-render after scrolling
-    terminal
-        .draw(|frame| render(frame, &app, 20))
-        .unwrap();
+    terminal.draw(|frame| render(frame, &mut app, 20)).unwrap();
 
     // Verify scroll offset changed (exact value depends on content height)
     assert!(app.scroll_offset > 0, "Scroll offset should have increased");
@@ -158,9 +148,7 @@ fn test_iteration_navigation() {
     assert_eq!(app.viewing_iteration, 1);
 
     // Render while viewing iteration 1
-    terminal
-        .draw(|frame| render(frame, &app, 10))
-        .unwrap();
+    terminal.draw(|frame| render(frame, &mut app, 10)).unwrap();
 
     assert_snapshot!(terminal.backend());
 }
@@ -172,7 +160,10 @@ fn test_quit_key() {
 
     app.update(AppEvent::Quit);
 
-    assert!(app.should_quit, "App should_quit should be true after Quit event");
+    assert!(
+        app.should_quit,
+        "App should_quit should be true after Quit event"
+    );
 }
 
 #[test]
@@ -191,18 +182,14 @@ fn test_toggle_pause() {
     assert!(app.is_paused, "App should be paused after first toggle");
 
     // Render paused state
-    terminal
-        .draw(|frame| render(frame, &app, 10))
-        .unwrap();
+    terminal.draw(|frame| render(frame, &mut app, 10)).unwrap();
 
     // Toggle pause off
     app.update(AppEvent::TogglePause);
     assert!(!app.is_paused, "App should be unpaused after second toggle");
 
     // Render unpaused state
-    terminal
-        .draw(|frame| render(frame, &app, 10))
-        .unwrap();
+    terminal.draw(|frame| render(frame, &mut app, 10)).unwrap();
 
     // Snapshot the unpaused state (no overlay)
     assert_snapshot!(terminal.backend());
@@ -215,14 +202,14 @@ fn test_context_usage_display() {
 
     // Start iteration
     app.update(AppEvent::IterationStart { iteration: 1 });
-    app.update(AppEvent::ClaudeOutput("Testing context usage display.".to_string()));
+    app.update(AppEvent::ClaudeOutput(
+        "Testing context usage display.".to_string(),
+    ));
 
     // Set context usage to 75%
     app.update(AppEvent::ContextUsage(0.75));
 
-    terminal
-        .draw(|frame| render(frame, &app, 10))
-        .unwrap();
+    terminal.draw(|frame| render(frame, &mut app, 10)).unwrap();
 
     assert_snapshot!(terminal.backend());
 }
@@ -257,9 +244,7 @@ fn test_status_bar_displays_tokens() {
         cache_read_input_tokens: 1500,
     });
 
-    terminal
-        .draw(|frame| render(frame, &app, 10))
-        .unwrap();
+    terminal.draw(|frame| render(frame, &mut app, 10)).unwrap();
 
     // Snapshot should show token values in abbreviated format
     assert_snapshot!(terminal.backend());
@@ -272,12 +257,10 @@ fn test_status_bar_displays_tokens() {
 #[test]
 fn test_status_bar_zero_tokens() {
     let mut terminal = test_terminal();
-    let app = App::new(10, "claude-opus-4-5", "test-project");
+    let mut app = App::new(10, "claude-opus-4-5", "test-project");
     // Default app has zero tokens
 
-    terminal
-        .draw(|frame| render(frame, &app, 10))
-        .unwrap();
+    terminal.draw(|frame| render(frame, &mut app, 10)).unwrap();
 
     // Snapshot should show zero token values
     assert_snapshot!(terminal.backend());
@@ -302,9 +285,7 @@ fn test_status_bar_large_tokens() {
         cache_read_input_tokens: 789_012,
     });
 
-    terminal
-        .draw(|frame| render(frame, &app, 10))
-        .unwrap();
+    terminal.draw(|frame| render(frame, &mut app, 10)).unwrap();
 
     // Snapshot should show abbreviated values (e.g., 1.2M, 567.9k)
     assert_snapshot!(terminal.backend());
@@ -340,9 +321,7 @@ fn test_token_accumulation_across_iterations() {
         cache_read_input_tokens: 1200,
     });
 
-    terminal
-        .draw(|frame| render(frame, &app, 10))
-        .unwrap();
+    terminal.draw(|frame| render(frame, &mut app, 10)).unwrap();
 
     // Snapshot should show CUMULATIVE values: 3.5k in, 1.8k out
     assert_snapshot!(terminal.backend());
@@ -389,9 +368,7 @@ fn test_eval_build_flow_display() {
         cache_read_input_tokens: 0,
     });
 
-    terminal
-        .draw(|frame| render(frame, &app, 10))
-        .unwrap();
+    terminal.draw(|frame| render(frame, &mut app, 10)).unwrap();
 
     assert_snapshot!(terminal.backend());
 }
@@ -408,7 +385,9 @@ fn test_eval_multi_iteration_display() {
         tool_name: "Write".to_string(),
         content: "main.py\n# First attempt".to_string(),
     });
-    app.update(AppEvent::ClaudeOutput("Created initial calculator.".to_string()));
+    app.update(AppEvent::ClaudeOutput(
+        "Created initial calculator.".to_string(),
+    ));
     app.update(AppEvent::TokenUsage {
         input_tokens: 2000,
         output_tokens: 500,
@@ -441,9 +420,7 @@ fn test_eval_multi_iteration_display() {
     app.current_task = 1;
     app.total_tasks = 1;
 
-    terminal
-        .draw(|frame| render(frame, &app, 10))
-        .unwrap();
+    terminal.draw(|frame| render(frame, &mut app, 10)).unwrap();
 
     // Snapshot should show iteration 2 with cumulative tokens (4.5k in, 1.1k out)
     assert_snapshot!(terminal.backend());

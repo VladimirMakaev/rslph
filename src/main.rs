@@ -16,7 +16,11 @@ async fn main() -> color_eyre::Result<()> {
     let config = cli.load_config()?;
 
     match cli.command {
-        Commands::Plan { plan, adaptive, no_tui } => {
+        Commands::Plan {
+            plan,
+            adaptive,
+            no_tui,
+        } => {
             let working_dir = std::env::current_dir()?;
 
             // Set up Ctrl+C handling
@@ -34,10 +38,24 @@ async fn main() -> color_eyre::Result<()> {
                 println!("Mode: headless (--no-tui)");
             }
 
-            match run_plan_command(&plan, adaptive, !no_tui, config.prompt_mode, &config, &working_dir, cancel_token, timeout).await {
+            match run_plan_command(
+                &plan,
+                adaptive,
+                !no_tui,
+                config.prompt_mode,
+                &config,
+                &working_dir,
+                cancel_token,
+                timeout,
+            )
+            .await
+            {
                 Ok((output_path, _tokens)) => {
                     // Tokens already printed by run_plan_command
-                    println!("Success! Progress file written to: {}", output_path.display());
+                    println!(
+                        "Success! Progress file written to: {}",
+                        output_path.display()
+                    );
                 }
                 Err(e) => {
                     eprintln!("Planning failed: {}", e);
@@ -45,7 +63,12 @@ async fn main() -> color_eyre::Result<()> {
                 }
             }
         }
-        Commands::Build { plan, once, dry_run, no_tui } => {
+        Commands::Build {
+            plan,
+            once,
+            dry_run,
+            no_tui,
+        } => {
             // Set up Ctrl+C handling
             let cancel_token = setup_ctrl_c_handler();
 
@@ -65,7 +88,18 @@ async fn main() -> color_eyre::Result<()> {
                 }
             }
 
-            match run_build_command(plan, once, dry_run, no_tui, config.prompt_mode, &config, cancel_token, None).await {
+            match run_build_command(
+                plan,
+                once,
+                dry_run,
+                no_tui,
+                config.prompt_mode,
+                &config,
+                cancel_token,
+                None,
+            )
+            .await
+            {
                 Ok(_tokens) => {
                     // Tokens already printed by build command
                     if !use_tui {
@@ -78,7 +112,14 @@ async fn main() -> color_eyre::Result<()> {
                 }
             }
         }
-        Commands::Eval { project, trials, modes, keep, no_tui, list } => {
+        Commands::Eval {
+            project,
+            trials,
+            modes,
+            keep,
+            no_tui,
+            list,
+        } => {
             // Handle --list flag
             if list {
                 println!("Available built-in projects:");
@@ -96,7 +137,14 @@ async fn main() -> color_eyre::Result<()> {
 
             println!("Evaluating: {}", project);
             if let Some(ref mode_list) = modes {
-                println!("Modes: {}", mode_list.iter().map(|m| m.to_string()).collect::<Vec<_>>().join(", "));
+                println!(
+                    "Modes: {}",
+                    mode_list
+                        .iter()
+                        .map(|m| m.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                );
             }
             if trials > 1 {
                 println!("Trials per mode: {}", trials);
@@ -108,7 +156,9 @@ async fn main() -> color_eyre::Result<()> {
                 println!("Mode: headless (--no-tui)");
             }
 
-            match run_eval_command(project, trials, modes, keep, no_tui, &config, cancel_token).await {
+            match run_eval_command(project, trials, modes, keep, no_tui, &config, cancel_token)
+                .await
+            {
                 Ok(result) => {
                     if trials == 1 {
                         // Single trial: display same output as before (backward compatible)
@@ -139,7 +189,14 @@ async fn main() -> color_eyre::Result<()> {
                         // Show final summary with last trial info
                         println!("\n=== EVAL COMPLETE ({} trials) ===", trials);
                         println!("Project: {}", result.project);
-                        println!("Last trial workspace: {}", result.workspace_path.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "N/A".to_string()));
+                        println!(
+                            "Last trial workspace: {}",
+                            result
+                                .workspace_path
+                                .as_ref()
+                                .map(|p| p.display().to_string())
+                                .unwrap_or_else(|| "N/A".to_string())
+                        );
                     }
                 }
                 Err(e) => {
@@ -178,15 +235,13 @@ async fn main() -> color_eyre::Result<()> {
                 }
             }
         }
-        Commands::Compare { file1, file2 } => {
-            match run_compare_command(file1, file2) {
-                Ok(()) => {}
-                Err(e) => {
-                    eprintln!("Compare failed: {}", e);
-                    std::process::exit(1);
-                }
+        Commands::Compare { file1, file2 } => match run_compare_command(file1, file2) {
+            Ok(()) => {}
+            Err(e) => {
+                eprintln!("Compare failed: {}", e);
+                std::process::exit(1);
             }
-        }
+        },
     }
 
     Ok(())

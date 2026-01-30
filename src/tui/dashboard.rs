@@ -279,8 +279,8 @@ pub fn render_dashboard(frame: &mut Frame, area: Rect, state: &DashboardState) {
     let mode_count = modes.len();
     if mode_count == 0 {
         // Empty state - nothing to render
-        let msg = Paragraph::new("No trials configured")
-            .style(Style::default().fg(Color::DarkGray));
+        let msg =
+            Paragraph::new("No trials configured").style(Style::default().fg(Color::DarkGray));
         frame.render_widget(msg, area);
         return;
     }
@@ -314,7 +314,11 @@ fn render_header(frame: &mut Frame, area: Rect, state: &DashboardState) {
         .count();
     let total = state.trials.len();
 
-    let status_char = if state.all_complete { "Done" } else { "Running" };
+    let status_char = if state.all_complete {
+        "Done"
+    } else {
+        "Running"
+    };
     let header_text = format!(
         "Parallel Eval [{status_char}] | {completed}/{total} trials | Elapsed: {elapsed:.1}s"
     );
@@ -328,11 +332,8 @@ fn render_header(frame: &mut Frame, area: Rect, state: &DashboardState) {
 /// Render a column for a single mode with all its trials.
 fn render_mode_column(frame: &mut Frame, area: Rect, mode: PromptMode, state: &DashboardState) {
     // Get trials for this mode
-    let mut trials: Vec<&TrialProgress> = state
-        .trials
-        .values()
-        .filter(|t| t.mode == mode)
-        .collect();
+    let mut trials: Vec<&TrialProgress> =
+        state.trials.values().filter(|t| t.mode == mode).collect();
     trials.sort_by_key(|t| t.trial_num);
 
     // Header + trial rows
@@ -386,10 +387,9 @@ fn render_trial_cell(frame: &mut Frame, area: Rect, trial: &TrialProgress) {
     let status_text = match &trial.status {
         TrialStatus::Pending => "Pending...".to_string(),
         TrialStatus::Planning => "Planning...".to_string(),
-        TrialStatus::Building => format!(
-            "Build {}/{}",
-            trial.current_iteration, trial.max_iterations
-        ),
+        TrialStatus::Building => {
+            format!("Build {}/{}", trial.current_iteration, trial.max_iterations)
+        }
         TrialStatus::Testing => "Testing...".to_string(),
         TrialStatus::Complete => format!("Done: {:.0}%", trial.pass_rate.unwrap_or(0.0) * 100.0),
         TrialStatus::Failed => "FAILED".to_string(),

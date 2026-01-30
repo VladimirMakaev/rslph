@@ -38,6 +38,7 @@ use crate::tui::plan_tui::run_plan_tui;
 /// # Returns
 ///
 /// Tuple of (path to generated progress file, token usage).
+#[allow(clippy::too_many_arguments)]
 pub async fn run_plan_command(
     input: &str,
     adaptive: bool,
@@ -55,7 +56,8 @@ pub async fn run_plan_command(
 
     // If adaptive mode, run the adaptive planning flow
     if adaptive {
-        return run_adaptive_planning(input, mode, config, working_dir, cancel_token, timeout).await;
+        return run_adaptive_planning(input, mode, config, working_dir, cancel_token, timeout)
+            .await;
     }
 
     // Basic mode: direct planning without clarification
@@ -87,17 +89,21 @@ async fn run_basic_planning(
     // Step 4: Build Claude CLI args for headless mode
     // TODO: Remove --internet flag once we fix the underlying issue with Claude CLI hanging without it
     let args = vec![
-        "--internet".to_string(),      // WORKAROUND: Required to prevent Claude CLI from hanging
-        "-p".to_string(),              // Print mode (headless)
-        "--verbose".to_string(),       // Required for stream-json with -p
+        "--internet".to_string(), // WORKAROUND: Required to prevent Claude CLI from hanging
+        "-p".to_string(),         // Print mode (headless)
+        "--verbose".to_string(),  // Required for stream-json with -p
         "--output-format".to_string(), // Output format
-        "stream-json".to_string(),     // JSONL for structured parsing
+        "stream-json".to_string(), // JSONL for structured parsing
         "--system-prompt".to_string(), // Custom system prompt
         system_prompt,
         full_input, // User input as positional arg
     ];
 
-    eprintln!("[TRACE] Spawning: {} {:?}", config.claude_path, args.iter().take(4).collect::<Vec<_>>());
+    eprintln!(
+        "[TRACE] Spawning: {} {:?}",
+        config.claude_path,
+        args.iter().take(4).collect::<Vec<_>>()
+    );
 
     // Step 5: Spawn Claude
     let mut runner = ClaudeRunner::spawn(&config.claude_path, &args, working_dir)
@@ -118,7 +124,10 @@ async fn run_basic_planning(
     }
     let response_text = stream_response.text;
 
-    eprintln!("[TRACE] Claude output length: {} chars", response_text.len());
+    eprintln!(
+        "[TRACE] Claude output length: {} chars",
+        response_text.len()
+    );
     if let Some(model) = &stream_response.model {
         eprintln!("[TRACE] Model: {}", model);
     }
@@ -365,7 +374,8 @@ async fn run_with_tracing(
         Ok(result) => result,
         Err(_elapsed) => {
             eprintln!("[TRACE] Timeout after {:?}", max_duration);
-            runner.terminate_gracefully(Duration::from_secs(5))
+            runner
+                .terminate_gracefully(Duration::from_secs(5))
                 .await
                 .map_err(|e| RslphError::Subprocess(e.to_string()))?;
             Err(RslphError::Timeout(max_duration.as_secs()))
@@ -395,10 +405,7 @@ pub async fn run_adaptive_planning(
 
     // Step 2: Assess vagueness
     let vagueness = assess_vagueness(input);
-    println!(
-        "\nVagueness score: {:.2} (threshold: 0.5)",
-        vagueness.score
-    );
+    println!("\nVagueness score: {:.2} (threshold: 0.5)", vagueness.score);
     if !vagueness.reasons.is_empty() {
         println!("Reasons: {}", vagueness.reasons.join(", "));
     }
@@ -483,11 +490,11 @@ pub async fn run_adaptive_planning(
     // Build Claude CLI args for headless mode
     // TODO: Remove --internet flag once we fix the underlying issue with Claude CLI hanging without it
     let args = vec![
-        "--internet".to_string(),      // WORKAROUND: Required to prevent Claude CLI from hanging
+        "--internet".to_string(), // WORKAROUND: Required to prevent Claude CLI from hanging
         "-p".to_string(),
-        "--verbose".to_string(),       // Required for stream-json with -p
+        "--verbose".to_string(), // Required for stream-json with -p
         "--output-format".to_string(),
-        "stream-json".to_string(),     // JSONL for structured parsing
+        "stream-json".to_string(), // JSONL for structured parsing
         "--system-prompt".to_string(),
         plan_prompt,
         final_input,
@@ -499,7 +506,9 @@ pub async fn run_adaptive_planning(
         .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
 
     // Run with timeout and collect output
-    let output = runner.run_with_timeout(timeout, cancel_token.clone()).await?;
+    let output = runner
+        .run_with_timeout(timeout, cancel_token.clone())
+        .await?;
 
     // Parse JSONL output using StreamResponse
     let mut stream_response = StreamResponse::new();
@@ -563,11 +572,11 @@ async fn run_claude_headless(
 ) -> color_eyre::Result<String> {
     // TODO: Remove --internet flag once we fix the underlying issue with Claude CLI hanging without it
     let args = vec![
-        "--internet".to_string(),      // WORKAROUND: Required to prevent Claude CLI from hanging
+        "--internet".to_string(), // WORKAROUND: Required to prevent Claude CLI from hanging
         "-p".to_string(),
-        "--verbose".to_string(),       // Required for stream-json with -p
+        "--verbose".to_string(), // Required for stream-json with -p
         "--output-format".to_string(),
-        "stream-json".to_string(),     // JSONL for structured parsing
+        "stream-json".to_string(), // JSONL for structured parsing
         "--system-prompt".to_string(),
         system_prompt.to_string(),
         user_input.to_string(),

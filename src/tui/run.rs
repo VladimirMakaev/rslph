@@ -90,10 +90,7 @@ pub async fn run_tui(
 ///
 /// * `app` - Initial app state
 /// * `recent_count` - Number of recent messages to display
-pub async fn run_tui_blocking(
-    mut app: App,
-    recent_count: usize,
-) -> Result<(), RslphError> {
+pub async fn run_tui_blocking(mut app: App, recent_count: usize) -> Result<(), RslphError> {
     let mut terminal = init_terminal()
         .map_err(|e| RslphError::Subprocess(format!("Terminal init failed: {}", e)))?;
 

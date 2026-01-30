@@ -84,7 +84,16 @@ pub async fn run_eval_command(
         if trials > 1 {
             println!("\n=== TRIAL {}/{} ===\n", trial_num, trials);
         }
-        let result = run_single_trial(&project, trial_num, mode, no_tui, config, cancel_token.clone(), None).await?;
+        let result = run_single_trial(
+            &project,
+            trial_num,
+            mode,
+            no_tui,
+            config,
+            cancel_token.clone(),
+            None,
+        )
+        .await?;
         trial_results.push(result);
     }
 
@@ -94,13 +103,16 @@ pub async fn run_eval_command(
         print_statistics(&statistics, trials);
 
         // Save multi-trial results to JSON file (EVAL-08)
-        let result_path = save_multi_trial_result(&config.eval_dir, &project, &trial_results, &statistics)?;
+        let result_path =
+            save_multi_trial_result(&config.eval_dir, &project, &trial_results, &statistics)?;
         println!("\nResults saved to: {}", result_path.display());
     }
 
     // Return the last trial result (for backward compatibility with single-trial case)
     // The caller can access all results through the statistics if needed
-    trial_results.pop().ok_or_else(|| eyre!("No trials completed"))
+    trial_results
+        .pop()
+        .ok_or_else(|| eyre!("No trials completed"))
 }
 
 /// Run evals across multiple modes in parallel.
@@ -129,8 +141,8 @@ async fn run_parallel_eval_mode(
     config: &Config,
     cancel_token: CancellationToken,
 ) -> color_eyre::Result<EvalResult> {
-    use tokio::sync::mpsc;
     use std::collections::HashMap;
+    use tokio::sync::mpsc;
 
     if no_tui {
         println!(
@@ -150,7 +162,9 @@ async fn run_parallel_eval_mode(
         let modes_clone = modes.to_vec();
         let cancel_clone = cancel_token.clone();
         Some(tokio::spawn(async move {
-            if let Err(e) = run_dashboard_tui(modes_clone, trials_per_mode, event_rx, cancel_clone).await {
+            if let Err(e) =
+                run_dashboard_tui(modes_clone, trials_per_mode, event_rx, cancel_clone).await
+            {
                 eprintln!("Dashboard error: {}", e);
             }
         }))
@@ -161,12 +175,18 @@ async fn run_parallel_eval_mode(
             while let Some(event) = event_rx.recv().await {
                 match &event.event {
                     super::parallel::TrialEventKind::Started => {
-                        println!("[{}/{}] {} - Started", event.mode, event.trial_num, event.mode);
+                        println!(
+                            "[{}/{}] {} - Started",
+                            event.mode, event.trial_num, event.mode
+                        );
                     }
                     super::parallel::TrialEventKind::Planning => {
                         println!("[{}/{}] Planning...", event.mode, event.trial_num);
                     }
-                    super::parallel::TrialEventKind::Building { iteration, max_iterations } => {
+                    super::parallel::TrialEventKind::Building {
+                        iteration,
+                        max_iterations,
+                    } => {
                         println!(
                             "[{}/{}] Building iteration {}/{}",
                             event.mode, event.trial_num, iteration, max_iterations
@@ -228,10 +248,8 @@ async fn run_parallel_eval_mode(
     println!("\n=== RESULTS BY MODE ===\n");
     for mode in modes {
         if let Some(mode_results) = by_mode.get(mode) {
-            let eval_results: Vec<EvalResult> = mode_results
-                .iter()
-                .map(|r| r.eval_result.clone())
-                .collect();
+            let eval_results: Vec<EvalResult> =
+                mode_results.iter().map(|r| r.eval_result.clone()).collect();
             let statistics = compute_statistics(&eval_results);
 
             println!("--- {} ---", mode);
@@ -243,13 +261,7 @@ async fn run_parallel_eval_mode(
     // Save multi-mode results to JSON
     let all_eval_results: Vec<EvalResult> = results.iter().map(|r| r.eval_result.clone()).collect();
     let _combined_stats = compute_statistics(&all_eval_results);
-    let result_path = save_multi_mode_result(
-        &config.eval_dir,
-        project,
-        modes,
-        &results,
-        &by_mode,
-    )?;
+    let result_path = save_multi_mode_result(&config.eval_dir, project, modes, &results, &by_mode)?;
     println!("Results saved to: {}", result_path.display());
 
     // Return last result for backward compatibility
@@ -362,7 +374,7 @@ async fn run_single_trial(
     project: &str,
     trial_num: u32,
     mode: PromptMode,
-    no_tui: bool,
+    _no_tui: bool,
     config: &Config,
     cancel_token: CancellationToken,
     progress_callback: Option<ProgressCallback>,
@@ -370,7 +382,7 @@ async fn run_single_trial(
     let start = Instant::now();
 
     // Step 1: Resolve project - check if built-in or external path
-    let (is_builtin_project, project_source) = if crate::eval::is_builtin(&project) {
+    let (is_builtin_project, project_source) = if crate::eval::is_builtin(project) {
         (true, None)
     } else {
         let path = PathBuf::from(&project);
@@ -408,7 +420,7 @@ async fn run_single_trial(
 
     // Step 3: Copy/extract project files to temp directory
     if is_builtin_project {
-        let proj = crate::eval::get_project(&project)
+        let proj = crate::eval::get_project(project)
             .ok_or_else(|| eyre!("Built-in project not found: {}", project))?;
         crate::eval::extract_project_files(proj, &working_dir)?;
         println!("Extracted built-in project: {}", project);
@@ -451,9 +463,9 @@ async fn run_single_trial(
     println!("\n=== BUILD PHASE ===\n");
     let build_tokens = run_build_command(
         progress_path.clone(),
-        false,          // not once
-        false,          // not dry-run
-        no_tui || true, // force no-tui for eval to get clean output
+        false, // not once
+        false, // not dry-run
+        true,  // force no-tui for eval to get clean output
         mode,
         config,
         cancel_token.clone(),
@@ -487,7 +499,7 @@ async fn run_single_trial(
 
     // Step 10: Execute hidden tests for built-in projects (EVAL-02, EVAL-03)
     let test_results = if is_builtin_project {
-        run_project_tests(&project, &working_dir, config, cancel_token).await
+        run_project_tests(project, &working_dir, config, cancel_token).await
     } else {
         None // External projects don't have hidden tests
     };
@@ -504,7 +516,10 @@ async fn run_single_trial(
         test_results: test_results.clone(),
     };
     save_result_json(&working_dir, &result)?;
-    println!("\nResults saved to: {}", working_dir.join("result.json").display());
+    println!(
+        "\nResults saved to: {}",
+        working_dir.join("result.json").display()
+    );
 
     Ok(result)
 }
@@ -537,7 +552,16 @@ pub async fn run_single_trial_with_mode(
     progress_callback: Option<ProgressCallback>,
 ) -> color_eyre::Result<EvalResult> {
     // Forward to run_single_trial with the mode parameter
-    run_single_trial(project, trial_num, mode, no_tui, config, cancel_token, progress_callback).await
+    run_single_trial(
+        project,
+        trial_num,
+        mode,
+        no_tui,
+        config,
+        cancel_token,
+        progress_callback,
+    )
+    .await
 }
 
 /// Re-run only the test phase on an existing eval workspace.
@@ -567,7 +591,10 @@ pub async fn run_retest_command(
 
     // Verify workspace exists
     if !workspace.exists() {
-        return Err(eyre!("Workspace directory does not exist: {}", workspace.display()));
+        return Err(eyre!(
+            "Workspace directory does not exist: {}",
+            workspace.display()
+        ));
     }
 
     // Load existing result.json to get project name and previous metrics
@@ -731,7 +758,7 @@ struct SerializableStatSummary {
 }
 
 /// Save result.json to workspace directory.
-fn save_result_json(working_dir: &PathBuf, result: &EvalResult) -> color_eyre::Result<()> {
+fn save_result_json(working_dir: &Path, result: &EvalResult) -> color_eyre::Result<()> {
     let serializable = SerializableResult {
         project: result.project.clone(),
         mode: result.mode,
@@ -743,11 +770,14 @@ fn save_result_json(working_dir: &PathBuf, result: &EvalResult) -> color_eyre::R
             cache_creation: result.total_tokens.cache_creation_input_tokens,
             cache_read: result.total_tokens.cache_read_input_tokens,
         },
-        test_results: result.test_results.as_ref().map(|tr| SerializableTestResults {
-            passed: tr.passed,
-            total: tr.total,
-            pass_rate: tr.pass_rate(),
-        }),
+        test_results: result
+            .test_results
+            .as_ref()
+            .map(|tr| SerializableTestResults {
+                passed: tr.passed,
+                total: tr.total,
+                pass_rate: tr.pass_rate(),
+            }),
     };
 
     let json = serde_json::to_string_pretty(&serializable)?;
@@ -916,11 +946,14 @@ fn convert_trial_to_serializable(trial: &EvalResult) -> SerializableTrialSummary
             cache_creation: trial.total_tokens.cache_creation_input_tokens,
             cache_read: trial.total_tokens.cache_read_input_tokens,
         },
-        test_results: trial.test_results.as_ref().map(|tr| SerializableTestResults {
-            passed: tr.passed,
-            total: tr.total,
-            pass_rate: tr.pass_rate(),
-        }),
+        test_results: trial
+            .test_results
+            .as_ref()
+            .map(|tr| SerializableTestResults {
+                passed: tr.passed,
+                total: tr.total,
+                pass_rate: tr.pass_rate(),
+            }),
         workspace_path: trial
             .workspace_path
             .as_ref()
@@ -994,8 +1027,16 @@ pub fn run_compare_command(file1: PathBuf, file2: PathBuf) -> color_eyre::Result
     let result2 = load_multi_trial_result(&file2)?;
 
     println!("Comparing results:");
-    println!("  Baseline:   {} ({} trials)", file1.display(), result1.trial_count);
-    println!("  Comparison: {} ({} trials)", file2.display(), result2.trial_count);
+    println!(
+        "  Baseline:   {} ({} trials)",
+        file1.display(),
+        result1.trial_count
+    );
+    println!(
+        "  Comparison: {} ({} trials)",
+        file2.display(),
+        result2.trial_count
+    );
     println!();
 
     // Print deltas for each metric
@@ -1072,7 +1113,16 @@ fn print_delta(name: &str, baseline: f64, comparison: f64, unit: &str, higher_is
 
     println!(
         "{}: {:.1}{} -> {:.1}{} ({}{:.1}{}, {}{}%)",
-        name, baseline, unit, comparison, unit, arrow, delta.abs(), unit, sign, percent as i64
+        name,
+        baseline,
+        unit,
+        comparison,
+        unit,
+        arrow,
+        delta.abs(),
+        unit,
+        sign,
+        percent as i64
     );
 }
 
@@ -1137,7 +1187,7 @@ fn init_git_repo(working_dir: &PathBuf) -> std::io::Result<()> {
 /// Detect the eval prompt from the project directory.
 ///
 /// Looks for prompt.txt or README.md in the project root.
-fn detect_eval_prompt(working_dir: &PathBuf) -> color_eyre::Result<String> {
+fn detect_eval_prompt(working_dir: &Path) -> color_eyre::Result<String> {
     // Priority 1: prompt.txt
     let prompt_file = working_dir.join("prompt.txt");
     if prompt_file.exists() {
@@ -1168,7 +1218,7 @@ fn detect_eval_prompt(working_dir: &PathBuf) -> color_eyre::Result<String> {
 /// how to run the program, falling back to hardcoded detection.
 async fn run_project_tests(
     project: &str,
-    working_dir: &PathBuf,
+    working_dir: &Path,
     config: &Config,
     cancel_token: CancellationToken,
 ) -> Option<TestResults> {
@@ -1185,8 +1235,7 @@ async fn run_project_tests(
     }
 
     // Try to discover run script using Claude
-    let run_script = match discover_run_script(&config.claude_path, working_dir, cancel_token)
-        .await
+    let run_script = match discover_run_script(&config.claude_path, working_dir, cancel_token).await
     {
         Ok(script_path) => Some(script_path),
         Err(e) => {
@@ -1198,7 +1247,7 @@ async fn run_project_tests(
     // If discovery succeeded, use script-based runner
     if let Some(script_path) = run_script {
         println!("Testing with script: {}", script_path.display());
-        let runner = TestRunner::from_script(script_path, working_dir.clone());
+        let runner = TestRunner::from_script(script_path, working_dir.to_path_buf());
         let results = runner.run_tests(&test_cases);
 
         print_test_results(&results);
@@ -1247,7 +1296,7 @@ fn print_test_results(results: &TestResults) {
 /// Attempt to find a runnable program in the workspace.
 ///
 /// Looks for common patterns: Rust target, Python script, shell script.
-fn find_built_program(working_dir: &PathBuf) -> Option<PathBuf> {
+fn find_built_program(working_dir: &Path) -> Option<PathBuf> {
     // Check for Rust binary in target/debug or target/release
     let cargo_toml = working_dir.join("Cargo.toml");
     if cargo_toml.exists() {
@@ -1413,12 +1462,7 @@ fn build_workspace_context(working_dir: &Path) -> color_eyre::Result<String> {
 
     // Look for main entry point files
     let entry_files = [
-        "main.py",
-        "main.rs",
-        "main.go",
-        "index.js",
-        "index.ts",
-        "main.sh",
+        "main.py", "main.rs", "main.go", "index.js", "index.ts", "main.sh",
     ];
 
     for entry_file in entry_files {
@@ -1448,7 +1492,7 @@ fn build_workspace_context(working_dir: &Path) -> color_eyre::Result<String> {
                 if let Ok(sub_entries) = std::fs::read_dir(&path) {
                     for sub in sub_entries.flatten() {
                         let sub_path = sub.path();
-                        if sub_path.extension().map_or(false, |e| e == "py") {
+                        if sub_path.extension().is_some_and(|e| e == "py") {
                             if let Ok(content) = std::fs::read_to_string(&sub_path) {
                                 if content.contains("if __name__") || content.contains("def main") {
                                     let truncated: String =
@@ -1527,11 +1571,8 @@ mod tests {
         std::fs::write(src_dir.path().join(".git/config"), "git stuff").expect("write git config");
 
         // Copy
-        copy_dir_recursive(
-            &src_dir.path().to_path_buf(),
-            &dst_dir.path().to_path_buf(),
-        )
-        .expect("copy");
+        copy_dir_recursive(&src_dir.path().to_path_buf(), &dst_dir.path().to_path_buf())
+            .expect("copy");
 
         // Verify
         assert!(dst_dir.path().join("file.txt").exists());
@@ -1596,11 +1637,8 @@ mod tests {
         let dst_dir = TempDir::new().expect("dst temp dir");
 
         // Copy empty directory
-        copy_dir_recursive(
-            &src_dir.path().to_path_buf(),
-            &dst_dir.path().to_path_buf(),
-        )
-        .expect("copy");
+        copy_dir_recursive(&src_dir.path().to_path_buf(), &dst_dir.path().to_path_buf())
+            .expect("copy");
 
         // Verify destination exists and is empty
         assert!(dst_dir.path().exists());
@@ -1648,7 +1686,8 @@ version = "0.1.0"
 
         // Create only release binary (no debug)
         std::fs::create_dir_all(dir.path().join("target/release")).expect("create target/release");
-        std::fs::write(dir.path().join("target/release/myrelease"), "binary").expect("write binary");
+        std::fs::write(dir.path().join("target/release/myrelease"), "binary")
+            .expect("write binary");
 
         let result = find_built_program(&dir.path().to_path_buf());
         assert!(result.is_some(), "Should find release binary");
@@ -1678,7 +1717,8 @@ version = "0.1.0"
         let dir = TempDir::new().expect("temp dir");
 
         // Create main.sh
-        std::fs::write(dir.path().join("main.sh"), "#!/bin/bash\necho hello").expect("write main.sh");
+        std::fs::write(dir.path().join("main.sh"), "#!/bin/bash\necho hello")
+            .expect("write main.sh");
 
         let result = find_built_program(&dir.path().to_path_buf());
         assert!(result.is_some(), "Should find shell script");
@@ -2032,23 +2072,21 @@ version = "0.1.0"
         use crate::build::tokens::TokenUsage;
 
         // Trials without test results (external projects)
-        let trials = vec![
-            EvalResult {
-                project: "external".to_string(),
-                mode: PromptMode::Basic,
-                trial_num: 1,
-                elapsed_secs: 10.0,
-                total_tokens: TokenUsage {
-                    input_tokens: 1000,
-                    output_tokens: 500,
-                    cache_creation_input_tokens: 0,
-                    cache_read_input_tokens: 0,
-                },
-                iterations: 3,
-                workspace_path: None,
-                test_results: None, // No test results
+        let trials = vec![EvalResult {
+            project: "external".to_string(),
+            mode: PromptMode::Basic,
+            trial_num: 1,
+            elapsed_secs: 10.0,
+            total_tokens: TokenUsage {
+                input_tokens: 1000,
+                output_tokens: 500,
+                cache_creation_input_tokens: 0,
+                cache_read_input_tokens: 0,
             },
-        ];
+            iterations: 3,
+            workspace_path: None,
+            test_results: None, // No test results
+        }];
 
         let stats = compute_statistics(&trials);
 
@@ -2118,7 +2156,12 @@ version = "0.1.0"
         // Verify file exists
         assert!(result_path.exists(), "JSON file should exist");
         assert!(
-            result_path.file_name().unwrap().to_str().unwrap().starts_with("eval-results-calculator-"),
+            result_path
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .starts_with("eval-results-calculator-"),
             "Filename should match pattern"
         );
         assert!(

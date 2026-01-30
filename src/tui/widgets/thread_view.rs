@@ -80,7 +80,9 @@ fn format_group(group: &MessageGroup, is_selected: bool) -> Vec<Line<'static>> {
             .fg(border_color)
             .add_modifier(Modifier::BOLD | Modifier::REVERSED)
     } else {
-        Style::default().fg(border_color).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(border_color)
+            .add_modifier(Modifier::BOLD)
     };
 
     // Header line: ┌─ {header} ────
@@ -118,7 +120,9 @@ fn format_group(group: &MessageGroup, is_selected: bool) -> Vec<Line<'static>> {
             Span::styled(format!("{} ", box_chars::VERTICAL), border_style),
             Span::styled(
                 more_text,
-                Style::default().fg(colors::THINKING).add_modifier(Modifier::ITALIC),
+                Style::default()
+                    .fg(colors::THINKING)
+                    .add_modifier(Modifier::ITALIC),
             ),
         ]));
     }
@@ -155,7 +159,9 @@ fn format_system_group(group: &SystemGroup, is_selected: bool) -> Vec<Line<'stat
             .fg(border_color)
             .add_modifier(Modifier::BOLD | Modifier::REVERSED)
     } else {
-        Style::default().fg(border_color).add_modifier(Modifier::BOLD)
+        Style::default()
+            .fg(border_color)
+            .add_modifier(Modifier::BOLD)
     };
 
     // Header line: ┌─ System (Iteration N) ────
@@ -194,7 +200,9 @@ fn format_system_group(group: &SystemGroup, is_selected: bool) -> Vec<Line<'stat
             Span::styled(format!("{} ", box_chars::VERTICAL), border_style),
             Span::styled(
                 more_text,
-                Style::default().fg(colors::THINKING).add_modifier(Modifier::ITALIC),
+                Style::default()
+                    .fg(colors::THINKING)
+                    .add_modifier(Modifier::ITALIC),
             ),
         ]));
     }
@@ -228,10 +236,7 @@ fn format_system_message(msg: &Message, is_selected: bool) -> Vec<Line<'static>>
     let first_line = msg.content.lines().next().unwrap_or("");
     let text = format!("System: {}", first_line);
 
-    vec![
-        Line::from(vec![Span::styled(text, style)]),
-        Line::from(""),
-    ]
+    vec![Line::from(vec![Span::styled(text, style)]), Line::from("")]
 }
 
 /// Role display name.
@@ -284,10 +289,7 @@ fn format_expanded(msg: &Message, is_selected: bool) -> Vec<Line<'static>> {
     };
 
     // Role header line with collapse indicator
-    let header = Line::from(vec![Span::styled(
-        format!("{}: ", label),
-        header_style,
-    )]);
+    let header = Line::from(vec![Span::styled(format!("{}: ", label), header_style)]);
     lines.push(header);
 
     // Content lines (indented)
@@ -320,7 +322,8 @@ pub fn render_thread(frame: &mut Frame, area: Rect, app: &App, _recent_count: us
     let mut lines: Vec<Line> = Vec::new();
 
     // Collect display items for viewing iteration
-    let items_for_iter: Vec<(usize, &DisplayItem)> = app.display_items
+    let items_for_iter: Vec<(usize, &DisplayItem)> = app
+        .display_items
         .iter()
         .enumerate()
         .filter(|(_, item)| item.iteration() == app.viewing_iteration)
@@ -396,7 +399,10 @@ mod tests {
         assert_eq!(role_label(&MessageRole::User), "You");
         assert_eq!(role_label(&MessageRole::Assistant), "Claude");
         assert_eq!(role_label(&MessageRole::System), "System");
-        assert_eq!(role_label(&MessageRole::Tool("Read".to_string())), "Tool:Read");
+        assert_eq!(
+            role_label(&MessageRole::Tool("Read".to_string())),
+            "Tool:Read"
+        );
     }
 
     #[test]
@@ -439,11 +445,31 @@ mod tests {
     #[test]
     fn test_format_group_collapsed() {
         let mut group = MessageGroup::new(1);
-        group.push(Message::with_role(MessageRole::Tool("Read".to_string()), "file1.rs", 1));
-        group.push(Message::with_role(MessageRole::Tool("Read".to_string()), "file2.rs", 1));
-        group.push(Message::with_role(MessageRole::Tool("Read".to_string()), "file3.rs", 1));
-        group.push(Message::with_role(MessageRole::Tool("Bash".to_string()), "cargo build", 1));
-        group.push(Message::with_role(MessageRole::Tool("Edit".to_string()), "file4.rs", 1));
+        group.push(Message::with_role(
+            MessageRole::Tool("Read".to_string()),
+            "file1.rs",
+            1,
+        ));
+        group.push(Message::with_role(
+            MessageRole::Tool("Read".to_string()),
+            "file2.rs",
+            1,
+        ));
+        group.push(Message::with_role(
+            MessageRole::Tool("Read".to_string()),
+            "file3.rs",
+            1,
+        ));
+        group.push(Message::with_role(
+            MessageRole::Tool("Bash".to_string()),
+            "cargo build",
+            1,
+        ));
+        group.push(Message::with_role(
+            MessageRole::Tool("Edit".to_string()),
+            "file4.rs",
+            1,
+        ));
 
         let lines = format_group(&group, false);
 
@@ -454,11 +480,31 @@ mod tests {
     #[test]
     fn test_format_group_expanded() {
         let mut group = MessageGroup::new(1);
-        group.push(Message::with_role(MessageRole::Tool("Read".to_string()), "file1.rs", 1));
-        group.push(Message::with_role(MessageRole::Tool("Read".to_string()), "file2.rs", 1));
-        group.push(Message::with_role(MessageRole::Tool("Read".to_string()), "file3.rs", 1));
-        group.push(Message::with_role(MessageRole::Tool("Bash".to_string()), "cargo build", 1));
-        group.push(Message::with_role(MessageRole::Tool("Edit".to_string()), "file4.rs", 1));
+        group.push(Message::with_role(
+            MessageRole::Tool("Read".to_string()),
+            "file1.rs",
+            1,
+        ));
+        group.push(Message::with_role(
+            MessageRole::Tool("Read".to_string()),
+            "file2.rs",
+            1,
+        ));
+        group.push(Message::with_role(
+            MessageRole::Tool("Read".to_string()),
+            "file3.rs",
+            1,
+        ));
+        group.push(Message::with_role(
+            MessageRole::Tool("Bash".to_string()),
+            "cargo build",
+            1,
+        ));
+        group.push(Message::with_role(
+            MessageRole::Tool("Edit".to_string()),
+            "file4.rs",
+            1,
+        ));
         group.expanded = true;
 
         let lines = format_group(&group, false);
@@ -470,8 +516,16 @@ mod tests {
     #[test]
     fn test_format_group_small() {
         let mut group = MessageGroup::new(1);
-        group.push(Message::with_role(MessageRole::Tool("Read".to_string()), "file1.rs", 1));
-        group.push(Message::with_role(MessageRole::Tool("Bash".to_string()), "cargo build", 1));
+        group.push(Message::with_role(
+            MessageRole::Tool("Read".to_string()),
+            "file1.rs",
+            1,
+        ));
+        group.push(Message::with_role(
+            MessageRole::Tool("Bash".to_string()),
+            "cargo build",
+            1,
+        ));
 
         let lines = format_group(&group, false);
 

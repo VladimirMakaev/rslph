@@ -37,20 +37,13 @@ pub enum TrialEventKind {
     /// Planning phase is in progress
     Planning,
     /// Building phase with iteration progress
-    Building {
-        iteration: u32,
-        max_iterations: u32,
-    },
+    Building { iteration: u32, max_iterations: u32 },
     /// Testing phase is running
     Testing,
     /// Trial completed successfully
-    Complete {
-        result: Box<TrialResult>,
-    },
+    Complete { result: Box<TrialResult> },
     /// Trial failed with error
-    Failed {
-        error: String,
-    },
+    Failed { error: String },
 }
 
 /// Result of a single trial run.
@@ -83,6 +76,7 @@ pub struct TrialResult {
 /// # Returns
 ///
 /// Vector of TrialResult for all completed trials
+#[allow(clippy::too_many_arguments)]
 pub async fn run_parallel_evals(
     modes: Vec<PromptMode>,
     trials_per_mode: u32,
@@ -151,6 +145,7 @@ pub async fn run_parallel_evals(
 ///
 /// Wraps the existing run_single_trial function and sends TrialEvents
 /// for progress tracking.
+#[allow(clippy::too_many_arguments)]
 async fn run_single_trial_parallel(
     mode: PromptMode,
     trial_num: u32,

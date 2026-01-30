@@ -8,7 +8,20 @@ use strum_macros::{Display, EnumString};
 ///
 /// Each mode represents a coherent pair of plan + build prompts
 /// designed to work together with a specific philosophy.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize, EnumString, Display, ValueEnum)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    Hash,
+    Serialize,
+    Deserialize,
+    EnumString,
+    Display,
+    ValueEnum,
+)]
 #[strum(serialize_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
 #[clap(rename_all = "snake_case")]
@@ -35,9 +48,18 @@ mod tests {
     #[test]
     fn test_parse_from_string() {
         // Use fully-qualified syntax to disambiguate from clap::ValueEnum::from_str
-        assert_eq!(<PromptMode as FromStr>::from_str("basic").unwrap(), PromptMode::Basic);
-        assert_eq!(<PromptMode as FromStr>::from_str("gsd").unwrap(), PromptMode::Gsd);
-        assert_eq!(<PromptMode as FromStr>::from_str("gsd_tdd").unwrap(), PromptMode::GsdTdd);
+        assert_eq!(
+            <PromptMode as FromStr>::from_str("basic").unwrap(),
+            PromptMode::Basic
+        );
+        assert_eq!(
+            <PromptMode as FromStr>::from_str("gsd").unwrap(),
+            PromptMode::Gsd
+        );
+        assert_eq!(
+            <PromptMode as FromStr>::from_str("gsd_tdd").unwrap(),
+            PromptMode::GsdTdd
+        );
     }
 
     #[test]

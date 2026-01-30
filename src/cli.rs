@@ -114,7 +114,11 @@ impl Cli {
     pub fn to_overrides(&self, matches: &clap::ArgMatches) -> PartialConfig {
         PartialConfig {
             claude_path: self.extract_if_explicit(matches, "claude_path", &self.claude_path),
-            max_iterations: self.extract_if_explicit(matches, "max_iterations", &self.max_iterations),
+            max_iterations: self.extract_if_explicit(
+                matches,
+                "max_iterations",
+                &self.max_iterations,
+            ),
             prompt_mode: self.extract_if_explicit(matches, "mode", &self.mode),
             ..Default::default()
         }
@@ -150,7 +154,11 @@ mod tests {
     fn test_parse_plan_command() {
         let cli = Cli::try_parse_from(["rslph", "plan", "my-idea.txt"]).expect("Should parse");
         match cli.command {
-            Commands::Plan { plan, adaptive, no_tui } => {
+            Commands::Plan {
+                plan,
+                adaptive,
+                no_tui,
+            } => {
                 assert_eq!(plan, "my-idea.txt");
                 assert!(!adaptive);
                 assert!(!no_tui);
@@ -198,10 +206,14 @@ mod tests {
 
     #[test]
     fn test_parse_plan_with_adaptive() {
-        let cli = Cli::try_parse_from(["rslph", "plan", "idea.txt", "--adaptive"])
-            .expect("Should parse");
+        let cli =
+            Cli::try_parse_from(["rslph", "plan", "idea.txt", "--adaptive"]).expect("Should parse");
         match cli.command {
-            Commands::Plan { plan, adaptive, no_tui } => {
+            Commands::Plan {
+                plan,
+                adaptive,
+                no_tui,
+            } => {
                 assert_eq!(plan, "idea.txt");
                 assert!(adaptive);
                 assert!(!no_tui);
@@ -215,7 +227,11 @@ mod tests {
         let cli = Cli::try_parse_from(["rslph", "plan", "my-idea.txt", "--no-tui"])
             .expect("Should parse");
         match cli.command {
-            Commands::Plan { plan, adaptive, no_tui } => {
+            Commands::Plan {
+                plan,
+                adaptive,
+                no_tui,
+            } => {
                 assert_eq!(plan, "my-idea.txt");
                 assert!(!adaptive);
                 assert!(no_tui);
@@ -266,14 +282,8 @@ mod tests {
 
     #[test]
     fn test_config_override_flag() {
-        let cli = Cli::try_parse_from([
-            "rslph",
-            "-c",
-            "/custom/config.toml",
-            "plan",
-            "idea.txt",
-        ])
-        .expect("Should parse");
+        let cli = Cli::try_parse_from(["rslph", "-c", "/custom/config.toml", "plan", "idea.txt"])
+            .expect("Should parse");
 
         assert_eq!(cli.config, Some(PathBuf::from("/custom/config.toml")));
     }
@@ -282,7 +292,14 @@ mod tests {
     fn test_parse_eval_command() {
         let cli = Cli::try_parse_from(["rslph", "eval", "calculator"]).expect("Should parse");
         match cli.command {
-            Commands::Eval { project, trials, modes, keep, no_tui, list } => {
+            Commands::Eval {
+                project,
+                trials,
+                modes,
+                keep,
+                no_tui,
+                list,
+            } => {
                 assert_eq!(project, Some("calculator".to_string()));
                 assert_eq!(trials, 1); // default value
                 assert!(modes.is_none());
@@ -296,9 +313,17 @@ mod tests {
 
     #[test]
     fn test_parse_eval_with_trials() {
-        let cli = Cli::try_parse_from(["rslph", "eval", "calculator", "--trials", "5"]).expect("Should parse");
+        let cli = Cli::try_parse_from(["rslph", "eval", "calculator", "--trials", "5"])
+            .expect("Should parse");
         match cli.command {
-            Commands::Eval { project, trials, modes, keep, no_tui, list } => {
+            Commands::Eval {
+                project,
+                trials,
+                modes,
+                keep,
+                no_tui,
+                list,
+            } => {
                 assert_eq!(project, Some("calculator".to_string()));
                 assert_eq!(trials, 5);
                 assert!(modes.is_none());
@@ -312,9 +337,17 @@ mod tests {
 
     #[test]
     fn test_parse_eval_with_keep() {
-        let cli = Cli::try_parse_from(["rslph", "eval", "calculator", "--keep"]).expect("Should parse");
+        let cli =
+            Cli::try_parse_from(["rslph", "eval", "calculator", "--keep"]).expect("Should parse");
         match cli.command {
-            Commands::Eval { project, trials, modes, keep, no_tui, list } => {
+            Commands::Eval {
+                project,
+                trials,
+                modes,
+                keep,
+                no_tui,
+                list,
+            } => {
                 assert_eq!(project, Some("calculator".to_string()));
                 assert_eq!(trials, 1);
                 assert!(modes.is_none());
@@ -330,7 +363,14 @@ mod tests {
     fn test_parse_eval_with_list() {
         let cli = Cli::try_parse_from(["rslph", "eval", "--list"]).expect("Should parse");
         match cli.command {
-            Commands::Eval { project, trials, modes, keep, no_tui, list } => {
+            Commands::Eval {
+                project,
+                trials,
+                modes,
+                keep,
+                no_tui,
+                list,
+            } => {
                 assert!(project.is_none());
                 assert_eq!(trials, 1);
                 assert!(modes.is_none());
@@ -345,10 +385,22 @@ mod tests {
     #[test]
     fn test_parse_eval_with_modes() {
         let cli = Cli::try_parse_from([
-            "rslph", "eval", "calculator", "--modes", "basic,gsd,gsd_tdd"
-        ]).expect("Should parse");
+            "rslph",
+            "eval",
+            "calculator",
+            "--modes",
+            "basic,gsd,gsd_tdd",
+        ])
+        .expect("Should parse");
         match cli.command {
-            Commands::Eval { project, trials, modes, keep, no_tui, list } => {
+            Commands::Eval {
+                project,
+                trials,
+                modes,
+                keep,
+                no_tui,
+                list,
+            } => {
                 assert_eq!(project, Some("calculator".to_string()));
                 assert_eq!(trials, 1);
                 let modes = modes.expect("modes should be present");
@@ -367,10 +419,24 @@ mod tests {
     #[test]
     fn test_parse_eval_with_modes_and_trials() {
         let cli = Cli::try_parse_from([
-            "rslph", "eval", "calculator", "--modes", "basic,gsd", "--trials", "3"
-        ]).expect("Should parse");
+            "rslph",
+            "eval",
+            "calculator",
+            "--modes",
+            "basic,gsd",
+            "--trials",
+            "3",
+        ])
+        .expect("Should parse");
         match cli.command {
-            Commands::Eval { project, trials, modes, keep, no_tui, list } => {
+            Commands::Eval {
+                project,
+                trials,
+                modes,
+                keep,
+                no_tui,
+                list,
+            } => {
                 assert_eq!(project, Some("calculator".to_string()));
                 assert_eq!(trials, 3);
                 let modes = modes.expect("modes should be present");
@@ -387,7 +453,8 @@ mod tests {
 
     #[test]
     fn test_parse_retest_command() {
-        let cli = Cli::try_parse_from(["rslph", "retest", "/path/to/workspace"]).expect("Should parse");
+        let cli =
+            Cli::try_parse_from(["rslph", "retest", "/path/to/workspace"]).expect("Should parse");
         match cli.command {
             Commands::Retest { workspace } => {
                 assert_eq!(workspace, PathBuf::from("/path/to/workspace"));
@@ -398,14 +465,8 @@ mod tests {
 
     #[test]
     fn test_parse_with_mode_flag() {
-        let cli = Cli::try_parse_from([
-            "rslph",
-            "--mode",
-            "gsd_tdd",
-            "plan",
-            "idea.txt",
-        ])
-        .expect("Should parse");
+        let cli = Cli::try_parse_from(["rslph", "--mode", "gsd_tdd", "plan", "idea.txt"])
+            .expect("Should parse");
 
         assert_eq!(cli.mode, Some(PromptMode::GsdTdd));
     }
@@ -418,14 +479,8 @@ mod tests {
             ("gsd", PromptMode::Gsd),
             ("gsd_tdd", PromptMode::GsdTdd),
         ] {
-            let cli = Cli::try_parse_from([
-                "rslph",
-                "--mode",
-                input,
-                "plan",
-                "idea.txt",
-            ])
-            .expect("Should parse");
+            let cli = Cli::try_parse_from(["rslph", "--mode", input, "plan", "idea.txt"])
+                .expect("Should parse");
             assert_eq!(cli.mode, Some(expected));
         }
     }

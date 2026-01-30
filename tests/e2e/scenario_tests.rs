@@ -103,7 +103,15 @@ fn test_invocation_counter() {
     assert_eq!(handle.invocation_count(), 0);
 
     // After simulating what binary does (incrementing counter)
-    std::fs::write(handle.config_path.parent().unwrap().join("fake_claude_counter"), "1").unwrap();
+    std::fs::write(
+        handle
+            .config_path
+            .parent()
+            .unwrap()
+            .join("fake_claude_counter"),
+        "1",
+    )
+    .unwrap();
     assert_eq!(handle.invocation_count(), 1);
 }
 

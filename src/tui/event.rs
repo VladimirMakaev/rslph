@@ -63,9 +63,7 @@ impl From<SubprocessEvent> for AppEvent {
                 cache_creation_input_tokens,
                 cache_read_input_tokens,
             },
-            SubprocessEvent::IterationStart { iteration } => {
-                AppEvent::IterationStart { iteration }
-            }
+            SubprocessEvent::IterationStart { iteration } => AppEvent::IterationStart { iteration },
             SubprocessEvent::IterationDone { tasks_done } => {
                 AppEvent::IterationComplete { tasks_done }
             }
@@ -246,7 +244,7 @@ mod tests {
 
         let tool = SubprocessEvent::ToolUse {
             tool_name: "Read".to_string(),
-            content: "file contents".to_string()
+            content: "file contents".to_string(),
         };
         let app_event: AppEvent = tool.into();
         assert!(matches!(
@@ -278,11 +276,17 @@ mod tests {
 
         let done = SubprocessEvent::IterationDone { tasks_done: 5 };
         let app_event: AppEvent = done.into();
-        assert!(matches!(app_event, AppEvent::IterationComplete { tasks_done: 5 }));
+        assert!(matches!(
+            app_event,
+            AppEvent::IterationComplete { tasks_done: 5 }
+        ));
 
         let start = SubprocessEvent::IterationStart { iteration: 3 };
         let app_event: AppEvent = start.into();
-        assert!(matches!(app_event, AppEvent::IterationStart { iteration: 3 }));
+        assert!(matches!(
+            app_event,
+            AppEvent::IterationStart { iteration: 3 }
+        ));
 
         let log = SubprocessEvent::Log("log message".to_string());
         let app_event: AppEvent = log.into();

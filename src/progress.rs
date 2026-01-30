@@ -77,7 +77,8 @@ impl ProgressFile {
 
     /// Count completed tasks
     pub fn completed_tasks(&self) -> usize {
-        self.tasks.iter()
+        self.tasks
+            .iter()
             .flat_map(|p| &p.tasks)
             .filter(|t| t.completed)
             .count()
@@ -210,7 +211,8 @@ impl ProgressFile {
                         if current_h2 == "Tasks" {
                             current_phase_tasks.push(task);
                         } else if current_h2 == "Completed This Iteration" {
-                            pf.completed_this_iteration.push(task_description.trim().to_string());
+                            pf.completed_this_iteration
+                                .push(task_description.trim().to_string());
                         }
                         task_description.clear();
                     } else if current_h2 == "Recent Attempts" && !list_item_text.is_empty() {
@@ -768,8 +770,14 @@ Unit tests.
 
         assert_eq!(pf.tasks.len(), 1);
         assert_eq!(pf.tasks[0].tasks.len(), 3);
-        assert_eq!(pf.tasks[0].tasks[0].description, "Add `-n` flag for newline suppression");
-        assert_eq!(pf.tasks[0].tasks[1].description, "Write tests for `--help` output");
+        assert_eq!(
+            pf.tasks[0].tasks[0].description,
+            "Add `-n` flag for newline suppression"
+        );
+        assert_eq!(
+            pf.tasks[0].tasks[1].description,
+            "Write tests for `--help` output"
+        );
         assert_eq!(pf.tasks[0].tasks[2].description, "Implement `echo` command");
         assert!(pf.tasks[0].tasks[2].completed);
     }

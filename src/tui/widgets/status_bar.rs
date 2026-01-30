@@ -42,8 +42,7 @@ pub fn render_header(frame: &mut Frame, area: Rect, app: &App) {
 
 /// Render the first line: "rslph" left, "◆ model | HH:MM:SS" right.
 fn render_branding_line(frame: &mut Frame, area: Rect, app: &App) {
-    let [left, right] =
-        Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)]).areas(area);
+    let [left, right] = Layout::horizontal([Constraint::Fill(1), Constraint::Fill(1)]).areas(area);
 
     frame.render_widget(
         Paragraph::new("rslph").style(Style::default().add_modifier(Modifier::BOLD)),

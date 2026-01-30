@@ -32,9 +32,9 @@ use super::widgets::thread_view::render_thread;
 /// * `recent_count` - Number of recent messages to display
 pub fn render(frame: &mut Frame, app: &mut App, recent_count: usize) {
     let [header, body, footer] = Layout::vertical([
-        Constraint::Length(2),  // 2-line header
-        Constraint::Fill(1),    // Main output area
-        Constraint::Length(1),  // Footer with key hints
+        Constraint::Length(2), // 2-line header
+        Constraint::Fill(1),   // Main output area
+        Constraint::Length(1), // Footer with key hints
     ])
     .areas(frame.area());
 
@@ -53,11 +53,9 @@ pub fn render(frame: &mut Frame, app: &mut App, recent_count: usize) {
 
     if app.show_conversation {
         // Split body: conversation on left, main view on right
-        let [conv_area, main_area] = Layout::horizontal([
-            Constraint::Percentage(50),
-            Constraint::Percentage(50),
-        ])
-        .areas(body);
+        let [conv_area, main_area] =
+            Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
+                .areas(body);
 
         render_conversation(
             frame,

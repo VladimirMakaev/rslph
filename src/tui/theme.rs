@@ -162,23 +162,41 @@ mod tests {
 
     #[test]
     fn test_model_tier_indicator_opus() {
-        assert_eq!(symbols::model_tier_indicator("claude-opus-4"), symbols::TIER_HIGH);
-        assert_eq!(symbols::model_tier_indicator("claude-opus-4-5"), symbols::TIER_HIGH);
+        assert_eq!(
+            symbols::model_tier_indicator("claude-opus-4"),
+            symbols::TIER_HIGH
+        );
+        assert_eq!(
+            symbols::model_tier_indicator("claude-opus-4-5"),
+            symbols::TIER_HIGH
+        );
         assert_eq!(symbols::model_tier_indicator("OPUS"), symbols::TIER_HIGH);
     }
 
     #[test]
     fn test_model_tier_indicator_sonnet() {
-        assert_eq!(symbols::model_tier_indicator("claude-sonnet-3"), symbols::TIER_MID);
-        assert_eq!(symbols::model_tier_indicator("claude-sonnet-4"), symbols::TIER_MID);
+        assert_eq!(
+            symbols::model_tier_indicator("claude-sonnet-3"),
+            symbols::TIER_MID
+        );
+        assert_eq!(
+            symbols::model_tier_indicator("claude-sonnet-4"),
+            symbols::TIER_MID
+        );
         assert_eq!(symbols::model_tier_indicator("SONNET"), symbols::TIER_MID);
     }
 
     #[test]
     fn test_model_tier_indicator_haiku_and_unknown() {
-        assert_eq!(symbols::model_tier_indicator("claude-haiku-3"), symbols::TIER_LOW);
+        assert_eq!(
+            symbols::model_tier_indicator("claude-haiku-3"),
+            symbols::TIER_LOW
+        );
         assert_eq!(symbols::model_tier_indicator("haiku"), symbols::TIER_LOW);
-        assert_eq!(symbols::model_tier_indicator("unknown-model"), symbols::TIER_LOW);
+        assert_eq!(
+            symbols::model_tier_indicator("unknown-model"),
+            symbols::TIER_LOW
+        );
         assert_eq!(symbols::model_tier_indicator(""), symbols::TIER_LOW);
     }
 

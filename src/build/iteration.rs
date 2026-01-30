@@ -10,7 +10,9 @@ use tokio::sync::mpsc;
 use crate::error::RslphError;
 use crate::progress::ProgressFile;
 use crate::prompts::get_build_prompt_for_mode;
-use crate::subprocess::{format_tool_summary, ClaudeRunner, OutputLine, StreamEvent, StreamResponse};
+use crate::subprocess::{
+    format_tool_summary, ClaudeRunner, OutputLine, StreamEvent, StreamResponse,
+};
 use crate::tui::SubprocessEvent;
 
 use super::state::{BuildContext, DoneReason, IterationResult};
@@ -105,7 +107,8 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
         return Ok(IterationResult::Done(DoneReason::RalphDoneMarker));
     }
 
-    if ctx.progress.completed_tasks() == ctx.progress.total_tasks() && ctx.progress.total_tasks() > 0
+    if ctx.progress.completed_tasks() == ctx.progress.total_tasks()
+        && ctx.progress.total_tasks() > 0
     {
         return Ok(IterationResult::Done(DoneReason::AllTasksComplete));
     }
@@ -159,7 +162,8 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
                 &format!("Error: {}", e),
                 Some("Check claude_path configuration"),
             );
-            ctx.progress.trim_attempts(ctx.config.recent_threads as usize);
+            ctx.progress
+                .trim_attempts(ctx.config.recent_threads as usize);
             ctx.progress.write(&ctx.progress_path)?;
             let path_env = std::env::var("PATH").unwrap_or_else(|_| "(not set)".to_string());
             return Err(RslphError::Subprocess(format!(
@@ -185,9 +189,8 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
 
         // Spawn the runner with channel
         let cancel_token = ctx.cancel_token.clone();
-        let runner_handle = tokio::spawn(async move {
-            runner.run_with_channel(line_tx, cancel_token).await
-        });
+        let runner_handle =
+            tokio::spawn(async move { runner.run_with_channel(line_tx, cancel_token).await });
 
         // Process lines as they arrive, with timeout
         let tui_tx_clone = tui_tx.clone();
@@ -201,12 +204,13 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
                 }
             }
             Ok::<(), RslphError>(())
-        }).await;
+        })
+        .await;
 
         // Wait for runner to complete
-        let runner_result = runner_handle.await.map_err(|e| {
-            RslphError::Subprocess(format!("Runner task failed: {}", e))
-        })?;
+        let runner_result = runner_handle
+            .await
+            .map_err(|e| RslphError::Subprocess(format!("Runner task failed: {}", e)))?;
 
         // Check for timeout or runner error
         match process_result {
@@ -244,7 +248,8 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
                 &format!("Timeout after {}s", ctx.config.iteration_timeout),
                 Some("Retrying iteration"),
             );
-            ctx.progress.trim_attempts(ctx.config.recent_threads as usize);
+            ctx.progress
+                .trim_attempts(ctx.config.recent_threads as usize);
             ctx.progress.write(&ctx.progress_path)?;
             return Ok(IterationResult::Timeout);
         }
@@ -255,7 +260,8 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
             &format!("Error: {}", e),
             Some("Retry or check subprocess"),
         );
-        ctx.progress.trim_attempts(ctx.config.recent_threads as usize);
+        ctx.progress
+            .trim_attempts(ctx.config.recent_threads as usize);
         ctx.progress.write(&ctx.progress_path)?;
         return Err(e);
     }
@@ -303,7 +309,8 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
                 &format!("Error: {}", e),
                 Some("Check response format"),
             );
-            ctx.progress.trim_attempts(ctx.config.recent_threads as usize);
+            ctx.progress
+                .trim_attempts(ctx.config.recent_threads as usize);
             ctx.progress.write(&ctx.progress_path)?;
             return Err(e);
         }
@@ -351,7 +358,8 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
         return Ok(IterationResult::Done(DoneReason::RalphDoneMarker));
     }
 
-    if ctx.progress.completed_tasks() == ctx.progress.total_tasks() && ctx.progress.total_tasks() > 0
+    if ctx.progress.completed_tasks() == ctx.progress.total_tasks()
+        && ctx.progress.total_tasks() > 0
     {
         return Ok(IterationResult::Done(DoneReason::AllTasksComplete));
     }

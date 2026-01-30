@@ -269,8 +269,16 @@ mod tests {
         // Relative command names should be resolved to absolute path
         let result = resolve_command_path("echo");
         // Should resolve to an absolute path containing "echo"
-        assert!(result.starts_with('/'), "Expected absolute path, got: {}", result);
-        assert!(result.ends_with("echo"), "Expected path ending in echo, got: {}", result);
+        assert!(
+            result.starts_with('/'),
+            "Expected absolute path, got: {}",
+            result
+        );
+        assert!(
+            result.ends_with("echo"),
+            "Expected path ending in echo, got: {}",
+            result
+        );
     }
 
     #[test]

@@ -250,7 +250,8 @@ impl ScenarioBuilder {
         };
 
         // Write config file
-        let config_json = serde_json::to_string_pretty(&config).expect("Failed to serialize config");
+        let config_json =
+            serde_json::to_string_pretty(&config).expect("Failed to serialize config");
         std::fs::write(&config_path, config_json).expect("Failed to write config file");
 
         // Get path to fake_claude binary
@@ -302,8 +303,14 @@ impl FakeClaudeHandle {
     /// - RSLPH_CLAUDE_PATH: Path to fake_claude binary (to override real claude)
     pub fn env_vars(&self) -> Vec<(&'static str, String)> {
         vec![
-            ("FAKE_CLAUDE_CONFIG", self.config_path.to_string_lossy().into_owned()),
-            ("RSLPH_CLAUDE_PATH", self.executable_path.to_string_lossy().into_owned()),
+            (
+                "FAKE_CLAUDE_CONFIG",
+                self.config_path.to_string_lossy().into_owned(),
+            ),
+            (
+                "RSLPH_CLAUDE_PATH",
+                self.executable_path.to_string_lossy().into_owned(),
+            ),
         ]
     }
 }
@@ -316,8 +323,7 @@ fn get_fake_claude_path() -> PathBuf {
     }
 
     // Fallback: construct path from manifest directory
-    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR")
-        .unwrap_or_else(|_| ".".to_string());
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".to_string());
 
     // During tests, binary is in target/debug/deps or target/debug
     let base = PathBuf::from(manifest_dir);
@@ -343,10 +349,7 @@ fn get_fake_claude_path() -> PathBuf {
                 let path = entry.path();
                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                     // Match fake_claude-HASH (executable, not .d or .o files)
-                    if name.starts_with("fake_claude-")
-                        && !name.contains('.')
-                        && path.is_file()
-                    {
+                    if name.starts_with("fake_claude-") && !name.contains('.') && path.is_file() {
                         // Verify it's executable on Unix
                         #[cfg(unix)]
                         {

@@ -181,16 +181,12 @@ fn render_item(
     width: usize,
 ) -> Vec<Line<'static>> {
     match item {
-        ConversationItem::Thinking(text) => {
-            render_thinking_box(text, index, is_collapsed, width)
-        }
+        ConversationItem::Thinking(text) => render_thinking_box(text, index, is_collapsed, width),
         ConversationItem::Text(text) => {
             // Normal white text (no box)
             text.lines().map(|l| Line::from(l.to_string())).collect()
         }
-        ConversationItem::ToolUse { name, summary } => {
-            render_tool_use_box(name, summary, width)
-        }
+        ConversationItem::ToolUse { name, summary } => render_tool_use_box(name, summary, width),
         ConversationItem::ToolResult { name, output } => {
             render_tool_result_box(name, output, width)
         }

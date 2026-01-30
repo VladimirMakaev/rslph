@@ -317,10 +317,14 @@ impl StreamEvent {
             .filter(|block| block.block_type == "tool_use")
             .filter_map(|block| {
                 let name = block.name.clone()?;
-                let input = block.input.as_ref().map(|v| {
-                    // Format the input as compact JSON
-                    serde_json::to_string(v).unwrap_or_else(|_| "{}".to_string())
-                }).unwrap_or_else(|| "{}".to_string());
+                let input = block
+                    .input
+                    .as_ref()
+                    .map(|v| {
+                        // Format the input as compact JSON
+                        serde_json::to_string(v).unwrap_or_else(|_| "{}".to_string())
+                    })
+                    .unwrap_or_else(|| "{}".to_string());
                 Some((name, input))
             })
             .collect()
@@ -333,9 +337,7 @@ impl StreamEvent {
             None => return false,
         };
         match &message.content {
-            MessageContent::Blocks(blocks) => {
-                blocks.iter().any(|b| b.block_type == "tool_use")
-            }
+            MessageContent::Blocks(blocks) => blocks.iter().any(|b| b.block_type == "tool_use"),
             _ => false,
         }
     }
@@ -464,8 +466,8 @@ mod tests {
         assert_eq!(response.model, Some("claude-opus-4.5".to_string()));
         assert_eq!(response.stop_reason, Some("end_turn".to_string()));
         // Tokens are accumulated across all messages
-        assert_eq!(response.input_tokens, 100);  // 50 + 50
-        assert_eq!(response.output_tokens, 30);  // 10 + 20
+        assert_eq!(response.input_tokens, 100); // 50 + 50
+        assert_eq!(response.output_tokens, 30); // 10 + 20
     }
 
     #[test]

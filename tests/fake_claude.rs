@@ -28,8 +28,7 @@ fn main() {
     };
 
     let config: FakeClaudeConfig = serde_json::from_str(
-        &fs::read_to_string(&config_path)
-            .expect("Failed to read config file"),
+        &fs::read_to_string(&config_path).expect("Failed to read config file"),
     )
     .expect("Failed to parse config");
 
@@ -137,10 +136,7 @@ fn execute_tools_in_event(event: &StreamEventOutput) {
             "Bash" => {
                 if let Some(command) = input.get("command").and_then(|v| v.as_str()) {
                     // Execute bash command
-                    let _ = Command::new("sh")
-                        .arg("-c")
-                        .arg(command)
-                        .status();
+                    let _ = Command::new("sh").arg("-c").arg(command).status();
                 }
             }
             _ => {}

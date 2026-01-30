@@ -101,7 +101,6 @@ Autonomous task execution with fresh context per iteration and accumulated learn
 
 ## Technical Debt
 
-- **CLAUDE-INTERNET-FLAG**: Using `--internet` workaround flag to prevent Claude CLI hanging
 - **STREAM-JSON-RESEARCH**: Need to research Claude CLI `--output-format stream-json` and `--json-schema` flags for correct usage
 
 ---

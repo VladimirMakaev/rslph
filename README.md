@@ -415,9 +415,8 @@ rslph build --no-tui progress.md 2>&1 | tee build.log
 
 ### Claude CLI hangs
 
-If the Claude CLI hangs, this is a known issue. Current workaround:
+If the Claude CLI hangs, this is a known issue:
 
-- rslph uses `--internet` flag internally to prevent hanging
 - Ensure your Claude CLI is up to date
 - Check authentication: `claude auth`
 

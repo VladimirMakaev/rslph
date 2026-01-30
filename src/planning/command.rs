@@ -700,13 +700,18 @@ mod tests {
 
     #[tokio::test]
     async fn test_run_plan_command_spawns_and_writes_file() {
+        use crate::config::ClaudeCommand;
+
         // This test verifies the full command flow using echo as a mock.
         // Echo outputs garbage but ProgressFile::parse is lenient so it succeeds.
         let dir = TempDir::new().expect("temp dir");
 
         // Create a config pointing to echo instead of claude
         let config = Config {
-            claude_path: Some("/bin/echo".to_string()),
+            claude_cmd: ClaudeCommand {
+                command: "/bin/echo".to_string(),
+                base_args: vec![],
+            },
             ..Default::default()
         };
 
@@ -739,6 +744,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_run_plan_command_timeout() {
+        use crate::config::ClaudeCommand;
+
         let dir = TempDir::new().expect("temp dir");
 
         // Use a script that ignores arguments and sleeps
@@ -754,7 +761,10 @@ mod tests {
         }
 
         let config = Config {
-            claude_path: Some(script_path.to_string_lossy().to_string()),
+            claude_cmd: ClaudeCommand {
+                command: script_path.to_string_lossy().to_string(),
+                base_args: vec![],
+            },
             ..Default::default()
         };
 
@@ -779,6 +789,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_run_plan_command_cancellation() {
+        use crate::config::ClaudeCommand;
+
         let dir = TempDir::new().expect("temp dir");
 
         // Use a script that ignores arguments and sleeps
@@ -794,7 +806,10 @@ mod tests {
         }
 
         let config = Config {
-            claude_path: Some(script_path.to_string_lossy().to_string()),
+            claude_cmd: ClaudeCommand {
+                command: script_path.to_string_lossy().to_string(),
+                base_args: vec![],
+            },
             ..Default::default()
         };
 

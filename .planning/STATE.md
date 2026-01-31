@@ -219,7 +219,7 @@ None.
 | 012 | Add stderr capture and debug logging for subprocess | 2026-01-31 | bd3a70f | [012-add-stderr-capture-and-debug-logging-for](./quick/012-add-stderr-capture-and-debug-logging-for/) |
 | 013 | Fix plan TUI to display raw stdout and stderr | 2026-01-31 | fdafd0b | N/A (direct fix) |
 | 014 | Detect stuck state when stderr received but no stdout | 2026-01-31 | 51509a8 | N/A (direct fix) |
-| 015 | Verify RSLPH_CLAUDE_CMD E2E tests work for build and plan | 2026-01-31 | acc25dc | [015-verify-rslph-claude-cmd-e2e](./quick/015-verify-rslph-claude-cmd-e2e/) |
+| 015 | Verify RSLPH_CLAUDE_CMD E2E tests work for build and plan | 2026-01-31 | 59a209d | [015-verify-rslph-claude-cmd-e2e](./quick/015-verify-rslph-claude-cmd-e2e/) |
 
 ## Session Continuity
 

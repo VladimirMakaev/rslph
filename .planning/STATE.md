@@ -216,11 +216,12 @@ None.
 | 009 | Handle Claude CLI failures instead of hanging | 2026-01-30 | 691a7b8 | [009-handle-claude-cli-failures-instead-of-ha](./quick/009-handle-claude-cli-failures-instead-of-ha/) |
 | 010 | Plan command read file contents | 2026-01-31 | ed1c9d8 | [010-plan-command-read-file-contents](./quick/010-plan-command-read-file-contents/) |
 | 011 | Implement stdin relay for Claude CLI interactive questions | 2026-01-31 | 23821a2 | [011-implement-stdin-relay-for-claude-cli-int](./quick/011-implement-stdin-relay-for-claude-cli-int/) |
+| 012 | Add stderr capture and debug logging for subprocess | 2026-01-31 | bd3a70f | [012-add-stderr-capture-and-debug-logging-for](./quick/012-add-stderr-capture-and-debug-logging-for/) |
 
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed quick task 011: Implement stdin relay for Claude CLI interactive questions
+Stopped at: Completed quick task 012: Add stderr capture and debug logging for subprocess
 Resume file: None
 
 ### Roadmap Evolution

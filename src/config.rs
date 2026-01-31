@@ -158,10 +158,11 @@ impl Config {
         }
 
         // Environment variables with RSLPH_ prefix (lowercase, no split for flat config)
+        // Filter out non-config env vars like RSLPH_CLAUDE_CMD (handled separately) and RSLPH_DEBUG
         figment = figment.merge(
             Env::prefixed("RSLPH_")
                 .lowercase(true)
-                .filter(|key| key != "claude_cmd"),
+                .filter(|key| key != "claude_cmd" && key != "debug"),
         );
 
         let mut config: Config = figment.extract()?;
@@ -200,10 +201,11 @@ impl Config {
         }
 
         // Environment variables with RSLPH_ prefix (lowercase, no split for flat config)
+        // Filter out non-config env vars like RSLPH_CLAUDE_CMD (handled separately) and RSLPH_DEBUG
         figment = figment.merge(
             Env::prefixed("RSLPH_")
                 .lowercase(true)
-                .filter(|key| key != "claude_cmd"),
+                .filter(|key| key != "claude_cmd" && key != "debug"),
         );
 
         // CLI overrides are highest precedence

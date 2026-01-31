@@ -46,10 +46,11 @@ pub struct ClaudeRunner {
 }
 
 impl ClaudeRunner {
-    /// Spawn Claude CLI (or any command) with piped stdout/stderr/stdin.
+    /// Spawn Claude CLI (or any command) with piped stdout/stderr and null stdin.
     ///
-    /// The process is spawned in its own process group to prevent
-    /// terminal signal inheritance (Ctrl+C won't kill it directly).
+    /// Use this for non-interactive mode where no user input is expected.
+    /// Stdin is set to null to signal EOF immediately, which prevents some
+    /// launchers from blocking while waiting for input.
     pub async fn spawn(
         command_path: &str,
         args: &[String],
@@ -60,9 +61,38 @@ impl ClaudeRunner {
             .current_dir(working_dir)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
+            .stdin(Stdio::null()) // Non-interactive: no stdin expected
+            .kill_on_drop(true)
+            .spawn()?;
+
+        let stdout = child.stdout.take().expect("stdout configured as piped");
+        let stderr = child.stderr.take().expect("stderr configured as piped");
+
+        Ok(Self {
+            child,
+            stdout: BufReader::new(stdout).lines(),
+            stderr: BufReader::new(stderr).lines(),
+            stdin: None,
+            stdout_done: false,
+            stderr_done: false,
+        })
+    }
+
+    /// Spawn Claude CLI with piped stdout/stderr/stdin for interactive use.
+    ///
+    /// Use this when user input may be needed (e.g., adaptive mode with questions).
+    pub async fn spawn_interactive(
+        command_path: &str,
+        args: &[String],
+        working_dir: &Path,
+    ) -> std::io::Result<Self> {
+        let mut child = Command::new(command_path)
+            .args(args)
+            .current_dir(working_dir)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .stdin(Stdio::piped())
-            .process_group(0) // CRITICAL: Isolate from terminal signals
-            .kill_on_drop(true) // Safety net
+            .kill_on_drop(true)
             .spawn()?;
 
         let stdout = child.stdout.take().expect("stdout configured as piped");
@@ -146,17 +176,16 @@ impl ClaudeRunner {
 
     /// Gracefully terminate the process with SIGTERM, then SIGKILL after grace period.
     ///
-    /// Sends SIGTERM to the process group (to catch any children), waits for the
-    /// grace period, then sends SIGKILL if still running. Always reaps the child
-    /// to prevent zombie processes.
+    /// Sends SIGTERM to the process, waits for the grace period, then sends SIGKILL
+    /// if still running. Always reaps the child to prevent zombie processes.
     pub async fn terminate_gracefully(&mut self, grace_period: Duration) -> std::io::Result<()> {
         #[cfg(unix)]
         if let Some(id) = self.child.id() {
             use nix::sys::signal::{kill, Signal};
             use nix::unistd::Pid;
 
-            // Send SIGTERM to process group (negative PID)
-            let _ = kill(Pid::from_raw(-(id as i32)), Signal::SIGTERM);
+            // Send SIGTERM to process (positive PID since we're not using process_group)
+            let _ = kill(Pid::from_raw(id as i32), Signal::SIGTERM);
 
             // Wait for graceful exit or timeout
             tokio::select! {

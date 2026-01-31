@@ -20,7 +20,7 @@ pub use conversation::{ConversationBuffer, ConversationItem};
 pub use dashboard::{run_dashboard_tui, DashboardState, TrialProgress, TrialStatus};
 pub use event::{EventHandler, SubprocessEvent};
 pub use keybindings::handle_event;
-pub use plan_tui::{run_plan_tui, PlanStatus, PlanTuiState};
+pub use plan_tui::{run_plan_tui, PlanStatus, PlanTuiEvent, PlanTuiState};
 pub use run::{run_tui, run_tui_blocking};
 pub use terminal::{init_terminal, restore_terminal};
 pub use ui::render;

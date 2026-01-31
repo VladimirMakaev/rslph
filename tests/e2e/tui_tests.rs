@@ -425,3 +425,96 @@ fn test_eval_multi_iteration_display() {
     // Snapshot should show iteration 2 with cumulative tokens (4.5k in, 1.1k out)
     assert_snapshot!(terminal.backend());
 }
+
+// ============================================================================
+// Plan TUI Tests (Quick Task 012 - Raw stdout/stderr display)
+// ============================================================================
+
+use rslph::subprocess::StreamEvent;
+use rslph::tui::{PlanTuiEvent, PlanTuiState};
+use rslph::tui::plan_tui::render_plan_tui;
+
+/// Create a test terminal with fixed 80x24 dimensions for plan TUI.
+fn plan_test_terminal() -> Terminal<TestBackend> {
+    let backend = TestBackend::new(80, 24);
+    Terminal::new(backend).unwrap()
+}
+
+/// Test plan TUI displays raw stdout lines when JSON parsing fails.
+#[test]
+fn test_plan_tui_raw_stdout_display() {
+    let mut terminal = plan_test_terminal();
+    let mut state = PlanTuiState::new();
+
+    // Simulate raw stdout output (non-JSON)
+    state.update(&PlanTuiEvent::RawStdout("Authentication required".to_string()));
+    state.update(&PlanTuiEvent::RawStdout("Please enter your API key:".to_string()));
+
+    terminal
+        .draw(|frame| render_plan_tui(frame, &state))
+        .unwrap();
+
+    assert_snapshot!(terminal.backend());
+}
+
+/// Test plan TUI displays stderr messages.
+#[test]
+fn test_plan_tui_stderr_display() {
+    let mut terminal = plan_test_terminal();
+    let mut state = PlanTuiState::new();
+
+    // Simulate stderr output
+    state.update(&PlanTuiEvent::Stderr("Warning: rate limit exceeded".to_string()));
+    state.update(&PlanTuiEvent::Stderr("Retrying in 5 seconds...".to_string()));
+
+    terminal
+        .draw(|frame| render_plan_tui(frame, &state))
+        .unwrap();
+
+    assert_snapshot!(terminal.backend());
+}
+
+/// Test plan TUI displays mixed stream events, raw stdout, and stderr.
+#[test]
+fn test_plan_tui_mixed_output() {
+    let mut terminal = plan_test_terminal();
+    let mut state = PlanTuiState::new();
+
+    // First: a raw stdout line (maybe init message)
+    state.update(&PlanTuiEvent::RawStdout("Initializing connection...".to_string()));
+
+    // Then: a valid stream event
+    let stream_json = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Planning your project..."}]}}"#;
+    if let Ok(event) = StreamEvent::parse(stream_json) {
+        state.update(&PlanTuiEvent::Stream(Box::new(event)));
+    }
+
+    // Then: a stderr warning
+    state.update(&PlanTuiEvent::Stderr("Warning: using fallback model".to_string()));
+
+    // Finally: more stream content
+    let stream_json2 = r#"{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Step 1: Set up project structure"}]}}"#;
+    if let Ok(event) = StreamEvent::parse(stream_json2) {
+        state.update(&PlanTuiEvent::Stream(Box::new(event)));
+    }
+
+    terminal
+        .draw(|frame| render_plan_tui(frame, &state))
+        .unwrap();
+
+    assert_snapshot!(terminal.backend());
+}
+
+/// Test plan TUI initial state (stack detection).
+#[test]
+fn test_plan_tui_initial_state() {
+    let mut terminal = plan_test_terminal();
+    let state = PlanTuiState::new();
+
+    terminal
+        .draw(|frame| render_plan_tui(frame, &state))
+        .unwrap();
+
+    assert_snapshot!(terminal.backend());
+}
+

@@ -22,6 +22,17 @@ use crate::tui::conversation::{render_conversation, ConversationBuffer, Conversa
 use crate::tui::event::EventHandler;
 use crate::tui::terminal::{init_terminal, restore_terminal};
 
+/// Events that can be sent to the plan TUI.
+#[derive(Debug, Clone)]
+pub enum PlanTuiEvent {
+    /// A parsed stream event from Claude.
+    Stream(Box<StreamEvent>),
+    /// Raw stdout line that couldn't be parsed as JSON.
+    RawStdout(String),
+    /// Stderr line from Claude.
+    Stderr(String),
+}
+
 /// Status of the planning operation.
 #[derive(Debug, Clone)]
 pub enum PlanStatus {
@@ -73,16 +84,30 @@ impl PlanTuiState {
         }
     }
 
-    /// Update state from a stream event.
-    pub fn update(&mut self, event: &StreamEvent) {
-        // Extract conversation items from the event
-        for item in event.extract_conversation_items() {
-            // If it's text, also append to plan preview
-            if let ConversationItem::Text(ref text) = item {
-                self.plan_preview.push_str(text);
-                self.plan_preview.push('\n');
+    /// Update state from a plan TUI event.
+    pub fn update(&mut self, event: &PlanTuiEvent) {
+        match event {
+            PlanTuiEvent::Stream(stream_event) => {
+                // Extract conversation items from the stream event
+                for item in stream_event.extract_conversation_items() {
+                    // If it's text, also append to plan preview
+                    if let ConversationItem::Text(ref text) = item {
+                        self.plan_preview.push_str(text);
+                        self.plan_preview.push('\n');
+                    }
+                    self.conversation.push(item);
+                }
             }
-            self.conversation.push(item);
+            PlanTuiEvent::RawStdout(line) => {
+                // Display raw stdout as system message
+                self.conversation
+                    .push(ConversationItem::System(format!("[stdout] {}", line)));
+            }
+            PlanTuiEvent::Stderr(line) => {
+                // Display stderr as system message
+                self.conversation
+                    .push(ConversationItem::System(format!("[stderr] {}", line)));
+            }
         }
 
         // Auto-scroll to bottom (keep recent items visible)
@@ -192,14 +217,14 @@ fn render_footer(frame: &mut Frame, area: Rect, state: &PlanTuiState) {
 ///
 /// # Arguments
 ///
-/// * `event_rx` - Receiver for stream events from Claude
+/// * `event_rx` - Receiver for plan TUI events from Claude
 /// * `cancel_token` - Token for graceful cancellation
 ///
 /// # Returns
 ///
 /// The final TUI state, which includes whether the user quit.
 pub async fn run_plan_tui(
-    event_rx: mpsc::UnboundedReceiver<StreamEvent>,
+    event_rx: mpsc::UnboundedReceiver<PlanTuiEvent>,
     cancel_token: CancellationToken,
 ) -> Result<PlanTuiState, RslphError> {
     let mut terminal = init_terminal()
@@ -311,5 +336,37 @@ mod tests {
         let mut state = PlanTuiState::new();
         state.set_failed("test error".to_string());
         assert!(matches!(state.status, PlanStatus::Failed(ref e) if e == "test error"));
+    }
+
+    #[test]
+    fn test_update_with_raw_stdout() {
+        let mut state = PlanTuiState::new();
+        state.update(&PlanTuiEvent::RawStdout("raw output line".to_string()));
+        assert_eq!(state.conversation.len(), 1);
+        match &state.conversation.items()[0] {
+            ConversationItem::System(s) => assert!(s.contains("[stdout]")),
+            _ => panic!("Expected System item"),
+        }
+    }
+
+    #[test]
+    fn test_update_with_stderr() {
+        let mut state = PlanTuiState::new();
+        state.update(&PlanTuiEvent::Stderr("error message".to_string()));
+        assert_eq!(state.conversation.len(), 1);
+        match &state.conversation.items()[0] {
+            ConversationItem::System(s) => assert!(s.contains("[stderr]")),
+            _ => panic!("Expected System item"),
+        }
+    }
+
+    #[test]
+    fn test_plan_tui_event_variants() {
+        use crate::subprocess::StreamEvent;
+        let _ = PlanTuiEvent::Stream(Box::new(
+            StreamEvent::parse(r#"{"type":"assistant"}"#).unwrap(),
+        ));
+        let _ = PlanTuiEvent::RawStdout("raw".to_string());
+        let _ = PlanTuiEvent::Stderr("err".to_string());
     }
 }

@@ -1,0 +1,29 @@
+---
+source: tests/e2e/tui_tests.rs
+assertion_line: 474
+expression: terminal.backend()
+---
+"Plan | Generating plan... | 0s                                                  "
+"                                                                                "
+"────────────────────────────────────────────────────────────────────────────────"
+"┌Conversation (c to toggle, PgUp/PgDn to scroll)───────────────────────────────┐"
+"│[stderr] Warning: rate limit exceeded                                         │"
+"│                                                                              │"
+"│[stderr] Retrying in 5 seconds...                                             │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"└──────────────────────────────────────────────────────────────────────────────┘"
+"Plan Preview (q to quit, PgUp/PgDn to scroll)───────────────────────────────────"
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "

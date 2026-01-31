@@ -1,0 +1,29 @@
+---
+source: tests/e2e/tui_tests.rs
+assertion_line: 505
+expression: terminal.backend()
+---
+"Plan | Generating plan... | 0s                                                  "
+"                                                                                "
+"────────────────────────────────────────────────────────────────────────────────"
+"┌Conversation (c to toggle, PgUp/PgDn to scroll)───────────────────────────────┐"
+"│[stdout] Initializing connection...                                           │"
+"│                                                                              │"
+"│Planning your project...                                                      │"
+"│                                                                              │"
+"│[stderr] Warning: using fallback model                                        │"
+"│                                                                              │"
+"│Step 1: Set up project structure                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"└──────────────────────────────────────────────────────────────────────────────┘"
+"Plan Preview (q to quit, PgUp/PgDn to scroll)───────────────────────────────────"
+"Planning your project...                                                        "
+"Step 1: Set up project structure                                                "
+"                                                                                "
+"                                                                                "

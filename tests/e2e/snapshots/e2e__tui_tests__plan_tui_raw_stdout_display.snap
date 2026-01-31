@@ -1,0 +1,29 @@
+---
+source: tests/e2e/tui_tests.rs
+assertion_line: 457
+expression: terminal.backend()
+---
+"Plan | Generating plan... | 0s                                                  "
+"                                                                                "
+"────────────────────────────────────────────────────────────────────────────────"
+"┌Conversation (c to toggle, PgUp/PgDn to scroll)───────────────────────────────┐"
+"│[stdout] Authentication required                                              │"
+"│                                                                              │"
+"│[stdout] Please enter your API key:                                           │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"│                                                                              │"
+"└──────────────────────────────────────────────────────────────────────────────┘"
+"Plan Preview (q to quit, PgUp/PgDn to scroll)───────────────────────────────────"
+"                                                                                "
+"                                                                                "
+"                                                                                "
+"                                                                                "

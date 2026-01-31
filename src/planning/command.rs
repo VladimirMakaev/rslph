@@ -17,7 +17,7 @@ use crate::planning::{
 use crate::progress::ProgressFile;
 use crate::prompts::{get_plan_prompt_for_mode, PromptMode};
 use crate::subprocess::{build_claude_args, ClaudeRunner, OutputLine, StreamEvent, StreamResponse};
-use crate::tui::plan_tui::run_plan_tui;
+use crate::tui::plan_tui::{run_plan_tui, PlanTuiEvent};
 
 /// Run the planning command.
 ///
@@ -260,8 +260,8 @@ async fn run_tui_planning(
         .await
         .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
 
-    // Step 6: Create channel for stream events
-    let (event_tx, event_rx) = mpsc::unbounded_channel();
+    // Step 6: Create channel for plan TUI events
+    let (event_tx, event_rx) = mpsc::unbounded_channel::<PlanTuiEvent>();
 
     // Step 7: Spawn TUI task
     let tui_cancel = cancel_token.clone();
@@ -285,14 +285,25 @@ async fn run_tui_planning(
                 line = runner.next_output() => {
                     match line {
                         Some(OutputLine::Stdout(s)) => {
-                            // Parse and forward to TUI
-                            if let Ok(event) = StreamEvent::parse(&s) {
-                                stream_response.process_event(&event);
-                                let _ = event_tx.send(event);
+                            // Try to parse as JSON, forward either way
+                            match StreamEvent::parse(&s) {
+                                Ok(event) => {
+                                    stream_response.process_event(&event);
+                                    let _ = event_tx.send(PlanTuiEvent::Stream(Box::new(event)));
+                                }
+                                Err(_) => {
+                                    // Forward raw line if not empty
+                                    if !s.trim().is_empty() {
+                                        let _ = event_tx.send(PlanTuiEvent::RawStdout(s));
+                                    }
+                                }
                             }
                         }
-                        Some(OutputLine::Stderr(_)) => {
-                            // Ignore stderr in TUI mode
+                        Some(OutputLine::Stderr(s)) => {
+                            // Forward stderr to TUI
+                            if !s.trim().is_empty() {
+                                let _ = event_tx.send(PlanTuiEvent::Stderr(s));
+                            }
                         }
                         None => {
                             // Stream complete

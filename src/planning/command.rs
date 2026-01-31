@@ -2,8 +2,10 @@
 //!
 //! Executes Claude in headless mode to transform user ideas into structured progress files.
 
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Mutex;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
@@ -18,6 +20,57 @@ use crate::progress::ProgressFile;
 use crate::prompts::{get_plan_prompt_for_mode, PromptMode};
 use crate::subprocess::{build_claude_args, ClaudeRunner, OutputLine, StreamEvent, StreamResponse};
 use crate::tui::plan_tui::{run_plan_tui, PlanTuiEvent};
+
+/// Debug logger for TUI mode (writes to file since stderr is not visible).
+///
+/// When RSLPH_DEBUG is set, logs to /tmp/rslph-debug.log with timestamps.
+struct DebugLogger {
+    file: Option<Mutex<std::fs::File>>,
+    start: std::time::Instant,
+    line_count: AtomicU64,
+}
+
+impl DebugLogger {
+    fn new() -> Self {
+        let file = if std::env::var("RSLPH_DEBUG").is_ok() {
+            match std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("/tmp/rslph-debug.log")
+            {
+                Ok(f) => Some(Mutex::new(f)),
+                Err(_) => None,
+            }
+        } else {
+            None
+        };
+        Self {
+            file,
+            start: std::time::Instant::now(),
+            line_count: AtomicU64::new(0),
+        }
+    }
+
+    fn log(&self, msg: &str) {
+        if let Some(ref file) = self.file {
+            if let Ok(mut f) = file.lock() {
+                let elapsed = self.start.elapsed().as_secs_f32();
+                let _ = writeln!(f, "[{:8.3}] {}", elapsed, msg);
+                let _ = f.flush();
+            }
+        }
+    }
+
+    fn log_line(&self, source: &str, line: &str) {
+        let count = self.line_count.fetch_add(1, Ordering::Relaxed);
+        self.log(&format!("#{} [{}] {}", count, source, line));
+    }
+
+    #[allow(dead_code)]
+    fn is_enabled(&self) -> bool {
+        self.file.is_some()
+    }
+}
 
 /// Run the planning command.
 ///
@@ -230,11 +283,17 @@ async fn run_tui_planning(
 ) -> color_eyre::Result<(PathBuf, TokenUsage)> {
     use tokio::time::timeout as tokio_timeout;
 
+    // Initialize debug logger (writes to /tmp/rslph-debug.log if RSLPH_DEBUG is set)
+    let logger = DebugLogger::new();
+    logger.log("=== TUI Planning Started ===");
+
     // Step 1: Detect project stack for testing strategy
     let stack = detect_stack(working_dir);
+    logger.log(&format!("Stack detected: {}", stack.to_summary().lines().next().unwrap_or("unknown")));
 
     // Step 2: Get the planning prompt for the specified mode
     let system_prompt = get_plan_prompt_for_mode(mode);
+    logger.log(&format!("Mode: {:?}, prompt length: {} bytes", mode, system_prompt.len()));
 
     // Step 3: Build user input with stack context
     let full_input = format!(
@@ -256,16 +315,30 @@ async fn run_tui_planning(
 
     // Step 5: Spawn Claude
     let combined_args = build_claude_args(&config.claude_cmd.base_args, &args, no_dsp);
-    let mut runner = ClaudeRunner::spawn(&config.claude_cmd.command, &combined_args, working_dir)
+
+    logger.log(&format!("Spawning: {}", config.claude_cmd.command));
+    logger.log(&format!("Working dir: {}", working_dir.display()));
+    logger.log(&format!("Args (first 6): {:?}", combined_args.iter().take(6).collect::<Vec<_>>()));
+    logger.log(&format!("Total args: {}", combined_args.len()));
+    logger.log(&format!("no_dsp: {}", no_dsp));
+
+    let mut runner = ClaudeRunner::spawn_interactive(&config.claude_cmd.command, &combined_args, working_dir)
         .await
         .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
+
+    logger.log(&format!("Spawned PID: {:?}", runner.id()));
 
     // Step 6: Create channel for plan TUI events
     let (event_tx, event_rx) = mpsc::unbounded_channel::<PlanTuiEvent>();
 
+    // Step 6.5: Create channel for user input responses
+    let (input_tx, mut input_rx) = mpsc::unbounded_channel::<String>();
+
     // Step 7: Spawn TUI task
     let tui_cancel = cancel_token.clone();
-    let tui_handle = tokio::spawn(async move { run_plan_tui(event_rx, tui_cancel).await });
+    let tui_handle = tokio::spawn(async move { run_plan_tui(event_rx, input_tx, tui_cancel).await });
+
+    logger.log("TUI task spawned, entering stream loop");
 
     // Step 8: Stream events to TUI with timeout
     let mut stream_response = StreamResponse::new();
@@ -277,21 +350,38 @@ async fn run_tui_planning(
                 biased;
 
                 _ = stream_cancel.cancelled() => {
+                    logger.log("Cancellation requested");
                     runner.terminate_gracefully(Duration::from_secs(5)).await
                         .map_err(|e| RslphError::Subprocess(e.to_string()))?;
                     return Err::<(), RslphError>(RslphError::Cancelled);
                 }
 
+                response = input_rx.recv() => {
+                    if let Some(text) = response {
+                        logger.log(&format!("Received user input: {}", text));
+                        if let Err(e) = runner.write_stdin(&text).await {
+                            logger.log(&format!("write_stdin error: {}", e));
+                        }
+                    }
+                }
+
                 line = runner.next_output() => {
                     match line {
                         Some(OutputLine::Stdout(s)) => {
+                            logger.log_line("stdout", &s);
                             // Try to parse as JSON, forward either way
                             match StreamEvent::parse(&s) {
                                 Ok(event) => {
+                                    // Check if this event requires input
+                                    if let Some(question) = event.is_input_required() {
+                                        logger.log(&format!("Input required: {}", question));
+                                        let _ = event_tx.send(PlanTuiEvent::InputRequired(question));
+                                    }
                                     stream_response.process_event(&event);
                                     let _ = event_tx.send(PlanTuiEvent::Stream(Box::new(event)));
                                 }
-                                Err(_) => {
+                                Err(e) => {
+                                    logger.log(&format!("JSON parse error: {}", e));
                                     // Forward raw line if not empty
                                     if !s.trim().is_empty() {
                                         let _ = event_tx.send(PlanTuiEvent::RawStdout(s));
@@ -300,12 +390,14 @@ async fn run_tui_planning(
                             }
                         }
                         Some(OutputLine::Stderr(s)) => {
+                            logger.log_line("stderr", &s);
                             // Forward stderr to TUI
                             if !s.trim().is_empty() {
                                 let _ = event_tx.send(PlanTuiEvent::Stderr(s));
                             }
                         }
                         None => {
+                            logger.log("Stream ended (None from next_output)");
                             // Stream complete
                             break;
                         }
@@ -319,6 +411,7 @@ async fn run_tui_planning(
 
     // Step 9: Drop sender to signal completion to TUI
     drop(event_tx);
+    logger.log("Event sender dropped, waiting for TUI");
 
     // Step 10: Wait for TUI to finish
     let tui_state = tui_handle
@@ -326,11 +419,21 @@ async fn run_tui_planning(
         .map_err(|e| RslphError::Subprocess(format!("TUI task failed: {}", e)))?
         .map_err(|e| RslphError::Subprocess(format!("TUI error: {}", e)))?;
 
+    logger.log(&format!("TUI finished, should_quit={}", tui_state.should_quit));
+
     // Check for timeout or cancellation
     match stream_result {
-        Err(_) => return Err(RslphError::Timeout(timeout.as_secs()).into()),
-        Ok(Err(e)) => return Err(e.into()),
-        Ok(Ok(())) => {}
+        Err(_) => {
+            logger.log("Timeout occurred");
+            return Err(RslphError::Timeout(timeout.as_secs()).into());
+        }
+        Ok(Err(e)) => {
+            logger.log(&format!("Stream error: {}", e));
+            return Err(e.into());
+        }
+        Ok(Ok(())) => {
+            logger.log("Stream completed successfully");
+        }
     }
 
     // Check if user quit
@@ -612,6 +715,11 @@ async fn run_claude_headless(
     cancel_token: CancellationToken,
     timeout: Duration,
 ) -> color_eyre::Result<String> {
+    let logger = DebugLogger::new();
+    logger.log("=== Headless Claude Call ===");
+    logger.log(&format!("System prompt length: {} bytes", system_prompt.len()));
+    logger.log(&format!("User input length: {} bytes", user_input.len()));
+
     let args = vec![
         "-p".to_string(),
         "--verbose".to_string(), // Required for stream-json with -p
@@ -623,11 +731,19 @@ async fn run_claude_headless(
     ];
 
     let combined_args = build_claude_args(&config.claude_cmd.base_args, &args, no_dsp);
+
+    logger.log(&format!("Command: {}", config.claude_cmd.command));
+    logger.log(&format!("Args (first 5): {:?}", combined_args.iter().take(5).collect::<Vec<_>>()));
+
     let mut runner = ClaudeRunner::spawn(&config.claude_cmd.command, &combined_args, working_dir)
         .await
         .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
 
+    logger.log(&format!("Spawned PID: {:?}", runner.id()));
+
     let output = runner.run_with_timeout(timeout, cancel_token).await?;
+
+    logger.log(&format!("Received {} output lines", output.len()));
 
     // Parse JSONL output using StreamResponse
     let mut stream_response = StreamResponse::new();
@@ -636,6 +752,8 @@ async fn run_claude_headless(
             stream_response.process_line(s);
         }
     }
+
+    logger.log(&format!("Parsed response length: {} chars", stream_response.text.len()));
 
     Ok(stream_response.text)
 }

@@ -41,6 +41,11 @@ fn parse_and_stream_line(
     // Send raw event for conversation view extraction
     let _ = tui_tx.send(SubprocessEvent::StreamEvent(event.clone()));
 
+    // Check if Claude is asking for user input
+    if let Some(question) = event.is_input_required() {
+        let _ = tui_tx.send(SubprocessEvent::InputRequired { question });
+    }
+
     // Send assistant text as ClaudeOutput
     if event.is_assistant() {
         if let Some(text) = event.extract_text() {

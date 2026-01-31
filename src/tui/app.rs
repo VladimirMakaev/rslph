@@ -350,6 +350,14 @@ pub struct App {
     pub spinner_state: ThrobberState,
     /// Whether Claude is currently streaming a response.
     pub is_streaming: bool,
+
+    // Input mode state (for Claude CLI interactive questions)
+    /// Whether we're currently waiting for user input.
+    pub input_mode: bool,
+    /// The current input buffer.
+    pub input_buffer: String,
+    /// The question being answered.
+    pub current_question: Option<String>,
 }
 
 impl Default for App {
@@ -382,6 +390,9 @@ impl Default for App {
             session_start: Instant::now(),
             spinner_state: ThrobberState::default(),
             is_streaming: false,
+            input_mode: false,
+            input_buffer: String::new(),
+            current_question: None,
         }
     }
 }
@@ -536,6 +547,10 @@ impl App {
                 let msg = Message::new("system", content.clone(), self.current_iteration);
                 self.messages.push(msg.clone());
                 self.add_to_system_group(msg);
+            }
+            AppEvent::InputRequired { question } => {
+                // Enter input mode to answer the question
+                self.enter_input_mode(question);
             }
             AppEvent::Render => {
                 // Render events don't change state, just trigger redraw
@@ -904,6 +919,47 @@ impl App {
             self.spinner_state.calc_next();
         }
     }
+
+    /// Enter input mode to answer a question.
+    ///
+    /// Called when Claude CLI asks an interactive question.
+    pub fn enter_input_mode(&mut self, question: String) {
+        self.input_mode = true;
+        self.input_buffer.clear();
+        self.current_question = Some(question);
+    }
+
+    /// Exit input mode and get the response.
+    ///
+    /// Returns the user's response if in input mode, None otherwise.
+    pub fn submit_input(&mut self) -> Option<String> {
+        if self.input_mode {
+            self.input_mode = false;
+            let response = std::mem::take(&mut self.input_buffer);
+            self.current_question = None;
+            Some(response)
+        } else {
+            None
+        }
+    }
+
+    /// Handle a character input in input mode.
+    ///
+    /// Appends the character to the input buffer if in input mode.
+    pub fn handle_input_char(&mut self, c: char) {
+        if self.input_mode {
+            self.input_buffer.push(c);
+        }
+    }
+
+    /// Handle backspace in input mode.
+    ///
+    /// Removes the last character from the input buffer if in input mode.
+    pub fn handle_input_backspace(&mut self) {
+        if self.input_mode {
+            self.input_buffer.pop();
+        }
+    }
 }
 
 /// Events that can occur in the application.
@@ -971,6 +1027,13 @@ pub enum AppEvent {
     },
     /// Log message from build loop (displayed as system message).
     LogMessage(String),
+
+    // Input handling events
+    /// Claude CLI requires user input.
+    InputRequired {
+        /// The question or prompt requiring input.
+        question: String,
+    },
 
     // Timer events
     /// Time to render a new frame.

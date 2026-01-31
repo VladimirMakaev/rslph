@@ -19,7 +19,6 @@ use tokio_util::sync::CancellationToken;
 use crate::error::RslphError;
 use crate::subprocess::StreamEvent;
 use crate::tui::conversation::{render_conversation, ConversationBuffer, ConversationItem};
-use crate::tui::event::EventHandler;
 use crate::tui::terminal::{init_terminal, restore_terminal};
 
 /// Events that can be sent to the plan TUI.
@@ -31,6 +30,8 @@ pub enum PlanTuiEvent {
     RawStdout(String),
     /// Stderr line from Claude.
     Stderr(String),
+    /// Claude CLI is asking for user input.
+    InputRequired(String),
 }
 
 /// Status of the planning operation.
@@ -67,6 +68,12 @@ pub struct PlanTuiState {
     pub stderr_without_stdout: usize,
     /// Whether we've received any stdout event.
     pub has_stdout: bool,
+    /// Whether we're in input mode waiting for user response.
+    pub input_mode: bool,
+    /// Current input buffer for user typing.
+    pub input_buffer: String,
+    /// The question being answered.
+    pub current_question: Option<String>,
 }
 
 impl Default for PlanTuiState {
@@ -87,6 +94,9 @@ impl PlanTuiState {
             should_quit: false,
             stderr_without_stdout: 0,
             has_stdout: false,
+            input_mode: false,
+            input_buffer: String::new(),
+            current_question: None,
         }
     }
 
@@ -120,6 +130,9 @@ impl PlanTuiState {
                 self.conversation
                     .push(ConversationItem::System(format!("[stderr] {}", line)));
             }
+            PlanTuiEvent::InputRequired(question) => {
+                self.enter_input_mode(question.clone());
+            }
         }
 
         // Auto-scroll to bottom (keep recent items visible)
@@ -140,17 +153,53 @@ impl PlanTuiState {
     pub fn set_complete(&mut self) {
         self.status = PlanStatus::Complete;
     }
+
+    /// Enter input mode to answer a question.
+    pub fn enter_input_mode(&mut self, question: String) {
+        self.input_mode = true;
+        self.input_buffer.clear();
+        self.current_question = Some(question);
+    }
+
+    /// Exit input mode and get the response.
+    pub fn submit_input(&mut self) -> Option<String> {
+        if self.input_mode {
+            self.input_mode = false;
+            let response = std::mem::take(&mut self.input_buffer);
+            self.current_question = None;
+            Some(response)
+        } else {
+            None
+        }
+    }
+
+    /// Handle a character input in input mode.
+    pub fn handle_input_char(&mut self, c: char) {
+        if self.input_mode {
+            self.input_buffer.push(c);
+        }
+    }
+
+    /// Handle backspace in input mode.
+    pub fn handle_input_backspace(&mut self) {
+        if self.input_mode {
+            self.input_buffer.pop();
+        }
+    }
 }
 
 /// Render the plan TUI to the frame.
 pub fn render_plan_tui(frame: &mut Frame, state: &PlanTuiState) {
     let area = frame.area();
 
+    // Adjust footer height based on input mode
+    let footer_height = if state.input_mode { 6 } else { 5 };
+
     // Split: top for status, middle for conversation, bottom for plan preview
     let [header_area, main_area, footer_area] = Layout::vertical([
         Constraint::Length(3),
         Constraint::Min(10),
-        Constraint::Length(5),
+        Constraint::Length(footer_height),
     ])
     .areas(area);
 
@@ -175,8 +224,10 @@ pub fn render_plan_tui(frame: &mut Frame, state: &PlanTuiState) {
 fn render_header(frame: &mut Frame, area: Rect, state: &PlanTuiState) {
     let elapsed = state.start_time.elapsed().as_secs();
 
-    // Determine status text - show warning if stderr received but no stdout
-    let (status_text, status_color) = if state.stderr_without_stdout > 0
+    // Determine status text - prioritize input mode, then check stderr scenario
+    let (status_text, status_color) = if state.input_mode {
+        ("Waiting for your input...", Color::Yellow)
+    } else if state.stderr_without_stdout > 0
         && !state.has_stdout
         && elapsed > 5
         && !matches!(state.status, PlanStatus::Complete | PlanStatus::Failed(_))
@@ -207,24 +258,38 @@ fn render_header(frame: &mut Frame, area: Rect, state: &PlanTuiState) {
 
 /// Render the footer showing plan preview.
 fn render_footer(frame: &mut Frame, area: Rect, state: &PlanTuiState) {
-    // Get last few lines of the plan preview
-    let preview_lines: Vec<Line> = state
-        .plan_preview
-        .lines()
-        .rev()
-        .take(3)
-        .map(|l| Line::from(l.to_string()))
-        .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-        .collect();
+    if state.input_mode {
+        // Render input prompt
+        let question = state.current_question.as_deref().unwrap_or("Input required:");
+        let input_text = format!("{}\n> {}_", question, state.input_buffer);
 
-    let footer = Paragraph::new(preview_lines).block(
-        Block::default()
-            .borders(Borders::TOP)
-            .title("Plan Preview (q to quit, PgUp/PgDn to scroll)"),
-    );
-    frame.render_widget(footer, area);
+        let footer = Paragraph::new(input_text)
+            .style(Style::default().fg(Color::Yellow))
+            .block(Block::default()
+                .borders(Borders::TOP)
+                .title("Answer (Enter to submit, Esc to cancel)")
+                .border_style(Style::default().fg(Color::Yellow)));
+        frame.render_widget(footer, area);
+    } else {
+        // Get last few lines of the plan preview
+        let preview_lines: Vec<Line> = state
+            .plan_preview
+            .lines()
+            .rev()
+            .take(3)
+            .map(|l| Line::from(l.to_string()))
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .collect();
+
+        let footer = Paragraph::new(preview_lines).block(
+            Block::default()
+                .borders(Borders::TOP)
+                .title("Plan Preview (q to quit, PgUp/PgDn to scroll)"),
+        );
+        frame.render_widget(footer, area);
+    }
 }
 
 /// Run the plan TUI event loop.
@@ -235,6 +300,7 @@ fn render_footer(frame: &mut Frame, area: Rect, state: &PlanTuiState) {
 /// # Arguments
 ///
 /// * `event_rx` - Receiver for plan TUI events from Claude
+/// * `input_tx` - Sender for user input responses to Claude
 /// * `cancel_token` - Token for graceful cancellation
 ///
 /// # Returns
@@ -242,6 +308,7 @@ fn render_footer(frame: &mut Frame, area: Rect, state: &PlanTuiState) {
 /// The final TUI state, which includes whether the user quit.
 pub async fn run_plan_tui(
     event_rx: mpsc::UnboundedReceiver<PlanTuiEvent>,
+    input_tx: mpsc::UnboundedSender<String>,
     cancel_token: CancellationToken,
 ) -> Result<PlanTuiState, RslphError> {
     let mut terminal = init_terminal()
@@ -250,8 +317,10 @@ pub async fn run_plan_tui(
     let mut state = PlanTuiState::new();
     let mut event_rx = event_rx;
 
-    // Create event handler for keyboard input (30 FPS for smooth rendering)
-    let (mut kbd_handler, _subprocess_tx) = EventHandler::new(30);
+    // Use crossterm EventStream directly for keyboard input
+    use crossterm::event::{Event, EventStream, KeyCode, KeyModifiers};
+    use futures::StreamExt;
+    let mut event_stream = EventStream::new();
 
     loop {
         // Render current state
@@ -282,23 +351,43 @@ pub async fn run_plan_tui(
                 }
             }
 
-            // Keyboard events
-            kbd_event = kbd_handler.next() => {
-                if let Some(app_event) = kbd_event {
-                    match app_event {
-                        crate::tui::AppEvent::Quit => {
-                            state.should_quit = true;
-                            cancel_token.cancel();
-                            break;
+            // Terminal events (keyboard input)
+            term_event = event_stream.next() => {
+                if let Some(Ok(Event::Key(key))) = term_event {
+                    if state.input_mode {
+                        // Input mode: handle character input
+                        match key.code {
+                            KeyCode::Char(c) => state.handle_input_char(c),
+                            KeyCode::Backspace => state.handle_input_backspace(),
+                            KeyCode::Enter => {
+                                if let Some(response) = state.submit_input() {
+                                    let _ = input_tx.send(response);
+                                }
+                            }
+                            KeyCode::Esc => {
+                                state.input_mode = false;
+                                state.input_buffer.clear();
+                                state.current_question = None;
+                            }
+                            _ => {}
                         }
-                        crate::tui::AppEvent::ScrollUp => {
-                            state.scroll_offset = state.scroll_offset.saturating_sub(1);
+                    } else {
+                        // Normal navigation mode
+                        match (key.code, key.modifiers) {
+                            (KeyCode::Char('q'), _) | (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+                                state.should_quit = true;
+                                cancel_token.cancel();
+                                break;
+                            }
+                            (KeyCode::PageUp, _) => {
+                                state.scroll_offset = state.scroll_offset.saturating_sub(10);
+                            }
+                            (KeyCode::PageDown, _) => {
+                                state.scroll_offset = (state.scroll_offset + 10)
+                                    .min(state.conversation.len().saturating_sub(1));
+                            }
+                            _ => {}
                         }
-                        crate::tui::AppEvent::ScrollDown => {
-                            state.scroll_offset = (state.scroll_offset + 1)
-                                .min(state.conversation.len().saturating_sub(1));
-                        }
-                        _ => {}
                     }
                 }
             }
@@ -408,5 +497,54 @@ mod tests {
         ));
         let _ = PlanTuiEvent::RawStdout("raw".to_string());
         let _ = PlanTuiEvent::Stderr("err".to_string());
+        let _ = PlanTuiEvent::InputRequired("Question?".to_string());
+    }
+
+    #[test]
+    fn test_enter_input_mode() {
+        let mut state = PlanTuiState::new();
+        state.enter_input_mode("What is your name?".to_string());
+        assert!(state.input_mode);
+        assert_eq!(state.current_question, Some("What is your name?".to_string()));
+        assert!(state.input_buffer.is_empty());
+    }
+
+    #[test]
+    fn test_handle_input_char() {
+        let mut state = PlanTuiState::new();
+        state.enter_input_mode("Question".to_string());
+        state.handle_input_char('a');
+        state.handle_input_char('b');
+        assert_eq!(state.input_buffer, "ab");
+    }
+
+    #[test]
+    fn test_handle_input_backspace() {
+        let mut state = PlanTuiState::new();
+        state.enter_input_mode("Question".to_string());
+        state.handle_input_char('a');
+        state.handle_input_char('b');
+        state.handle_input_backspace();
+        assert_eq!(state.input_buffer, "a");
+    }
+
+    #[test]
+    fn test_submit_input() {
+        let mut state = PlanTuiState::new();
+        state.enter_input_mode("Question".to_string());
+        state.handle_input_char('y');
+        state.handle_input_char('e');
+        state.handle_input_char('s');
+        let response = state.submit_input();
+        assert_eq!(response, Some("yes".to_string()));
+        assert!(!state.input_mode);
+        assert!(state.current_question.is_none());
+    }
+
+    #[test]
+    fn test_submit_input_not_in_input_mode() {
+        let mut state = PlanTuiState::new();
+        let response = state.submit_input();
+        assert_eq!(response, None);
     }
 }

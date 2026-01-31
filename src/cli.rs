@@ -509,8 +509,8 @@ mod tests {
 
     #[test]
     fn test_parse_no_dsp_flag() {
-        let cli = Cli::try_parse_from(["rslph", "--no-dsp", "plan", "idea.txt"])
-            .expect("Should parse");
+        let cli =
+            Cli::try_parse_from(["rslph", "--no-dsp", "plan", "idea.txt"]).expect("Should parse");
         assert!(cli.no_dsp);
     }
 

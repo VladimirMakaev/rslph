@@ -1237,8 +1237,7 @@ async fn run_project_tests(
     }
 
     // Try to discover run script using Claude
-    let run_script = match discover_run_script(config, working_dir, cancel_token).await
-    {
+    let run_script = match discover_run_script(config, working_dir, cancel_token).await {
         Ok(script_path) => Some(script_path),
         Err(e) => {
             println!("Discovery failed ({}), trying fallback detection...", e);

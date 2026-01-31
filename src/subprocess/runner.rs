@@ -198,7 +198,10 @@ impl ClaudeRunner {
         }
 
         // Reap child and check exit status
-        let status = self.child.wait().await
+        let status = self
+            .child
+            .wait()
+            .await
             .map_err(|e| RslphError::Subprocess(e.to_string()))?;
 
         if !status.success() {
@@ -284,7 +287,10 @@ impl ClaudeRunner {
         }
 
         // Reap child and check exit status
-        let status = self.child.wait().await
+        let status = self
+            .child
+            .wait()
+            .await
             .map_err(|e| RslphError::Subprocess(e.to_string()))?;
 
         if !status.success() {

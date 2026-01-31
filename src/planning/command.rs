@@ -53,17 +53,43 @@ pub async fn run_plan_command(
 ) -> color_eyre::Result<(PathBuf, TokenUsage)> {
     // If TUI mode, run the TUI planning flow
     if tui {
-        return run_tui_planning(input, mode, no_dsp, config, working_dir, cancel_token, timeout).await;
+        return run_tui_planning(
+            input,
+            mode,
+            no_dsp,
+            config,
+            working_dir,
+            cancel_token,
+            timeout,
+        )
+        .await;
     }
 
     // If adaptive mode, run the adaptive planning flow
     if adaptive {
-        return run_adaptive_planning(input, mode, no_dsp, config, working_dir, cancel_token, timeout)
-            .await;
+        return run_adaptive_planning(
+            input,
+            mode,
+            no_dsp,
+            config,
+            working_dir,
+            cancel_token,
+            timeout,
+        )
+        .await;
     }
 
     // Basic mode: direct planning without clarification
-    run_basic_planning(input, mode, no_dsp, config, working_dir, cancel_token, timeout).await
+    run_basic_planning(
+        input,
+        mode,
+        no_dsp,
+        config,
+        working_dir,
+        cancel_token,
+        timeout,
+    )
+    .await
 }
 
 /// Run basic (non-adaptive) planning mode.
@@ -91,10 +117,10 @@ async fn run_basic_planning(
 
     // Step 4: Build Claude CLI args for headless mode
     let args = vec![
-        "-p".to_string(),         // Print mode (headless)
-        "--verbose".to_string(),  // Required for stream-json with -p
+        "-p".to_string(),              // Print mode (headless)
+        "--verbose".to_string(),       // Required for stream-json with -p
         "--output-format".to_string(), // Output format
-        "stream-json".to_string(), // JSONL for structured parsing
+        "stream-json".to_string(),     // JSONL for structured parsing
         "--system-prompt".to_string(), // Custom system prompt
         system_prompt,
         full_input, // User input as positional arg

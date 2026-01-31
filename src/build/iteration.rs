@@ -126,8 +126,8 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
 
     // Step 4: Build Claude CLI args for headless mode
     let args = vec![
-        "-p".to_string(),         // Print mode (headless)
-        "--verbose".to_string(),  // Required for stream-json with -p
+        "-p".to_string(),        // Print mode (headless)
+        "--verbose".to_string(), // Required for stream-json with -p
         "--output-format".to_string(),
         "stream-json".to_string(), // JSONL for structured parsing
         "--system-prompt".to_string(),
@@ -151,7 +151,8 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
     // Build combined args: base_args + dsp (if enabled) + command args
     let combined_args = build_claude_args(&ctx.config.claude_cmd.base_args, &args, ctx.no_dsp);
 
-    let runner_result = ClaudeRunner::spawn(&ctx.config.claude_cmd.command, &combined_args, working_dir).await;
+    let runner_result =
+        ClaudeRunner::spawn(&ctx.config.claude_cmd.command, &combined_args, working_dir).await;
 
     let mut runner = match runner_result {
         Ok(r) => r,

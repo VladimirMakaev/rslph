@@ -928,8 +928,8 @@ mod tests {
             config,
             PromptMode::Basic,
             token,
-            true, // once_mode
-            true, // dry_run
+            true,  // once_mode
+            true,  // dry_run
             false, // no_dsp
         );
 
@@ -1034,7 +1034,7 @@ mod tests {
             config,
             PromptMode::Basic,
             token,
-            true, // once_mode - this is what we're testing
+            true,  // once_mode - this is what we're testing
             false, // dry_run
             false, // no_dsp
         );

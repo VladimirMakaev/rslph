@@ -42,6 +42,8 @@ pub enum SubprocessEvent {
     Log(String),
     /// Raw stream event for conversation view extraction.
     StreamEvent(StreamEvent),
+    /// Claude CLI is waiting for user input.
+    InputRequired { question: String },
 }
 
 impl From<SubprocessEvent> for AppEvent {
@@ -71,6 +73,8 @@ impl From<SubprocessEvent> for AppEvent {
             SubprocessEvent::Log(s) => AppEvent::LogMessage(s),
             // Stream events are forwarded for conversation view extraction
             SubprocessEvent::StreamEvent(e) => AppEvent::StreamEvent(e),
+            // Input required events are forwarded for TUI input handling
+            SubprocessEvent::InputRequired { question } => AppEvent::InputRequired { question },
         }
     }
 }

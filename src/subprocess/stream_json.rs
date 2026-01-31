@@ -341,6 +341,42 @@ impl StreamEvent {
             _ => false,
         }
     }
+
+    /// Check if this event requires user input.
+    ///
+    /// Claude CLI uses various mechanisms to ask for user input:
+    /// - "result" type events with content requesting input
+    /// - Tool results that indicate waiting for user
+    pub fn is_input_required(&self) -> Option<String> {
+        // Check for result events that contain questions
+        if self.event_type == "result" {
+            if let Some(ref message) = self.message {
+                if let MessageContent::Text(text) = &message.content {
+                    // Check if the text looks like a question
+                    if text.contains('?') || text.to_lowercase().contains("please") {
+                        return Some(text.clone());
+                    }
+                }
+            }
+        }
+
+        // Check for tool_result blocks that indicate input needed
+        if let Some(ref message) = self.message {
+            if let MessageContent::Blocks(blocks) = &message.content {
+                for block in blocks {
+                    if block.block_type == "tool_result" {
+                        if let Some(ref text) = block.text {
+                            if text.contains("waiting for") || text.contains("input required") {
+                                return Some(text.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        None
+    }
 }
 
 /// Accumulated response from parsing multiple stream events.
@@ -577,5 +613,38 @@ mod tests {
         let input = "not json";
         let result = format_tool_summary("Read", input);
         assert_eq!(result, "not json");
+    }
+
+    #[test]
+    fn test_is_input_required_result_with_question() {
+        let json = r#"{"type":"result","message":{"content":"What is your name?"}}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+        assert!(event.is_input_required().is_some());
+        assert_eq!(
+            event.is_input_required().unwrap(),
+            "What is your name?"
+        );
+    }
+
+    #[test]
+    fn test_is_input_required_result_with_please() {
+        let json = r#"{"type":"result","message":{"content":"Please provide your API key"}}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+        assert!(event.is_input_required().is_some());
+    }
+
+    #[test]
+    fn test_is_input_required_not_result_type() {
+        let json = r#"{"type":"assistant","message":{"content":"Hello there?"}}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+        // Not a "result" type event, so should return None
+        assert!(event.is_input_required().is_none());
+    }
+
+    #[test]
+    fn test_is_input_required_no_question() {
+        let json = r#"{"type":"result","message":{"content":"Task completed successfully"}}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+        assert!(event.is_input_required().is_none());
     }
 }

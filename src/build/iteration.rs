@@ -148,13 +148,15 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or(Path::new("."));
 
-    ctx.log(&format!(
-        "[TRACE] Iteration {}: Spawning Claude subprocess",
-        ctx.current_iteration
-    ));
-
     // Build combined args: base_args + dsp (if enabled) + command args
     let combined_args = build_claude_args(&ctx.config.claude_cmd.base_args, &args, ctx.no_dsp);
+
+    ctx.log(&format!(
+        "[TRACE] Iteration {}: Spawning Claude: {} {}",
+        ctx.current_iteration,
+        ctx.config.claude_cmd.command,
+        combined_args.join(" ")
+    ));
 
     let runner_result =
         ClaudeRunner::spawn(&ctx.config.claude_cmd.command, &combined_args, working_dir).await;
@@ -202,17 +204,27 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
         // Process lines as they arrive, with timeout
         let tui_tx_clone = tui_tx.clone();
         let process_result = tokio::time::timeout(timeout, async {
+            let _ = tui_tx_clone.send(SubprocessEvent::Log("[TRACE] Starting subprocess output streaming".to_string()));
             while let Some(line) = line_rx.recv().await {
+                match &line {
+                    OutputLine::Stdout(_) => {
+                        // Only log line type, not full content (could be huge)
+                        // Stdout logging is too verbose; we just process silently
+                    }
+                    OutputLine::Stderr(s) => {
+                        let _ = tui_tx_clone.send(SubprocessEvent::Log(format!("[TRACE] Received stderr: {}", s)));
+                        // Forward stderr to TUI with [stderr] prefix
+                        let _ = tui_tx_clone.send(SubprocessEvent::Stderr(s.clone()));
+                    }
+                }
                 if let OutputLine::Stdout(s) = &line {
                     // Stream to TUI
                     if let Some(event) = parse_and_stream_line(s, &tui_tx_clone) {
                         stream_response.process_event(&event);
                     }
-                } else if let OutputLine::Stderr(s) = &line {
-                    // Forward stderr to TUI with [stderr] prefix
-                    let _ = tui_tx_clone.send(SubprocessEvent::Stderr(s.clone()));
                 }
             }
+            let _ = tui_tx_clone.send(SubprocessEvent::Log("[TRACE] Subprocess output stream ended".to_string()));
             Ok::<(), RslphError>(())
         })
         .await;
@@ -231,6 +243,7 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
     } else {
         // Non-streaming mode: collect all output then parse
         // Don't use ? here - we want to catch timeout errors and handle them below
+        ctx.log("[TRACE] Processing subprocess output (non-streaming)");
         match runner
             .run_with_timeout(timeout, ctx.cancel_token.clone())
             .await
@@ -242,9 +255,11 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
                         stream_response.process_line(s);
                     } else if let OutputLine::Stderr(s) = line {
                         // Log stderr in non-TUI mode
+                        ctx.log(&format!("[TRACE] Received stderr: {}", s));
                         ctx.log(&format!("[stderr] {}", s));
                     }
                 }
+                ctx.log(&format!("[TRACE] Processed {} output lines", output.len()));
                 Ok(())
             }
             Err(e) => Err(e),

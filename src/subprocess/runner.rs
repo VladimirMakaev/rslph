@@ -2,7 +2,7 @@ use std::path::Path;
 use std::process::Stdio;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, BufReader, Lines};
-use tokio::process::{Child, ChildStderr, ChildStdout, Command};
+use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 use tokio::sync::mpsc;
 use tokio::time::{sleep, timeout};
 use tokio_util::sync::CancellationToken;
@@ -40,12 +40,13 @@ pub struct ClaudeRunner {
     child: Child,
     stdout: Lines<BufReader<ChildStdout>>,
     stderr: Lines<BufReader<ChildStderr>>,
+    stdin: Option<ChildStdin>,
     stdout_done: bool,
     stderr_done: bool,
 }
 
 impl ClaudeRunner {
-    /// Spawn Claude CLI (or any command) with piped stdout/stderr.
+    /// Spawn Claude CLI (or any command) with piped stdout/stderr/stdin.
     ///
     /// The process is spawned in its own process group to prevent
     /// terminal signal inheritance (Ctrl+C won't kill it directly).
@@ -59,18 +60,20 @@ impl ClaudeRunner {
             .current_dir(working_dir)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .stdin(Stdio::null())
+            .stdin(Stdio::piped())
             .process_group(0) // CRITICAL: Isolate from terminal signals
             .kill_on_drop(true) // Safety net
             .spawn()?;
 
         let stdout = child.stdout.take().expect("stdout configured as piped");
         let stderr = child.stderr.take().expect("stderr configured as piped");
+        let stdin = child.stdin.take();
 
         Ok(Self {
             child,
             stdout: BufReader::new(stdout).lines(),
             stderr: BufReader::new(stderr).lines(),
+            stdin,
             stdout_done: false,
             stderr_done: false,
         })
@@ -120,6 +123,20 @@ impl ClaudeRunner {
     /// Get the process ID (for external monitoring).
     pub fn id(&self) -> Option<u32> {
         self.child.id()
+    }
+
+    /// Write a response to the subprocess stdin.
+    ///
+    /// Used to send user responses to Claude CLI when it asks interactive questions.
+    /// Appends a newline after the response.
+    pub async fn write_stdin(&mut self, response: &str) -> std::io::Result<()> {
+        if let Some(ref mut stdin) = self.stdin {
+            use tokio::io::AsyncWriteExt;
+            stdin.write_all(response.as_bytes()).await?;
+            stdin.write_all(b"\n").await?;
+            stdin.flush().await?;
+        }
+        Ok(())
     }
 
     /// Wait for the process to complete.

@@ -3,8 +3,8 @@
 //! These tests invoke the actual rslph binary, configured to use fake Claude,
 //! and verify the complete build loop works correctly.
 //!
-//! The integration point is RSLPH_CLAUDE_PATH env var which overrides the
-//! claude_path config option, allowing rslph to use our fake Claude binary.
+//! The integration point is RSLPH_CLAUDE_CMD env var which overrides the
+//! claude command, allowing rslph to use our fake Claude binary.
 
 #![allow(deprecated)] // Command::cargo_bin is deprecated but still functional
 

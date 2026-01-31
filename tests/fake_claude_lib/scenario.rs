@@ -315,7 +315,7 @@ impl FakeClaudeHandle {
     ///
     /// Returns tuples of (key, value) for:
     /// - FAKE_CLAUDE_CONFIG: Path to config file
-    /// - RSLPH_CLAUDE_PATH: Path to fake_claude binary (to override real claude)
+    /// - RSLPH_CLAUDE_CMD: Path to fake_claude binary (to override real claude)
     pub fn env_vars(&self) -> Vec<(&'static str, String)> {
         vec![
             (
@@ -323,7 +323,7 @@ impl FakeClaudeHandle {
                 self.config_path.to_string_lossy().into_owned(),
             ),
             (
-                "RSLPH_CLAUDE_PATH",
+                "RSLPH_CLAUDE_CMD",
                 self.executable_path.to_string_lossy().into_owned(),
             ),
         ]

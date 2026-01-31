@@ -226,3 +226,119 @@ fn test_fake_claude_raw_before_events() {
         event_pos
     );
 }
+
+/// Test that fake Claude can output stderr lines.
+#[test]
+fn test_fake_claude_stderr_output() {
+    let handle = ScenarioBuilder::new()
+        .send_stderr("Claude Code at Meta (https://example.com)")
+        .send_stderr("Warning: experimental feature")
+        .respond_with_text("Normal response")
+        .build();
+
+    let output = std::process::Command::new(&handle.executable_path)
+        .env("FAKE_CLAUDE_CONFIG", &handle.config_path)
+        .output()
+        .expect("Failed to run fake claude");
+
+    assert!(output.status.success());
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Stderr should contain the stderr lines
+    assert!(
+        stderr.contains("Claude Code at Meta"),
+        "Expected stderr line, got: {}",
+        stderr
+    );
+    assert!(
+        stderr.contains("Warning: experimental feature"),
+        "Expected second stderr line, got: {}",
+        stderr
+    );
+
+    // Stdout should contain the normal response
+    assert!(
+        stdout.contains("Normal response"),
+        "Expected normal response in stdout, got: {}",
+        stdout
+    );
+}
+
+/// Test stderr output with delayed stdout (reproduces stuck TUI scenario).
+#[test]
+fn test_fake_claude_stderr_before_delayed_stdout() {
+    let handle = ScenarioBuilder::new()
+        .send_stderr("Claude Code at Meta (https://example.com)")
+        .with_initial_delay_ms(100) // Delay before stdout events
+        .respond_with_text("Delayed response")
+        .build();
+
+    let start = Instant::now();
+    let output = std::process::Command::new(&handle.executable_path)
+        .env("FAKE_CLAUDE_CONFIG", &handle.config_path)
+        .output()
+        .expect("Failed to run fake claude");
+    let elapsed = start.elapsed();
+
+    assert!(output.status.success());
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+
+    // Stderr should be present
+    assert!(
+        stderr.contains("Claude Code at Meta"),
+        "Expected stderr, got: {}",
+        stderr
+    );
+
+    // Stdout should have the delayed response
+    assert!(
+        stdout.contains("Delayed response"),
+        "Expected delayed response, got: {}",
+        stdout
+    );
+
+    // Should have taken at least 100ms due to initial delay
+    assert!(
+        elapsed >= Duration::from_millis(50),
+        "Expected delay, but took only {:?}",
+        elapsed
+    );
+}
+
+/// Test stderr only without stdout (simulates error scenario).
+#[test]
+fn test_fake_claude_stderr_only() {
+    let handle = ScenarioBuilder::new()
+        .send_stderr("Authentication required")
+        .send_stderr("Please log in at https://example.com")
+        .with_exit_code(1)
+        .build();
+
+    let output = std::process::Command::new(&handle.executable_path)
+        .env("FAKE_CLAUDE_CONFIG", &handle.config_path)
+        .output()
+        .expect("Failed to run fake claude");
+
+    // Should fail
+    assert!(!output.status.success());
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    // Stderr should have the error messages
+    assert!(
+        stderr.contains("Authentication required"),
+        "Expected auth error in stderr, got: {}",
+        stderr
+    );
+
+    // Stdout should be empty (no JSON events)
+    assert!(
+        output.stdout.is_empty(),
+        "Expected empty stdout for error case, got: {}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+}

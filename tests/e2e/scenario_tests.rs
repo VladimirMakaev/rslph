@@ -139,3 +139,24 @@ fn test_exit_code() {
 
     assert_eq!(config.invocations[0].exit_code, Some(1));
 }
+
+#[test]
+fn test_stderr_output() {
+    let handle = ScenarioBuilder::new()
+        .send_stderr("Error message to stderr")
+        .send_stderr("Another stderr line")
+        .build();
+
+    let config: FakeClaudeConfig =
+        serde_json::from_str(&std::fs::read_to_string(&handle.config_path).unwrap()).unwrap();
+
+    assert_eq!(config.invocations[0].stderr_lines.len(), 2);
+    assert_eq!(
+        config.invocations[0].stderr_lines[0],
+        "Error message to stderr"
+    );
+    assert_eq!(
+        config.invocations[0].stderr_lines[1],
+        "Another stderr line"
+    );
+}

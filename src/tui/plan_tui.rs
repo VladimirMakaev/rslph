@@ -63,6 +63,10 @@ pub struct PlanTuiState {
     pub start_time: Instant,
     /// Flag indicating user requested quit.
     pub should_quit: bool,
+    /// Count of stderr lines received without any stdout.
+    pub stderr_without_stdout: usize,
+    /// Whether we've received any stdout event.
+    pub has_stdout: bool,
 }
 
 impl Default for PlanTuiState {
@@ -81,6 +85,8 @@ impl PlanTuiState {
             status: PlanStatus::StackDetection,
             start_time: Instant::now(),
             should_quit: false,
+            stderr_without_stdout: 0,
+            has_stdout: false,
         }
     }
 
@@ -88,6 +94,7 @@ impl PlanTuiState {
     pub fn update(&mut self, event: &PlanTuiEvent) {
         match event {
             PlanTuiEvent::Stream(stream_event) => {
+                self.has_stdout = true;
                 // Extract conversation items from the stream event
                 for item in stream_event.extract_conversation_items() {
                     // If it's text, also append to plan preview
@@ -99,11 +106,16 @@ impl PlanTuiState {
                 }
             }
             PlanTuiEvent::RawStdout(line) => {
+                self.has_stdout = true;
                 // Display raw stdout as system message
                 self.conversation
                     .push(ConversationItem::System(format!("[stdout] {}", line)));
             }
             PlanTuiEvent::Stderr(line) => {
+                // Track stderr without stdout
+                if !self.has_stdout {
+                    self.stderr_without_stdout += 1;
+                }
                 // Display stderr as system message
                 self.conversation
                     .push(ConversationItem::System(format!("[stderr] {}", line)));
@@ -162,18 +174,23 @@ pub fn render_plan_tui(frame: &mut Frame, state: &PlanTuiState) {
 /// Render the header showing status and elapsed time.
 fn render_header(frame: &mut Frame, area: Rect, state: &PlanTuiState) {
     let elapsed = state.start_time.elapsed().as_secs();
-    let status_text = match &state.status {
-        PlanStatus::StackDetection => "Detecting project stack...",
-        PlanStatus::Planning => "Generating plan...",
-        PlanStatus::GeneratingName => "Generating project name...",
-        PlanStatus::Complete => "Complete!",
-        PlanStatus::Failed(e) => e.as_str(),
-    };
 
-    let status_color = match &state.status {
-        PlanStatus::Complete => Color::Green,
-        PlanStatus::Failed(_) => Color::Red,
-        _ => Color::Yellow,
+    // Determine status text - show warning if stderr received but no stdout
+    let (status_text, status_color) = if state.stderr_without_stdout > 0
+        && !state.has_stdout
+        && elapsed > 5
+        && !matches!(state.status, PlanStatus::Complete | PlanStatus::Failed(_))
+    {
+        // Waiting scenario: received stderr but no stdout after 5 seconds
+        ("Waiting for Claude... (check stderr above)", Color::Magenta)
+    } else {
+        match &state.status {
+            PlanStatus::StackDetection => ("Detecting project stack...", Color::Yellow),
+            PlanStatus::Planning => ("Generating plan...", Color::Yellow),
+            PlanStatus::GeneratingName => ("Generating project name...", Color::Yellow),
+            PlanStatus::Complete => ("Complete!", Color::Green),
+            PlanStatus::Failed(e) => (e.as_str(), Color::Red),
+        }
     };
 
     let header = Paragraph::new(vec![Line::from(vec![
@@ -307,6 +324,8 @@ mod tests {
         assert!(state.plan_preview.is_empty());
         assert!(matches!(state.status, PlanStatus::StackDetection));
         assert!(!state.should_quit);
+        assert_eq!(state.stderr_without_stdout, 0);
+        assert!(!state.has_stdout);
     }
 
     #[test]
@@ -358,6 +377,27 @@ mod tests {
             ConversationItem::System(s) => assert!(s.contains("[stderr]")),
             _ => panic!("Expected System item"),
         }
+        // Stderr without stdout should be tracked
+        assert_eq!(state.stderr_without_stdout, 1);
+        assert!(!state.has_stdout);
+    }
+
+    #[test]
+    fn test_stderr_then_stdout_tracking() {
+        let mut state = PlanTuiState::new();
+
+        // Receive stderr first
+        state.update(&PlanTuiEvent::Stderr("stderr line".to_string()));
+        assert_eq!(state.stderr_without_stdout, 1);
+        assert!(!state.has_stdout);
+
+        // Receive stdout
+        state.update(&PlanTuiEvent::RawStdout("stdout line".to_string()));
+        assert!(state.has_stdout);
+
+        // Receiving more stderr shouldn't increment counter since we have stdout
+        state.update(&PlanTuiEvent::Stderr("more stderr".to_string()));
+        assert_eq!(state.stderr_without_stdout, 1); // Still 1, not 2
     }
 
     #[test]

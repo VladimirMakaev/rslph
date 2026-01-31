@@ -50,6 +50,10 @@ pub struct InvocationConfig {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub raw_lines: Vec<String>,
 
+    /// Stderr lines to output before events (for testing stderr handling).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub stderr_lines: Vec<String>,
+
     /// Initial delay before outputting any events (milliseconds).
     /// Use this to simulate a slow startup that causes timeout.
     #[serde(skip_serializing_if = "Option::is_none")]

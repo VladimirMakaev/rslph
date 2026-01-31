@@ -201,6 +201,15 @@ impl ScenarioBuilder {
         self
     }
 
+    /// Send a line to stderr (for testing stderr handling).
+    ///
+    /// Stderr lines are output before events. Use this to test
+    /// how the TUI handles stderr output (e.g., auth prompts, warnings).
+    pub fn send_stderr(mut self, line: &str) -> Self {
+        self.current_invocation.stderr_lines.push(line.to_string());
+        self
+    }
+
     /// Configure exit code for this invocation.
     ///
     /// By default, fake Claude exits with 0. Use this to test
@@ -234,9 +243,10 @@ impl ScenarioBuilder {
 
     /// Build the scenario and return a handle.
     pub fn build(mut self) -> FakeClaudeHandle {
-        // Push current invocation if it has content (events or raw_lines)
+        // Push current invocation if it has content (events, raw_lines, or stderr_lines)
         if !self.current_invocation.events.is_empty()
             || !self.current_invocation.raw_lines.is_empty()
+            || !self.current_invocation.stderr_lines.is_empty()
         {
             self.invocations.push(self.current_invocation);
         }

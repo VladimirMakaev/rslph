@@ -47,6 +47,12 @@ fn main() {
         io::stdout().flush().unwrap();
     }
 
+    // Output stderr lines (for testing stderr handling)
+    for stderr_line in &inv_config.stderr_lines {
+        eprintln!("{}", stderr_line);
+        io::stderr().flush().unwrap();
+    }
+
     // Apply initial delay before outputting any events
     if let Some(initial_delay) = inv_config.initial_delay_ms {
         std::thread::sleep(std::time::Duration::from_millis(initial_delay));

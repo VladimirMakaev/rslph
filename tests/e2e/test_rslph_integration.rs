@@ -361,3 +361,82 @@ fn test_rslph_uses_rslph_claude_path_env() {
         "Expected Claude to be invoked via RSLPH_CLAUDE_PATH env var"
     );
 }
+
+#[test]
+fn test_rslph_plan_single_response() {
+    // Scenario: Plan command runs and invokes fake Claude
+    // Note: Plan command may invoke Claude twice - once for planning and once
+    // for project name generation if the output doesn't include a name.
+    let scenario = ScenarioBuilder::new()
+        .respond_with_text("Here is a plan for your task...")
+        .next_invocation()
+        .respond_with_text("test-project") // Project name generation response
+        .build();
+
+    let workspace = WorkspaceBuilder::new()
+        .with_progress_file("# Progress\n\n- [ ] Task 1\n")
+        .build();
+
+    let mut cmd = rslph_with_fake_claude(&scenario);
+    cmd.arg("plan")
+        .arg("PROGRESS.md")
+        .arg("--no-tui")
+        .current_dir(workspace.path());
+
+    let output = cmd.output().expect("Failed to run rslph plan");
+
+    // Verify fake Claude was invoked (at least once for plan, maybe twice for name)
+    assert!(
+        scenario.invocation_count() >= 1,
+        "Expected at least 1 invocation for plan command, got {}",
+        scenario.invocation_count()
+    );
+
+    // Plan command should succeed
+    assert!(
+        output.status.success(),
+        "plan command should succeed, stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn test_rslph_plan_uses_rslph_claude_cmd_env() {
+    // Verify RSLPH_CLAUDE_CMD env var works for plan command
+    // Note: Plan command may invoke Claude twice - once for planning and once
+    // for project name generation if the output doesn't include a name.
+    let scenario = ScenarioBuilder::new()
+        .respond_with_text("Plan generated via RSLPH_CLAUDE_CMD env var")
+        .next_invocation()
+        .respond_with_text("env-test-project") // Project name generation response
+        .build();
+
+    // Create workspace without any config - rely solely on env var
+    let workspace = WorkspaceBuilder::new()
+        .with_progress_file("# Progress\n\n- [ ] Task 1\n")
+        .build();
+
+    let mut cmd = Command::cargo_bin("rslph").expect("rslph binary should exist");
+    // Set RSLPH_CLAUDE_CMD explicitly (not via env_vars helper)
+    cmd.env("RSLPH_CLAUDE_CMD", &scenario.executable_path)
+        .env("FAKE_CLAUDE_CONFIG", &scenario.config_path)
+        .arg("plan")
+        .arg("PROGRESS.md")
+        .arg("--no-tui")
+        .current_dir(workspace.path());
+
+    let output = cmd.output().expect("Failed to run rslph plan");
+
+    // RSLPH_CLAUDE_CMD should have worked for plan command (at least one invocation)
+    assert!(
+        scenario.invocation_count() >= 1,
+        "Expected at least 1 invocation via RSLPH_CLAUDE_CMD env var for plan, got {}",
+        scenario.invocation_count()
+    );
+
+    assert!(
+        output.status.success(),
+        "plan with RSLPH_CLAUDE_CMD should succeed, stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}

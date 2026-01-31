@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::time::Duration;
 
 use clap::Parser;
@@ -29,7 +30,25 @@ async fn main() -> color_eyre::Result<()> {
             // Calculate timeout: max_iterations * 10 minutes per iteration
             let timeout = Duration::from_secs(config.max_iterations as u64 * 600);
 
-            println!("Planning: {}", plan);
+            // Resolve plan input: read from file if exists, otherwise use as literal text
+            let path = Path::new(&plan);
+            let plan_input = if path.exists() && path.is_file() {
+                match std::fs::read_to_string(path) {
+                    Ok(contents) => contents,
+                    Err(e) => {
+                        eprintln!("Error reading plan file '{}': {}", plan, e);
+                        std::process::exit(1);
+                    }
+                }
+            } else {
+                plan.clone()
+            };
+
+            if path.exists() && path.is_file() {
+                println!("Planning from file: {}", plan);
+            } else {
+                println!("Planning: {}", plan);
+            }
             println!("Working directory: {}", working_dir.display());
             if adaptive {
                 println!("Mode: adaptive (with clarifying questions)");
@@ -39,7 +58,7 @@ async fn main() -> color_eyre::Result<()> {
             }
 
             match run_plan_command(
-                &plan,
+                &plan_input,
                 adaptive,
                 !no_tui,
                 config.prompt_mode,

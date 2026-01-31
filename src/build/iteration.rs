@@ -208,6 +208,9 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
                     if let Some(event) = parse_and_stream_line(s, &tui_tx_clone) {
                         stream_response.process_event(&event);
                     }
+                } else if let OutputLine::Stderr(s) = &line {
+                    // Forward stderr to TUI with [stderr] prefix
+                    let _ = tui_tx_clone.send(SubprocessEvent::Stderr(s.clone()));
                 }
             }
             Ok::<(), RslphError>(())
@@ -237,6 +240,9 @@ pub async fn run_single_iteration(ctx: &mut BuildContext) -> Result<IterationRes
                 for line in &output {
                     if let OutputLine::Stdout(s) = line {
                         stream_response.process_line(s);
+                    } else if let OutputLine::Stderr(s) = line {
+                        // Log stderr in non-TUI mode
+                        ctx.log(&format!("[stderr] {}", s));
                     }
                 }
                 Ok(())

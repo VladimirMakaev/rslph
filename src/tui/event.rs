@@ -44,6 +44,8 @@ pub enum SubprocessEvent {
     StreamEvent(StreamEvent),
     /// Claude CLI is waiting for user input.
     InputRequired { question: String },
+    /// Stderr output from Claude CLI subprocess.
+    Stderr(String),
 }
 
 impl From<SubprocessEvent> for AppEvent {
@@ -75,6 +77,8 @@ impl From<SubprocessEvent> for AppEvent {
             SubprocessEvent::StreamEvent(e) => AppEvent::StreamEvent(e),
             // Input required events are forwarded for TUI input handling
             SubprocessEvent::InputRequired { question } => AppEvent::InputRequired { question },
+            // Stderr output is logged with [stderr] prefix for visibility
+            SubprocessEvent::Stderr(s) => AppEvent::LogMessage(format!("[stderr] {}", s)),
         }
     }
 }
@@ -295,6 +299,10 @@ mod tests {
         let log = SubprocessEvent::Log("log message".to_string());
         let app_event: AppEvent = log.into();
         assert!(matches!(app_event, AppEvent::LogMessage(s) if s == "log message"));
+
+        let stderr = SubprocessEvent::Stderr("error message".to_string());
+        let app_event: AppEvent = stderr.into();
+        assert!(matches!(app_event, AppEvent::LogMessage(s) if s == "[stderr] error message"));
     }
 
     #[test]

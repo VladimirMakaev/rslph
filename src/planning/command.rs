@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
+use tracing::{debug, info, trace};
 
 use crate::build::tokens::{format_tokens, TokenUsage};
 use crate::config::Config;
@@ -289,6 +290,8 @@ async fn run_tui_planning(
             .await
             .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
 
+    debug!(pid = ?runner.id(), "Spawned Claude for TUI planning");
+
     // NOTE: Claude CLI in -p mode may wait for stdin EOF before proceeding.
     // For now, close stdin immediately. Session resume uses a new process.
     runner.close_stdin();
@@ -318,9 +321,14 @@ async fn run_tui_planning(
                 line = runner.next_output() => {
                     match line {
                         Some(OutputLine::Stdout(s)) => {
+                            trace!(line_len = %s.len(), "Processing stdout line");
                             // Try to parse as JSON, forward either way
                             match StreamEvent::parse(&s) {
                                 Ok(event) => {
+                                    debug!(event_type = %event.event_type, has_tool_use = %event.has_tool_use(), "Parsed stream event in TUI mode");
+                                    if event.extract_ask_user_questions().is_some() {
+                                        debug!("Stream event contains AskUserQuestion, will check after stream completes");
+                                    }
                                     stream_response.process_event(&event);
                                     let _ = event_tx.send(PlanTuiEvent::Stream(Box::new(event)));
                                 }
@@ -365,10 +373,20 @@ async fn run_tui_planning(
         Ok(Ok(())) => {}
     }
 
+    // Log stream completion
+    debug!(
+        has_questions = %stream_response.has_questions(),
+        session_id = ?stream_response.session_id,
+        total_question_events = %stream_response.questions.len(),
+        "Stream complete, checking for questions"
+    );
+
     // Step 9: Check if Claude asked questions
     if stream_response.has_questions() {
         if let Some(ref session_id) = stream_response.session_id {
             let questions = stream_response.get_all_questions();
+
+            info!(session_id = %session_id, question_count = %questions.len(), "Sending questions to TUI for user input");
 
             // Send questions to TUI for user input
             let _ = event_tx.send(PlanTuiEvent::QuestionsAsked {
@@ -384,6 +402,13 @@ async fn run_tui_planning(
                 .await
                 .map_err(|e| RslphError::Subprocess(format!("TUI task failed: {}", e)))?
                 .map_err(|e| RslphError::Subprocess(format!("TUI error: {}", e)))?;
+
+            debug!(
+                should_quit = %tui_state.should_quit,
+                answers_submitted = %tui_state.answers_submitted,
+                input_len = %tui_state.input_buffer.len(),
+                "TUI returned"
+            );
 
             // Check if user quit
             if tui_state.should_quit {
@@ -933,11 +958,7 @@ async fn resume_session(
 
     let combined_args = build_claude_args(&config.claude_cmd.base_args, &args, no_dsp);
 
-    eprintln!(
-        "[TRACE] Resuming session {} with message length {}",
-        session_id,
-        message.len()
-    );
+    debug!(session_id = %session_id, message_len = %message.len(), "Resuming session with Claude");
 
     let mut runner = ClaudeRunner::spawn(&config.claude_cmd.command, &combined_args, working_dir)
         .await
@@ -954,13 +975,10 @@ async fn resume_session(
         }
     }
 
-    eprintln!(
-        "[TRACE] Resume output length: {} chars",
-        stream_response.text.len()
-    );
-    eprintln!(
-        "[TRACE] Resume tokens: {} in / {} out",
-        stream_response.input_tokens, stream_response.output_tokens
+    debug!(
+        has_questions = %stream_response.has_questions(),
+        text_len = %stream_response.text.len(),
+        "Resume session complete"
     );
 
     Ok(stream_response)

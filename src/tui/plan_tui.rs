@@ -429,6 +429,12 @@ mod tests {
         assert!(!state.should_quit);
         assert_eq!(state.stderr_without_stdout, 0);
         assert!(!state.has_stdout);
+        // New input mode fields
+        assert!(matches!(state.input_mode, InputMode::Normal));
+        assert!(state.pending_questions.is_empty());
+        assert!(state.input_buffer.is_empty());
+        assert!(state.session_id.is_none());
+        assert!(!state.answers_submitted);
     }
 
     #[test]
@@ -442,8 +448,18 @@ mod tests {
         let _ = PlanStatus::StackDetection;
         let _ = PlanStatus::Planning;
         let _ = PlanStatus::GeneratingName;
+        let _ = PlanStatus::AwaitingInput;
+        let _ = PlanStatus::ResumingSession;
         let _ = PlanStatus::Complete;
         let _ = PlanStatus::Failed("error".to_string());
+    }
+
+    #[test]
+    fn test_input_mode_variants() {
+        let normal = InputMode::Normal;
+        let answering = InputMode::AnsweringQuestions;
+        assert_ne!(normal, answering);
+        assert_eq!(InputMode::default(), InputMode::Normal);
     }
 
     #[test]
@@ -511,5 +527,96 @@ mod tests {
         ));
         let _ = PlanTuiEvent::RawStdout("raw".to_string());
         let _ = PlanTuiEvent::Stderr("err".to_string());
+        let _ = PlanTuiEvent::QuestionsAsked {
+            questions: vec!["Q1?".to_string()],
+            session_id: "session-123".to_string(),
+        };
+    }
+
+    #[test]
+    fn test_enter_question_mode() {
+        let mut state = PlanTuiState::new();
+        let questions = vec!["Q1?".to_string(), "Q2?".to_string()];
+
+        state.enter_question_mode(questions.clone(), "session-abc".to_string());
+
+        assert!(matches!(state.input_mode, InputMode::AnsweringQuestions));
+        assert_eq!(state.pending_questions, questions);
+        assert_eq!(state.session_id, Some("session-abc".to_string()));
+        assert!(state.input_buffer.is_empty());
+        assert!(matches!(state.status, PlanStatus::AwaitingInput));
+        assert!(!state.answers_submitted);
+        assert!(state.is_answering_questions());
+        assert_eq!(state.get_session_id(), Some("session-abc"));
+    }
+
+    #[test]
+    fn test_exit_question_mode() {
+        let mut state = PlanTuiState::new();
+        state.enter_question_mode(vec!["Q?".to_string()], "session-123".to_string());
+        state.input_buffer = "My answer".to_string();
+
+        let answers = state.exit_question_mode();
+
+        assert_eq!(answers, "My answer");
+        assert!(matches!(state.input_mode, InputMode::Normal));
+        assert!(state.answers_submitted);
+        assert!(matches!(state.status, PlanStatus::ResumingSession));
+        assert!(!state.is_answering_questions());
+    }
+
+    #[test]
+    fn test_handle_input_char() {
+        let mut state = PlanTuiState::new();
+
+        // Normal mode - should not add chars
+        state.handle_input_char('x');
+        assert!(state.input_buffer.is_empty());
+
+        // Enter question mode - now chars should be added
+        state.enter_question_mode(vec!["Q?".to_string()], "session".to_string());
+        state.handle_input_char('H');
+        state.handle_input_char('i');
+        assert_eq!(state.input_buffer, "Hi");
+    }
+
+    #[test]
+    fn test_handle_input_backspace() {
+        let mut state = PlanTuiState::new();
+        state.enter_question_mode(vec!["Q?".to_string()], "session".to_string());
+        state.input_buffer = "Hello".to_string();
+
+        state.handle_input_backspace();
+        assert_eq!(state.input_buffer, "Hell");
+
+        // Backspace on empty buffer should be safe
+        state.input_buffer.clear();
+        state.handle_input_backspace();
+        assert!(state.input_buffer.is_empty());
+    }
+
+    #[test]
+    fn test_handle_input_newline() {
+        let mut state = PlanTuiState::new();
+        state.enter_question_mode(vec!["Q?".to_string()], "session".to_string());
+        state.input_buffer = "Line1".to_string();
+
+        state.handle_input_newline();
+        assert_eq!(state.input_buffer, "Line1\n");
+    }
+
+    #[test]
+    fn test_questions_asked_event() {
+        let mut state = PlanTuiState::new();
+        let questions = vec!["What is your project name?".to_string()];
+
+        state.update(&PlanTuiEvent::QuestionsAsked {
+            questions: questions.clone(),
+            session_id: "test-session".to_string(),
+        });
+
+        assert!(state.is_answering_questions());
+        assert_eq!(state.pending_questions, questions);
+        assert_eq!(state.session_id, Some("test-session".to_string()));
     }
 }

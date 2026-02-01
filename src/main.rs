@@ -8,10 +8,18 @@ use rslph::cli::{Cli, Commands};
 use rslph::eval::{run_compare_command, run_eval_command, run_retest_command};
 use rslph::planning::run_plan_command;
 use rslph::subprocess::setup_ctrl_c_handler;
+use tracing_subscriber::EnvFilter;
 
 #[tokio::main]
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
+
+    // Initialize tracing subscriber for debug/trace logging
+    // Use RUST_LOG=rslph=debug or RUST_LOG=rslph=trace to enable
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::from_default_env())
+        .with_writer(std::io::stderr)
+        .init();
 
     let cli = Cli::parse();
     let config = cli.load_config()?;

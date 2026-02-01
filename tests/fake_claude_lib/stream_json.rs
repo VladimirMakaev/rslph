@@ -25,6 +25,14 @@ pub struct StreamEventOutput {
     #[serde(rename = "type")]
     pub event_type: String,
 
+    /// Event subtype (e.g., "init" for system init events).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subtype: Option<String>,
+
+    /// Session ID (present in init events for session resume).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
+
     /// The message content (for user/assistant events).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub message: Option<MessageOutput>,
@@ -214,6 +222,8 @@ impl StreamEventOutput {
 
         Self {
             event_type: "assistant".to_string(),
+            subtype: None,
+            session_id: None,
             message: Some(MessageOutput {
                 id: Some(format!("msg_{}", uuid_v4_simple())),
                 role: Some("assistant".to_string()),
@@ -231,6 +241,20 @@ impl StreamEventOutput {
     pub fn system_init() -> Self {
         Self {
             event_type: "system".to_string(),
+            subtype: Some("init".to_string()),
+            session_id: None,
+            message: None,
+            uuid: Some(uuid_v4_simple()),
+            timestamp: Some(chrono::Utc::now().to_rfc3339()),
+        }
+    }
+
+    /// Create a system init event with session_id for testing session resume.
+    pub fn system_init_with_session(session_id: &str) -> Self {
+        Self {
+            event_type: "system".to_string(),
+            subtype: Some("init".to_string()),
+            session_id: Some(session_id.to_string()),
             message: None,
             uuid: Some(uuid_v4_simple()),
             timestamp: Some(chrono::Utc::now().to_rfc3339()),
@@ -246,6 +270,8 @@ impl StreamEventOutput {
     pub fn result_with_tokens(cost_usd: f64, tokens: &TokenConfig) -> Self {
         Self {
             event_type: "result".to_string(),
+            subtype: None,
+            session_id: None,
             message: Some(MessageOutput {
                 id: None,
                 role: None,
@@ -300,6 +326,8 @@ impl StreamEventOutput {
     ) -> Self {
         Self {
             event_type: "assistant".to_string(),
+            subtype: None,
+            session_id: None,
             message: Some(MessageOutput {
                 id: Some(format!("msg_{}", uuid_v4_simple())),
                 role: Some("assistant".to_string()),
@@ -311,6 +339,27 @@ impl StreamEventOutput {
             uuid: Some(uuid_v4_simple()),
             timestamp: Some(chrono::Utc::now().to_rfc3339()),
         }
+    }
+
+    /// Create an AskUserQuestion tool_use event.
+    ///
+    /// This simulates Claude asking clarifying questions via the AskUserQuestion tool.
+    /// The event will have stop_reason="tool_use" to indicate Claude is waiting for input.
+    pub fn ask_user_question(questions: Vec<&str>) -> Self {
+        let questions_json: Vec<serde_json::Value> = questions
+            .into_iter()
+            .map(|q| serde_json::Value::String(q.to_string()))
+            .collect();
+
+        let input = serde_json::json!({
+            "questions": questions_json
+        });
+
+        let id = next_tool_id();
+        Self::assistant_with_blocks(
+            vec![ContentBlockOutput::tool_use(&id, "AskUserQuestion", input)],
+            Some("tool_use"),
+        )
     }
 }
 

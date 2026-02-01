@@ -44,10 +44,6 @@ pub enum Commands {
         /// Use adaptive mode with clarifying questions
         #[arg(long)]
         adaptive: bool,
-
-        /// Disable TUI mode (use plain output)
-        #[arg(long)]
-        no_tui: bool,
     },
 
     /// Execute tasks iteratively with fresh context (CMD-02)
@@ -62,10 +58,6 @@ pub enum Commands {
         /// Preview without executing
         #[arg(long)]
         dry_run: bool,
-
-        /// Disable TUI and use simple output
-        #[arg(long)]
-        no_tui: bool,
     },
 
     /// Run evaluation in isolated environment (EVAL-01)
@@ -85,10 +77,6 @@ pub enum Commands {
         /// Keep temp directory after completion
         #[arg(long)]
         keep: bool,
-
-        /// Disable TUI output
-        #[arg(long)]
-        no_tui: bool,
 
         /// List available built-in projects
         #[arg(long)]
@@ -161,11 +149,9 @@ mod tests {
             Commands::Plan {
                 plan,
                 adaptive,
-                no_tui,
             } => {
                 assert_eq!(plan, "my-idea.txt");
                 assert!(!adaptive);
-                assert!(!no_tui);
             }
             _ => panic!("Expected Plan command"),
         }
@@ -180,12 +166,10 @@ mod tests {
                 plan,
                 once,
                 dry_run,
-                no_tui,
             } => {
                 assert_eq!(plan, PathBuf::from("progress.md"));
                 assert!(once);
                 assert!(!dry_run);
-                assert!(!no_tui);
             }
             _ => panic!("Expected Build command"),
         }
@@ -216,29 +200,9 @@ mod tests {
             Commands::Plan {
                 plan,
                 adaptive,
-                no_tui,
             } => {
                 assert_eq!(plan, "idea.txt");
                 assert!(adaptive);
-                assert!(!no_tui);
-            }
-            _ => panic!("Expected Plan command"),
-        }
-    }
-
-    #[test]
-    fn test_parse_plan_with_no_tui() {
-        let cli = Cli::try_parse_from(["rslph", "plan", "my-idea.txt", "--no-tui"])
-            .expect("Should parse");
-        match cli.command {
-            Commands::Plan {
-                plan,
-                adaptive,
-                no_tui,
-            } => {
-                assert_eq!(plan, "my-idea.txt");
-                assert!(!adaptive);
-                assert!(no_tui);
             }
             _ => panic!("Expected Plan command"),
         }
@@ -253,32 +217,10 @@ mod tests {
                 plan,
                 once,
                 dry_run,
-                no_tui,
             } => {
                 assert_eq!(plan, PathBuf::from("progress.md"));
                 assert!(!once);
                 assert!(dry_run);
-                assert!(!no_tui);
-            }
-            _ => panic!("Expected Build command"),
-        }
-    }
-
-    #[test]
-    fn test_parse_build_with_no_tui() {
-        let cli = Cli::try_parse_from(["rslph", "build", "progress.md", "--no-tui"])
-            .expect("Should parse");
-        match cli.command {
-            Commands::Build {
-                plan,
-                once,
-                dry_run,
-                no_tui,
-            } => {
-                assert_eq!(plan, PathBuf::from("progress.md"));
-                assert!(!once);
-                assert!(!dry_run);
-                assert!(no_tui);
             }
             _ => panic!("Expected Build command"),
         }
@@ -301,14 +243,12 @@ mod tests {
                 trials,
                 modes,
                 keep,
-                no_tui,
                 list,
             } => {
                 assert_eq!(project, Some("calculator".to_string()));
                 assert_eq!(trials, 1); // default value
                 assert!(modes.is_none());
                 assert!(!keep);
-                assert!(!no_tui);
                 assert!(!list);
             }
             _ => panic!("Expected Eval command"),
@@ -325,14 +265,12 @@ mod tests {
                 trials,
                 modes,
                 keep,
-                no_tui,
                 list,
             } => {
                 assert_eq!(project, Some("calculator".to_string()));
                 assert_eq!(trials, 5);
                 assert!(modes.is_none());
                 assert!(!keep);
-                assert!(!no_tui);
                 assert!(!list);
             }
             _ => panic!("Expected Eval command"),
@@ -349,14 +287,12 @@ mod tests {
                 trials,
                 modes,
                 keep,
-                no_tui,
                 list,
             } => {
                 assert_eq!(project, Some("calculator".to_string()));
                 assert_eq!(trials, 1);
                 assert!(modes.is_none());
                 assert!(keep);
-                assert!(!no_tui);
                 assert!(!list);
             }
             _ => panic!("Expected Eval command"),
@@ -372,14 +308,12 @@ mod tests {
                 trials,
                 modes,
                 keep,
-                no_tui,
                 list,
             } => {
                 assert!(project.is_none());
                 assert_eq!(trials, 1);
                 assert!(modes.is_none());
                 assert!(!keep);
-                assert!(!no_tui);
                 assert!(list);
             }
             _ => panic!("Expected Eval command"),
@@ -402,7 +336,6 @@ mod tests {
                 trials,
                 modes,
                 keep,
-                no_tui,
                 list,
             } => {
                 assert_eq!(project, Some("calculator".to_string()));
@@ -413,7 +346,6 @@ mod tests {
                 assert_eq!(modes[1], PromptMode::Gsd);
                 assert_eq!(modes[2], PromptMode::GsdTdd);
                 assert!(!keep);
-                assert!(!no_tui);
                 assert!(!list);
             }
             _ => panic!("Expected Eval command"),
@@ -438,7 +370,6 @@ mod tests {
                 trials,
                 modes,
                 keep,
-                no_tui,
                 list,
             } => {
                 assert_eq!(project, Some("calculator".to_string()));
@@ -448,7 +379,6 @@ mod tests {
                 assert_eq!(modes[0], PromptMode::Basic);
                 assert_eq!(modes[1], PromptMode::Gsd);
                 assert!(!keep);
-                assert!(!no_tui);
                 assert!(!list);
             }
             _ => panic!("Expected Eval command"),

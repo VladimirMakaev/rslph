@@ -234,6 +234,34 @@ impl ScenarioBuilder {
         self.with_delay_ms(delay_ms)
     }
 
+    /// Start this invocation with a system init event containing a session ID.
+    ///
+    /// Use this for scenarios that need session resume testing.
+    /// The init event is added at the beginning of the current invocation's events.
+    pub fn with_session_id(mut self, session_id: &str) -> Self {
+        // Insert init event at the beginning
+        self.current_invocation.events.insert(
+            0,
+            StreamEventOutput::system_init_with_session(session_id),
+        );
+        self
+    }
+
+    /// Add an AskUserQuestion tool_use event to current invocation.
+    ///
+    /// The event will have stop_reason="tool_use" to indicate
+    /// Claude is waiting for user input before continuing.
+    pub fn asks_questions(mut self, questions: Vec<&str>) -> Self {
+        self.current_invocation
+            .events
+            .push(StreamEventOutput::ask_user_question(questions));
+        // Add a result event to properly terminate the invocation
+        self.current_invocation
+            .events
+            .push(StreamEventOutput::result(0.001));
+        self
+    }
+
     /// Finalize current invocation and start configuring the next one.
     pub fn next_invocation(mut self) -> Self {
         self.invocations

@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 15 - Interactive Planning Input
-Plan: 2 of 4 complete
+Plan: 3 of 4 complete
 Status: In progress
-Last activity: 2026-02-01 - Completed 15-02-PLAN.md (interactive input collection for CLI mode)
+Last activity: 2026-02-01 - Completed 15-03-PLAN.md (session resume for adaptive planning Q&A)
 
 Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2
 
@@ -28,7 +28,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1
 | 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | Complete |
 | 14 - TUI Visual Parity | Claude Code-style TUI design | TUI-01 to TUI-06 | Complete |
 | 13.1 - Clippy & Crates.io | Fix clippy, publish to crates.io | CLIP-01, CLIP-02, CLIP-03 | Complete |
-| 15 - Interactive Planning | Enable user input for Claude questions | INTER-01 to INTER-07 | In progress (2/4) |
+| 15 - Interactive Planning | Enable user input for Claude questions | INTER-01 to INTER-07 | In progress (3/4) |
 
 ## Performance Metrics
 
@@ -197,6 +197,9 @@ All decisions are archived in milestone roadmap files:
 | questions-vec-accumulation | Question storage | Accumulated in Vec<AskUserQuestion> for multi-event scenarios |
 | basic-mode-question-handling | Basic mode limitation | Shows questions, suggests --adaptive flag for interactive flow |
 | adaptive-mode-answer-collection | Adaptive mode behavior | Collects answers via stdin, formats for future session resume |
+| session-resume-max-rounds | Session resume loop guard | Max 5 rounds to prevent infinite question loops |
+| session-resume-token-accumulation | Token display approach | Accumulated totals across all resume calls with round count |
+| session-resume-graceful-failure | Resume failure handling | Continue with previous response if resume fails |
 
 ### Pending Todos
 
@@ -238,8 +241,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Completed 15-02-PLAN.md (interactive input collection for CLI mode)
-Resume file: .planning/phases/15-interactive-planning/15-03-PLAN.md
+Stopped at: Completed 15-03-PLAN.md (session resume for adaptive planning Q&A)
+Resume file: .planning/phases/15-interactive-planning/15-04-PLAN.md
 
 ### Roadmap Evolution
 
@@ -269,3 +272,4 @@ Resume file: .planning/phases/15-interactive-planning/15-03-PLAN.md
 - v1.2 milestone complete: All phases (8-14, 13.1) done, rslph v0.1.0 published
 - 15-01 complete: Session ID extraction and AskUserQuestion detection in stream_json parser
 - 15-02 complete: Interactive input collection for CLI mode (display questions, collect answers)
+- 15-03 complete: Session resume capability with --resume flag for multi-round Q&A

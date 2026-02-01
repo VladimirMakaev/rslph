@@ -14,6 +14,14 @@ pub struct StreamEvent {
     #[serde(rename = "type")]
     pub event_type: String,
 
+    /// Event subtype (e.g., "init" for system init events).
+    #[serde(default)]
+    pub subtype: Option<String>,
+
+    /// Session ID (present in init events).
+    #[serde(default)]
+    pub session_id: Option<String>,
+
     /// The message content (for user/assistant events).
     #[serde(default)]
     pub message: Option<Message>,
@@ -262,6 +270,25 @@ impl StreamEvent {
     /// Check if this is an assistant message.
     pub fn is_assistant(&self) -> bool {
         self.event_type == "assistant"
+    }
+
+    /// Check if this is a system init event.
+    ///
+    /// Init events have type="system" and subtype="init".
+    pub fn is_init_event(&self) -> bool {
+        self.event_type == "system"
+            && self.subtype.as_deref() == Some("init")
+    }
+
+    /// Extract session ID from this event.
+    ///
+    /// Session ID is present in init events.
+    pub fn extract_session_id(&self) -> Option<&str> {
+        if self.is_init_event() {
+            self.session_id.as_deref()
+        } else {
+            None
+        }
     }
 
     /// Extract text content from an assistant message.
@@ -646,5 +673,32 @@ mod tests {
         let json = r#"{"type":"result","message":{"content":"Task completed successfully"}}"#;
         let event = StreamEvent::parse(json).expect("should parse");
         assert!(event.is_input_required().is_none());
+    }
+
+    #[test]
+    fn test_parse_init_event_with_session_id() {
+        let json = r#"{"type":"system","subtype":"init","session_id":"fa0f513d-ca3f-447f-aaa3-9d12ffb6a75f","tools":[]}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+
+        assert!(event.is_init_event());
+        assert_eq!(event.extract_session_id(), Some("fa0f513d-ca3f-447f-aaa3-9d12ffb6a75f"));
+    }
+
+    #[test]
+    fn test_is_init_event_false_for_other_system_events() {
+        let json = r#"{"type":"system","message":{"content":[]}}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+
+        assert!(!event.is_init_event());
+        assert_eq!(event.extract_session_id(), None);
+    }
+
+    #[test]
+    fn test_is_init_event_false_for_assistant() {
+        let json = r#"{"type":"assistant","message":{"content":[{"type":"text","text":"Hello"}]}}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+
+        assert!(!event.is_init_event());
+        assert_eq!(event.extract_session_id(), None);
     }
 }

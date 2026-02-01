@@ -45,9 +45,9 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1
 - Shipped: 2026-01-19 (same day)
 
 **v1.2 Velocity:**
-- Total plans completed: 27
-- Average duration: 3m 17s
-- Total execution time: 96m 51s
+- Total plans completed: 31
+- Average duration: 4m 5s
+- Total execution time: 126m 51s
 
 **By Phase (v1.0):**
 
@@ -78,6 +78,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1
 | 12-multi-trial-results | 5/5 | 13m | 2m 36s |
 | 13-parallel-eval-tui | 9/9 | 27m | 3m |
 | 14-tui-visual-parity | 6/6 | 37m | 6m 10s |
+| 15-interactive-planning | 4/4 | 30m | 7m 30s |
 
 *Updated after each plan completion*
 
@@ -244,8 +245,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Completed 15-04-PLAN.md (TUI input mode for interactive Q&A)
-Resume file: None (Phase 15 complete)
+Stopped at: Phase 15 complete — all interactive planning features verified
+Resume file: None (Phase 15 complete, v1.2 milestone ready for audit)
 
 ### Roadmap Evolution
 

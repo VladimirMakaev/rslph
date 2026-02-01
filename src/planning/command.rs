@@ -683,6 +683,78 @@ async fn run_claude_headless(
     Ok(stream_response.text)
 }
 
+/// Resume a Claude session with user-provided answers.
+///
+/// Uses the Claude CLI `--resume` flag to continue an existing session.
+/// This allows the conversation to continue with the user's answers to questions.
+///
+/// # Arguments
+///
+/// * `session_id` - The session ID from the previous run's init event
+/// * `message` - The user's message (typically formatted answers)
+/// * `no_dsp` - If true, append --dangerously-skip-permissions to Claude
+/// * `config` - Application configuration
+/// * `working_dir` - Directory to use as working directory
+/// * `cancel_token` - Token for graceful cancellation
+/// * `timeout` - Maximum duration to wait for Claude
+///
+/// # Returns
+///
+/// StreamResponse containing the resumed session output and token usage.
+async fn resume_session(
+    session_id: &str,
+    message: &str,
+    no_dsp: bool,
+    config: &Config,
+    working_dir: &Path,
+    cancel_token: CancellationToken,
+    timeout: Duration,
+) -> color_eyre::Result<StreamResponse> {
+    let args = vec![
+        "-p".to_string(),              // Print mode (headless)
+        "--verbose".to_string(),       // Required for stream-json with -p
+        "--output-format".to_string(), // Output format
+        "stream-json".to_string(),     // JSONL for structured parsing
+        "--resume".to_string(),        // Resume the session
+        session_id.to_string(),        // Session ID to resume
+        message.to_string(),           // User's message (answers)
+    ];
+
+    let combined_args = build_claude_args(&config.claude_cmd.base_args, &args, no_dsp);
+
+    eprintln!(
+        "[TRACE] Resuming session {} with message length {}",
+        session_id,
+        message.len()
+    );
+
+    let mut runner = ClaudeRunner::spawn(&config.claude_cmd.command, &combined_args, working_dir)
+        .await
+        .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude for resume: {}", e)))?;
+
+    // Run with timeout and collect output
+    let output = runner.run_with_timeout(timeout, cancel_token).await?;
+
+    // Parse JSONL output using StreamResponse
+    let mut stream_response = StreamResponse::new();
+    for line in &output {
+        if let OutputLine::Stdout(s) = line {
+            stream_response.process_line(s);
+        }
+    }
+
+    eprintln!(
+        "[TRACE] Resume output length: {} chars",
+        stream_response.text.len()
+    );
+    eprintln!(
+        "[TRACE] Resume tokens: {} in / {} out",
+        stream_response.input_tokens, stream_response.output_tokens
+    );
+
+    Ok(stream_response)
+}
+
 /// Generate a short kebab-case project name from the user's input.
 ///
 /// Asks Claude to summarize the project in 2 words max, formatted as kebab-case.

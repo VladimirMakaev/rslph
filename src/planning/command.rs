@@ -1063,6 +1063,10 @@ fn display_questions(questions: &[String]) {
 /// Creates a formatted message that pairs questions with the user's free-form answers.
 /// Claude will interpret which parts of the answer address each question.
 fn format_answers_for_resume(questions: &[String], answers: &str) -> String {
+    use tracing::debug;
+
+    debug!(question_count = %questions.len(), answer_len = %answers.len(), "Formatting answers for resume");
+
     let mut formatted = String::from("Here are my answers to your questions:\n\n");
 
     for (i, question) in questions.iter().enumerate() {
@@ -1070,6 +1074,8 @@ fn format_answers_for_resume(questions: &[String], answers: &str) -> String {
     }
 
     formatted.push_str(&format!("\nMy answers:\n{}\n", answers));
+
+    debug!(formatted_len = %formatted.len(), "Formatted resume message");
 
     formatted
 }

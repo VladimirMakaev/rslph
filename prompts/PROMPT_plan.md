@@ -83,7 +83,13 @@ In Progress
 4. First phase should include testing infrastructure setup
 5. Order tasks by dependency (earlier phases first)
 6. Use imperative verbs: "Add", "Implement", "Create", "Fix", "Write", "Configure"
-7. Do NOT ask clarifying questions - make reasonable assumptions
+7. **Clarifying Questions:**
+   - In **standard mode** (default): Make reasonable assumptions rather than asking questions. Document assumptions in the Analysis section.
+   - In **adaptive mode** (`--adaptive` flag): You MAY use the `AskUserQuestion` tool to gather critical missing information before generating the plan. Use this for:
+     * Ambiguous technology choices (e.g., "What database: PostgreSQL or MongoDB?")
+     * Critical scope decisions (e.g., "Should auth include OAuth or just email/password?")
+     * Project-specific context (e.g., "What's the target deployment environment?")
+   - Keep questions focused and minimal (2-5 questions max). Don't ask about obvious or easily-defaulted choices.
 8. If the request is vague, structure what you can and note assumptions in the Analysis section
 
 ## Stack Context

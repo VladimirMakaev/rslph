@@ -313,6 +313,14 @@ impl ProgressFile {
             &mut current_phase_tasks,
         );
 
+        // Validate that we parsed something meaningful
+        // If all key fields are empty, the parse failed to extract meaningful content
+        if pf.name.is_empty() && pf.status.is_empty() && pf.tasks.is_empty() && pf.analysis.is_empty() {
+            return Err(RslphError::ProgressParse(
+                "Failed to parse progress file: no valid sections found (missing Status, Tasks, or Analysis)".to_string()
+            ));
+        }
+
         Ok(pf)
     }
 
@@ -780,5 +788,98 @@ Unit tests.
         );
         assert_eq!(pf.tasks[0].tasks[2].description, "Implement `echo` command");
         assert!(pf.tasks[0].tasks[2].completed);
+    }
+
+    #[test]
+    fn test_parse_empty_content_returns_error() {
+        // Empty string should return error
+        let result = ProgressFile::parse("");
+        assert!(result.is_err(), "Empty content should return error");
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.contains("no valid sections found"),
+            "Error should mention no valid sections: {}",
+            err_msg
+        );
+    }
+
+    #[test]
+    fn test_parse_random_text_returns_error() {
+        // Random text without proper progress file structure should return error
+        let result = ProgressFile::parse("This is just some random text without any sections.");
+        assert!(result.is_err(), "Random text should return error");
+    }
+
+    #[test]
+    fn test_parse_markdown_without_progress_sections_but_with_title() {
+        // Markdown with H1 but without progress sections should parse
+        // (since H1 becomes the name, and that's considered valid)
+        // This is intentionally lenient - Claude might return various formats
+        let content = r#"# Some Document
+
+## Introduction
+
+This is a document about something else entirely.
+
+## Conclusion
+
+Nothing related to progress files here.
+"#;
+        let result = ProgressFile::parse(content);
+        // This SHOULD succeed because H1 title becomes name
+        assert!(
+            result.is_ok(),
+            "Markdown with H1 should parse even without standard sections"
+        );
+        let pf = result.unwrap();
+        assert_eq!(pf.name, "Some Document");
+    }
+
+    #[test]
+    fn test_parse_minimal_valid_progress_succeeds() {
+        // Minimal valid progress file should parse successfully
+        let content = r#"# Progress: Minimal
+
+## Status
+
+In Progress
+"#;
+        let result = ProgressFile::parse(content);
+        assert!(result.is_ok(), "Minimal valid progress should parse: {:?}", result);
+        let pf = result.unwrap();
+        assert_eq!(pf.name, "Minimal");
+        assert_eq!(pf.status, "In Progress");
+    }
+
+    #[test]
+    fn test_parse_progress_with_only_analysis_succeeds() {
+        // Progress with only analysis section should succeed
+        let content = r#"# Progress: Analysis Only
+
+## Analysis
+
+Some analysis content here.
+"#;
+        let result = ProgressFile::parse(content);
+        assert!(result.is_ok(), "Progress with analysis should parse");
+        let pf = result.unwrap();
+        assert!(!pf.analysis.is_empty());
+    }
+
+    #[test]
+    fn test_parse_progress_with_only_tasks_succeeds() {
+        // Progress with only tasks section should succeed
+        let content = r#"# Progress: Tasks Only
+
+## Tasks
+
+### Phase 1
+
+- [ ] Task 1
+"#;
+        let result = ProgressFile::parse(content);
+        assert!(result.is_ok(), "Progress with tasks should parse");
+        let pf = result.unwrap();
+        assert!(!pf.tasks.is_empty());
     }
 }

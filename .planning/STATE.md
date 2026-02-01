@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 
 ## Current Position
 
-Phase: 15 - Interactive Planning Input
-Plan: 4 of 4 complete
-Status: Phase complete
-Last activity: 2026-02-01 - Completed 15-04-PLAN.md (TUI input mode for interactive Q&A)
+Phase: 15 - Interactive Planning Input (Gap Closure)
+Plan: 6 of 7 complete (gap closure in progress)
+Status: Gap closure in progress
+Last activity: 2026-02-01 - Completed 15-06-PLAN.md (allow clarifying questions in adaptive mode)
 
 Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2
 
@@ -204,6 +204,8 @@ All decisions are archived in milestone roadmap files:
 | raw-crossterm-events | TUI input handling | Use crossterm EventStream directly for text input (not EventHandler) |
 | ctrl-enter-submit | Answer submission keybinding | Ctrl+Enter or Ctrl+D to submit answers, Enter for newline |
 | answers-in-input-buffer | Answer storage location | Store answers in input_buffer field of TUI state for command retrieval |
+| prompt-questions-conditional | Prompt question behavior | Conditional on --adaptive flag: standard mode makes assumptions, adaptive mode allows AskUserQuestion |
+| question-limit | Question count limit | 2-5 questions max to prevent over-questioning |
 
 ### Pending Todos
 
@@ -245,8 +247,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Phase 15 complete — all interactive planning features verified
-Resume file: None (Phase 15 complete, v1.2 milestone ready for audit)
+Stopped at: 15-06-PLAN.md complete (prompt modifications for adaptive mode)
+Resume file: None (continue with 15-07 UAT rerun)
 
 ### Roadmap Evolution
 
@@ -278,4 +280,6 @@ Resume file: None (Phase 15 complete, v1.2 milestone ready for audit)
 - 15-02 complete: Interactive input collection for CLI mode (display questions, collect answers)
 - 15-03 complete: Session resume capability with --resume flag for multi-round Q&A
 - 15-04 complete: TUI input mode for interactive Q&A (InputMode enum, question rendering, keyboard handling)
+- Phase 15 UAT: 6 issues found, root cause identified as prompts forbidding questions
+- 15-06 complete: Modified all 4 planning prompts to allow AskUserQuestion in adaptive mode
 - Phase 15 complete: All 4 plans done, interactive planning fully implemented

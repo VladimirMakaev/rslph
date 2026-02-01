@@ -19,6 +19,7 @@ use ratatui::{
 };
 use tokio::sync::mpsc;
 use tokio_util::sync::CancellationToken;
+use tracing::{debug, trace};
 
 use crate::error::RslphError;
 use crate::subprocess::StreamEvent;
@@ -138,8 +139,10 @@ impl PlanTuiState {
         match event {
             PlanTuiEvent::Stream(stream_event) => {
                 self.has_stdout = true;
+                let items = stream_event.extract_conversation_items();
+                trace!(has_items = %items.len(), "Received stream event in TUI");
                 // Extract conversation items from the stream event
-                for item in stream_event.extract_conversation_items() {
+                for item in items {
                     // If it's text, also append to plan preview
                     if let ConversationItem::Text(ref text) = item {
                         self.plan_preview.push_str(text);
@@ -167,6 +170,7 @@ impl PlanTuiState {
                 questions,
                 session_id,
             } => {
+                debug!("Received QuestionsAsked event, transitioning to input mode");
                 self.enter_question_mode(questions.clone(), session_id.clone());
             }
         }
@@ -184,6 +188,7 @@ impl PlanTuiState {
     ///
     /// Switches TUI to input mode, stores questions and session ID.
     pub fn enter_question_mode(&mut self, questions: Vec<String>, session_id: String) {
+        debug!(question_count = %questions.len(), session_id = %session_id, "Entering question-answering mode");
         self.input_mode = InputMode::AnsweringQuestions;
         self.pending_questions = questions;
         self.session_id = Some(session_id);
@@ -196,6 +201,7 @@ impl PlanTuiState {
     ///
     /// Returns the user's answers and resets input mode to Normal.
     pub fn exit_question_mode(&mut self) -> String {
+        debug!(answer_len = %self.input_buffer.len(), "Exiting question-answering mode, answers submitted");
         self.input_mode = InputMode::Normal;
         self.answers_submitted = true;
         self.status = PlanStatus::ResumingSession;
@@ -470,6 +476,7 @@ pub async fn run_plan_tui(
     let mut crossterm_events = EventStream::new();
     let tick_duration = std::time::Duration::from_millis(33); // ~30 FPS
     let mut render_interval = tokio::time::interval(tick_duration);
+    let mut stream_closed = false; // Track when event channel is closed
 
     loop {
         // Render current state
@@ -479,6 +486,7 @@ pub async fn run_plan_tui(
 
         // Check if answers were submitted - exit the loop to allow command to resume
         if state.answers_submitted {
+            debug!("Answers submitted, exiting TUI event loop");
             break;
         }
 
@@ -491,19 +499,22 @@ pub async fn run_plan_tui(
                 break;
             }
 
-            // Stream events from Claude
-            stream_event = event_rx.recv() => {
+            // Stream events from Claude (only poll if not closed)
+            stream_event = event_rx.recv(), if !stream_closed => {
                 match stream_event {
                     Some(event) => {
                         state.update(&event);
                     }
                     None => {
-                        // Stream complete - if we're not in question mode, we're done
+                        // Stream complete - mark as closed to stop polling
+                        stream_closed = true;
+                        // If we're not in question mode, we're done
                         if !state.is_answering_questions() {
                             state.set_complete();
                             break;
                         }
                         // If in question mode, continue waiting for user input
+                        debug!("Stream closed but in question mode, waiting for user input");
                     }
                 }
             }
@@ -563,11 +574,13 @@ fn handle_input_key(state: &mut PlanTuiState, key_code: KeyCode, modifiers: KeyM
             }
             KeyCode::Char('d') => {
                 // Ctrl+D: submit answers
+                debug!("Submit keybinding detected (Ctrl+D), exiting question mode");
                 state.exit_question_mode();
                 return;
             }
             KeyCode::Enter => {
                 // Ctrl+Enter: submit answers
+                debug!("Submit keybinding detected (Ctrl+Enter), exiting question mode");
                 state.exit_question_mode();
                 return;
             }

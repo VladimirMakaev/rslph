@@ -6,6 +6,7 @@ use tokio::process::{Child, ChildStderr, ChildStdin, ChildStdout, Command};
 use tokio::sync::mpsc;
 use tokio::time::{sleep, timeout};
 use tokio_util::sync::CancellationToken;
+use tracing::trace;
 
 use super::OutputLine;
 use crate::error::RslphError;
@@ -116,13 +117,17 @@ impl ClaudeRunner {
     pub async fn next_output(&mut self) -> Option<OutputLine> {
         loop {
             if self.stdout_done && self.stderr_done {
+                trace!("Subprocess stdout/stderr streams closed");
                 return None;
             }
 
             tokio::select! {
                 result = self.stdout.next_line(), if !self.stdout_done => {
                     match result {
-                        Ok(Some(line)) => return Some(OutputLine::Stdout(line)),
+                        Ok(Some(line)) => {
+                            trace!(line_len = %line.len(), "Received stdout from subprocess");
+                            return Some(OutputLine::Stdout(line));
+                        }
                         Ok(None) => {
                             self.stdout_done = true;
                             // Continue to try stderr
@@ -135,7 +140,10 @@ impl ClaudeRunner {
                 }
                 result = self.stderr.next_line(), if !self.stderr_done => {
                     match result {
-                        Ok(Some(line)) => return Some(OutputLine::Stderr(line)),
+                        Ok(Some(line)) => {
+                            trace!(line_len = %line.len(), "Received stderr from subprocess");
+                            return Some(OutputLine::Stderr(line));
+                        }
                         Ok(None) => {
                             self.stderr_done = true;
                             // Continue to try stdout
@@ -160,6 +168,7 @@ impl ClaudeRunner {
     /// Used to send user responses to Claude CLI when it asks interactive questions.
     /// Appends a newline after the response.
     pub async fn write_stdin(&mut self, response: &str) -> std::io::Result<()> {
+        trace!(response_len = %response.len(), "Writing to subprocess stdin");
         if let Some(ref mut stdin) = self.stdin {
             use tokio::io::AsyncWriteExt;
             stdin.write_all(response.as_bytes()).await?;

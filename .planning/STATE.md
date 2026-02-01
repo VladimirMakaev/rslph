@@ -9,10 +9,10 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 
 ## Current Position
 
-Phase: 13.1 - Clippy & Crates.io
-Plan: 1 of 1 complete
-Status: Complete
-Last activity: 2026-02-01 - Completed quick task 018: Fix GSD prompt task format
+Phase: 15 - Interactive Planning Input
+Plan: 1 of 4 complete
+Status: In progress
+Last activity: 2026-02-01 - Completed 15-01-PLAN.md (stream JSON session ID and AskUserQuestion extraction)
 
 Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2
 
@@ -28,6 +28,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1
 | 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | Complete |
 | 14 - TUI Visual Parity | Claude Code-style TUI design | TUI-01 to TUI-06 | Complete |
 | 13.1 - Clippy & Crates.io | Fix clippy, publish to crates.io | CLIP-01, CLIP-02, CLIP-03 | Complete |
+| 15 - Interactive Planning | Enable user input for Claude questions | INTER-01 to INTER-07 | In progress (1/4) |
 
 ## Performance Metrics
 
@@ -187,6 +188,14 @@ All decisions are archived in milestone roadmap files:
 | plan-tui-pattern | Plan TUI architecture | Separate TUI task with mpsc channel for event forwarding |
 | plan-tui-auto-scroll | Plan TUI scrolling | Auto-scroll to bottom as new content arrives |
 
+**Phase 15 Decisions:**
+
+| ID | Decision | Choice |
+|----|----------|--------|
+| session-id-first-wins | Session ID capture strategy | First init event's session_id is kept, subsequent ones ignored |
+| ask-user-question-first-match | AskUserQuestion extraction | Returns first matching tool_use block per event |
+| questions-vec-accumulation | Question storage | Accumulated in Vec<AskUserQuestion> for multi-event scenarios |
+
 ### Pending Todos
 
 - **CLAUDE-CLI-OUTPUT-FLAGS**: Research Claude CLI `--output-format stream-json` and `--json-schema` flags for correct usage.
@@ -227,11 +236,12 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Completed quick task 018: Fix GSD prompt task format
-Resume file: None
+Stopped at: Completed 15-01-PLAN.md (stream JSON session ID and AskUserQuestion extraction)
+Resume file: .planning/phases/15-interactive-planning/15-02-PLAN.md
 
 ### Roadmap Evolution
 
+- Phase 15 added: Interactive Planning Input (session resume for user input during planning)
 - Phase 13 added: Parallel Eval TUI (parallel modes, eval dashboard, enhanced TUI, plan TUI)
 - Phase 13 planned: 4 plans in 2 waves (wave 1: 13-01, wave 2: 13-02, 13-03, 13-04)
 - 13-01 complete: Parallel infrastructure with --modes flag and JoinSet execution
@@ -255,3 +265,4 @@ Resume file: None
 - Phase 13.1 added: Clippy fixes and crates.io release (inserted after Phase 14)
 - 13.1-01 complete: Fixed clippy warnings, configured package exclusions, published rslph v0.1.0 to crates.io
 - v1.2 milestone complete: All phases (8-14, 13.1) done, rslph v0.1.0 published
+- 15-01 complete: Session ID extraction and AskUserQuestion detection in stream_json parser

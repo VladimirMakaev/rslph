@@ -1,3 +1,4 @@
+use std::fs::File;
 use std::path::Path;
 use std::time::Duration;
 
@@ -16,10 +17,21 @@ async fn main() -> color_eyre::Result<()> {
 
     // Initialize tracing subscriber for debug/trace logging
     // Use RUST_LOG=rslph=debug or RUST_LOG=rslph=trace to enable
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env())
-        .with_writer(std::io::stderr)
-        .init();
+    // Logs go to ./rslph-debug.log (or /tmp/rslph-debug.log as fallback)
+    if std::env::var("RUST_LOG").is_ok() {
+        let log_path = std::env::current_dir()
+            .map(|d| d.join("rslph-debug.log"))
+            .unwrap_or_else(|_| std::path::PathBuf::from("/tmp/rslph-debug.log"));
+
+        if let Ok(file) = File::create(&log_path) {
+            eprintln!("Debug logging to: {}", log_path.display());
+            tracing_subscriber::fmt()
+                .with_env_filter(EnvFilter::from_default_env())
+                .with_writer(file)
+                .with_ansi(false)
+                .init();
+        }
+    }
 
     let cli = Cli::parse();
     let config = cli.load_config()?;

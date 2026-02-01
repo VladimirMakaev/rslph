@@ -233,7 +233,8 @@ async fn run_basic_planning(
 /// 1. Detects project stack
 /// 2. Spawns Claude with stream-json output
 /// 3. Streams events to TUI for real-time display
-/// 4. Parses output and writes progress file
+/// 4. If Claude asks questions, enters Q&A mode in TUI
+/// 5. Parses output and writes progress file
 async fn run_tui_planning(
     input: &str,
     mode: PromptMode,
@@ -266,7 +267,7 @@ async fn run_tui_planning(
         "stream-json".to_string(),
         "--system-prompt".to_string(),
         system_prompt,
-        full_input,
+        full_input.clone(),
     ];
 
     // Step 5: Spawn Claude with interactive stdin for potential questions
@@ -277,7 +278,7 @@ async fn run_tui_planning(
             .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
 
     // NOTE: Claude CLI in -p mode may wait for stdin EOF before proceeding.
-    // For now, close stdin immediately. TODO: Keep stdin open for AskUserQuestion responses.
+    // For now, close stdin immediately. Session resume uses a new process.
     runner.close_stdin();
 
     // Step 6: Create channel for plan TUI events
@@ -337,7 +338,111 @@ async fn run_tui_planning(
     })
     .await;
 
-    // Step 9: Drop sender to signal completion to TUI
+    // Check for timeout
+    match &stream_result {
+        Err(_) => {
+            drop(event_tx);
+            let _ = tui_handle.await;
+            return Err(RslphError::Timeout(timeout.as_secs()).into());
+        }
+        Ok(Err(e)) => {
+            drop(event_tx);
+            let _ = tui_handle.await;
+            return Err(RslphError::Subprocess(e.to_string()).into());
+        }
+        Ok(Ok(())) => {}
+    }
+
+    // Step 9: Check if Claude asked questions
+    if stream_response.has_questions() {
+        if let Some(ref session_id) = stream_response.session_id {
+            let questions = stream_response.get_all_questions();
+
+            // Send questions to TUI for user input
+            let _ = event_tx.send(PlanTuiEvent::QuestionsAsked {
+                questions: questions.clone(),
+                session_id: session_id.clone(),
+            });
+
+            // Drop sender to let TUI know stream is done (but keep TUI open for input)
+            drop(event_tx);
+
+            // Wait for TUI to return with answers
+            let tui_state = tui_handle
+                .await
+                .map_err(|e| RslphError::Subprocess(format!("TUI task failed: {}", e)))?
+                .map_err(|e| RslphError::Subprocess(format!("TUI error: {}", e)))?;
+
+            // Check if user quit
+            if tui_state.should_quit {
+                return Err(RslphError::Cancelled.into());
+            }
+
+            // If answers were submitted, we need to resume the session
+            if tui_state.answers_submitted {
+                // Get the answers from TUI state
+                let answers = &tui_state.input_buffer;
+
+                // Format answers for resume
+                let _formatted_answers = format_answers_for_resume(&questions, answers);
+
+                // TODO: Call resume_session() when 15-03 is complete
+                // For now, log and continue with what we have
+                eprintln!("[TRACE] Session ID: {}", session_id);
+                eprintln!("[TRACE] User answers collected ({}  chars)", answers.len());
+                eprintln!(
+                    "[TRACE] Session resume will be available after Plan 15-03 is complete"
+                );
+
+                // Continue with what we have - the text may be incomplete
+                // but we log this for debugging
+            }
+
+            // Use the existing stream_response text (may be incomplete without resume)
+            let mut progress_file = match ProgressFile::parse(&stream_response.text) {
+                Ok(pf) => pf,
+                Err(e) => {
+                    // If parse fails due to incomplete output, create a minimal progress file
+                    eprintln!(
+                        "[TRACE] Parse failed (likely incomplete output without session resume): {}",
+                        e
+                    );
+                    return Err(e.into());
+                }
+            };
+
+            // Generate project name if empty
+            if progress_file.name.is_empty() {
+                let generated_name = generate_project_name(
+                    input,
+                    no_dsp,
+                    config,
+                    working_dir,
+                    cancel_token.clone(),
+                    timeout,
+                )
+                .await?;
+                progress_file.name = generated_name;
+            }
+
+            // Write to file
+            let output_path = working_dir.join("progress.md");
+            progress_file.write(&output_path)?;
+
+            // Create TokenUsage from stream_response
+            let tokens = TokenUsage {
+                input_tokens: stream_response.input_tokens,
+                output_tokens: stream_response.output_tokens,
+                cache_creation_input_tokens: stream_response.cache_creation_input_tokens,
+                cache_read_input_tokens: stream_response.cache_read_input_tokens,
+            };
+
+            return Ok((output_path, tokens));
+        }
+    }
+
+    // No questions - normal flow
+    // Step 9b: Drop sender to signal completion to TUI
     drop(event_tx);
 
     // Step 10: Wait for TUI to finish
@@ -345,13 +450,6 @@ async fn run_tui_planning(
         .await
         .map_err(|e| RslphError::Subprocess(format!("TUI task failed: {}", e)))?
         .map_err(|e| RslphError::Subprocess(format!("TUI error: {}", e)))?;
-
-    // Check for timeout or cancellation
-    match stream_result {
-        Err(_) => return Err(RslphError::Timeout(timeout.as_secs()).into()),
-        Ok(Err(e)) => return Err(e.into()),
-        Ok(Ok(())) => {}
-    }
 
     // Check if user quit
     if tui_state.should_quit {

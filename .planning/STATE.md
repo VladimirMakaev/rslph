@@ -248,6 +248,7 @@ None.
 | 016 | Fix plan TUI to handle interactive input when Claude asks questions | 2026-01-31 | bad8f55 | [016-fix-plan-tui-interactive-input](./quick/016-fix-plan-tui-interactive-input/) |
 | 017 | Fix empty progress.md produced by plan command | 2026-02-01 | 6151f18 | [017-fix-empty-progress-md-produced-by-plan-c](./quick/017-fix-empty-progress-md-produced-by-plan-c/) |
 | 018 | Fix GSD prompt task format (checkbox vs XML) | 2026-02-01 | faf6313 | [018-fix-gsd-prompt-task-format](./quick/018-fix-gsd-prompt-task-format/) |
+| 019 | Add thorough logging for interactive Q&A | 2026-02-01 | 54150ff | [019-add-thorough-logging-for-interactive-q-a](./quick/019-add-thorough-logging-for-interactive-q-a/) |
 
 ## Session Continuity
 

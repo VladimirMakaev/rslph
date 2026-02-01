@@ -378,33 +378,47 @@ async fn run_tui_planning(
                 return Err(RslphError::Cancelled.into());
             }
 
-            // If answers were submitted, we need to resume the session
+            // If answers were submitted, resume the session with user's answers
             if tui_state.answers_submitted {
-                // Get the answers from TUI state
                 let answers = &tui_state.input_buffer;
+                let formatted_answers = format_answers_for_resume(&questions, answers);
 
-                // Format answers for resume
-                let _formatted_answers = format_answers_for_resume(&questions, answers);
+                eprintln!("[TRACE] TUI Session ID: {}", session_id);
+                eprintln!("[TRACE] TUI answers collected ({} chars)", answers.len());
 
-                // TODO: Call resume_session() when 15-03 is complete
-                // For now, log and continue with what we have
-                eprintln!("[TRACE] Session ID: {}", session_id);
-                eprintln!("[TRACE] User answers collected ({}  chars)", answers.len());
-                eprintln!(
-                    "[TRACE] Session resume will be available after Plan 15-03 is complete"
-                );
-
-                // Continue with what we have - the text may be incomplete
-                // but we log this for debugging
+                // Resume session with answers
+                match resume_session(
+                    session_id,
+                    &formatted_answers,
+                    no_dsp,
+                    config,
+                    working_dir,
+                    cancel_token.clone(),
+                    timeout,
+                )
+                .await
+                {
+                    Ok(new_response) => {
+                        eprintln!(
+                            "[TRACE] TUI resume complete, output length: {} chars",
+                            new_response.text.len()
+                        );
+                        // Update stream_response with resumed output
+                        stream_response = new_response;
+                    }
+                    Err(e) => {
+                        eprintln!("[TRACE] TUI resume failed: {}", e);
+                        // Continue with what we have
+                    }
+                }
             }
 
-            // Use the existing stream_response text (may be incomplete without resume)
+            // Parse response into ProgressFile
             let mut progress_file = match ProgressFile::parse(&stream_response.text) {
                 Ok(pf) => pf,
                 Err(e) => {
-                    // If parse fails due to incomplete output, create a minimal progress file
                     eprintln!(
-                        "[TRACE] Parse failed (likely incomplete output without session resume): {}",
+                        "[TRACE] Parse failed: {}",
                         e
                     );
                     return Err(e.into());

@@ -9,26 +9,22 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 16 - Cleanup
 Plan: —
-Status: Defining requirements
-Last activity: 2026-02-01 — Milestone v1.3 started
+Status: Ready for planning
+Last activity: 2026-02-01 — v1.3 roadmap created
 
 Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2 | [░░░░░░░░░░] 0% v1.3
 
-## Phase Summary (v1.2)
+## Phase Summary (v1.3)
 
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
-| 8 - Token Tracking | Users can observe token consumption | TOK-01, TOK-02, TOK-03, TOK-04 | Complete |
-| 9 - Eval Foundation | Controlled benchmarks in isolation | EVAL-01, EVAL-04, EVAL-05 | Complete |
-| 10 - Eval Projects | Evaluate against built-in projects | PROJ-01-04, EVAL-02, EVAL-03 | Complete |
-| 11 - Prompt Engineering | TDD with clear iteration guidance | PROMPT-01 to PROMPT-05 | Complete |
-| 12 - Multi-Trial Results | Multiple trials, compare results | EVAL-06 to EVAL-09 | Complete |
-| 13 - Parallel Eval TUI | Parallel evals with live TUI | PARA-01 to PARA-04 | Complete |
-| 14 - TUI Visual Parity | Claude Code-style TUI design | TUI-01 to TUI-06 | Complete |
-| 13.1 - Clippy & Crates.io | Fix clippy, publish to crates.io | CLIP-01, CLIP-02, CLIP-03 | Complete |
-| 15 - Interactive Planning | Enable user input for Claude questions | INTER-01 to INTER-07 | Complete (7/7) |
+| 16 - Cleanup | Remove deprecated code paths | MODE-01, TUI-01 | Pending |
+| 17 - Basic Mode Alignment | Match portableralph exactly | MODE-02, MODE-03, MODE-04, MODE-05 | Pending |
+| 18 - TUI Enhancement | Multiline input + streaming display | TUI-02, TUI-03, TUI-04, TUI-05 | Pending |
+| 19 - GSD Personas | Persona-driven execution | GSD-01 to GSD-09 | Pending |
+| 20 - E2E Tests | Comprehensive test coverage | TEST-01 to TEST-07 | Pending |
 
 ## Performance Metrics
 
@@ -48,6 +44,7 @@ Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1
 - Total plans completed: 34
 - Average duration: 4m
 - Total execution time: 136m 51s
+- Shipped: 2026-02-01
 
 **By Phase (v1.0):**
 
@@ -90,137 +87,19 @@ All decisions are archived in milestone roadmap files:
 - `.planning/milestones/v1.0-ROADMAP.md`
 - `.planning/milestones/v1.1-ROADMAP.md`
 
-**v1.2 Decisions (Phase 8):**
+**v1.3 Decisions:**
 
-| ID | Decision | Choice |
-|----|----------|--------|
-| token-display-format | Status bar token format | "In: X \| Out: Y \| CacheW: Z \| CacheR: W" |
-| token-formatting-lib | Number formatting library | human_format crate for SI suffixes (5.2k, 1.2M) |
-| token-accumulation | Token accumulation approach | Use += to accumulate across all messages and iterations |
-| token-field-tracking | Fields to track | All 4: input, output, cache_creation, cache_read |
-| token-config-location | Fake Claude token config | TokenConfig in fake_claude_lib with ScenarioBuilder integration |
-
-**v1.2 Decisions (Phase 9):**
-
-| ID | Decision | Choice |
-|----|----------|--------|
-| eval-module-structure | Eval module pattern | Mirrors build module: mod.rs exports types, command.rs contains handler |
-| eval-stub-approach | Initial implementation | Stub returns placeholder EvalResult for incremental development |
-| eval-token-return-types | Plan/Build return types | run_plan_command returns (PathBuf, TokenUsage), run_build_command returns TokenUsage |
-| eval-token-aggregation | Token aggregation | total_tokens = plan_tokens + build_tokens |
-| eval-prompt-detection | Prompt file priority | prompt.txt > README.md > PROMPT.md |
-| eval-test-scope | E2E test focus | CLI parsing and validation, not full execution |
-
-**v1.2 Decisions (Phase 10):**
-
-| ID | Decision | Choice |
-|----|----------|--------|
-| include-dir-paths | File path handling | include_dir stores files with project prefix (e.g., "calculator/tests.jsonl") |
-| test-data-separation | Hidden test data | extract_project_files excludes tests.jsonl; get_test_data provides access |
-| test-runner-sync | Test execution pattern | Use std::process::Command (sync) not tokio since tests run post-build |
-| output-comparison | Whitespace handling | Trim both expected and actual output for comparison |
-| jsonl-error-handling | Parse error strategy | Skip malformed lines via filter_map, don't fail on parse errors |
-| debug-binary-preference | Binary selection order | Debug binary preferred over release in find_built_program |
-| list-flag-optional-project | CLI argument handling | --list flag makes project argument optional via required_unless_present |
-| test-phase-timing | Test execution timing | Test execution happens after build, before workspace cleanup |
-| e2e-test-module-structure | E2E test organization | Add tests to existing eval_command.rs rather than standalone file |
-| fizzbuzz-test-coverage | Test case range | 8 cases covering 1-20 range with progressive complexity |
-
-**v1.2 Decisions (Phase 11):**
-
-| ID | Decision | Choice |
-|----|----------|--------|
-| prompt-mode-variants | PromptMode enum variants | Basic/Gsd/GsdTdd as the three prompt modes |
-| prompt-mode-default | Default prompt mode | Basic for backward compatibility |
-| prompt-mode-serialization | String serialization format | snake_case for both strum and serde (basic, gsd, gsd_tdd) |
-| tdd-state-structure | TDD state tracking format | tdd_state block in YAML frontmatter with phase, consecutive_failures, escaped fields |
-| tdd-escape-threshold | TDD escape hatch threshold | 3 consecutive failures triggers escape hatch (PROMPT-03) |
-| tdd-task-types | TDD task type variants | Three task types: test, implement, refactor for TDD phases |
-| basic-mode-content | Basic mode prompt content | Use current rslph prompts (not PortableRalph) for backward compatibility |
-| mode-file-precedence | File override precedence | File overrides > mode selection for power users |
-
-**v1.2 Decisions (Phase 12):**
-
-| ID | Decision | Choice |
-|----|----------|--------|
-| variance-correction | Sample variance formula | Bessel's correction (n-1) for unbiased estimator |
-| empty-stats-handling | Empty slice handling | Return zeros for all fields (count=0) |
-| single-value-variance | Single value variance | Return 0.0 (no variation with one sample) |
-| trial-result-return | run_eval_command return value | Return last trial's EvalResult for backward compatibility |
-| pass-rate-normalization | Pass rate internal format | 0.0-1.0 internally, displayed as percentage |
-| json-filename-pattern | Multi-trial JSON filename | eval-results-{project}-{YYYY-MM-DD}.json |
-| json-deserialize | Deserialize derive | Added for future compare command loading |
-
-**v1.2 Decisions (Phase 13):**
-
-| ID | Decision | Choice |
-|----|----------|--------|
-| parallel-limit | Concurrent trial limit | Semaphore::new(3) for rate limiting |
-| event-channel-type | TrialEvent channel | mpsc::unbounded_channel for async event communication |
-| hash-derive | PromptMode Hash | Added Hash to PromptMode for HashMap key usage |
-| multimode-filename | Multi-mode JSON filename | eval-results-{project}-multimode-{timestamp}.json |
-
-**v1.2 Decisions (Phase 14):**
-
-| ID | Decision | Choice |
-|----|----------|--------|
-| brand-color-encoding | Claude brand color format | RGB values from brand guidelines (CRAIL=#C15F3C, CLOUDY=#B1ADA1, PAMPAS=#F4F3EE) |
-| model-tier-detection | Model tier detection logic | Case-insensitive substring matching for "opus", "sonnet" |
-| style-composition | Style function pattern | Each style function returns complete Style object with colors and modifiers |
-| group-border-colors | Thread view group borders | Claude groups use ASSISTANT (Crail), system groups use SYSTEM (Cloudy) |
-| box-char-module | Box character organization | Inline box_chars module with Unicode constants for borders |
-| spinner-pattern | Animation pattern | BRAILLE_SIX for smooth 6-dot cycling animation |
-| spinner-color | Spinner color | CRAIL from theme (Claude brand orange) |
-| tick-location | Where to tick | Before render in event loop for up-to-date animation state |
-| tick-rate | Animation rate | 30 FPS (matches existing event handler tick rate) |
-| spinner-area-position | Spinner render location | Right side of header area, 20 chars wide when streaming |
-| streaming-state-trigger | Streaming state detection | Start on first non-empty StreamEvent content, stop on IterationComplete |
-| thinking-toggle-key | Thinking block toggle | Key 't' toggles all thinking blocks collapsed/expanded |
-| render-mutability | Render function signature | Changed from &App to &mut App for stateful spinner widget |
-
-**v1.2 Decisions (Phase 13 - Continued):**
-
-| ID | Decision | Choice |
-|----|----------|--------|
-| conversation-max-items | Ring buffer limit | 1000 items for memory efficiency |
-| conversation-toggle-key | Conversation toggle key | 'c' key toggles split conversation view |
-| conversation-scroll-keys | Conversation scroll keys | PageUp/PageDown scroll by 10 items |
-| split-view-ratio | Split view layout | 50/50 horizontal split for conversation and main view |
-| plan-tui-pattern | Plan TUI architecture | Separate TUI task with mpsc channel for event forwarding |
-| plan-tui-auto-scroll | Plan TUI scrolling | Auto-scroll to bottom as new content arrives |
-
-**Phase 15 Decisions:**
-
-| ID | Decision | Choice |
-|----|----------|--------|
-| session-id-first-wins | Session ID capture strategy | First init event's session_id is kept, subsequent ones ignored |
-| ask-user-question-first-match | AskUserQuestion extraction | Returns first matching tool_use block per event |
-| questions-vec-accumulation | Question storage | Accumulated in Vec<AskUserQuestion> for multi-event scenarios |
-| basic-mode-question-handling | Basic mode limitation | Shows questions, suggests --adaptive flag for interactive flow |
-| adaptive-mode-answer-collection | Adaptive mode behavior | Collects answers via stdin, formats for future session resume |
-| session-resume-max-rounds | Session resume loop guard | Max 5 rounds to prevent infinite question loops |
-| session-resume-token-accumulation | Token display approach | Accumulated totals across all resume calls with round count |
-| session-resume-graceful-failure | Resume failure handling | Continue with previous response if resume fails |
-| raw-crossterm-events | TUI input handling | Use crossterm EventStream directly for text input (not EventHandler) |
-| ctrl-enter-submit | Answer submission keybinding | Ctrl+Enter or Ctrl+D to submit answers, Enter for newline |
-| answers-in-input-buffer | Answer storage location | Store answers in input_buffer field of TUI state for command retrieval |
-| prompt-questions-conditional | Prompt question behavior | Conditional on --adaptive flag: standard mode makes assumptions, adaptive mode allows AskUserQuestion |
-| question-limit | Question count limit | 2-5 questions max to prevent over-questioning |
-
-| fake-claude-with-session-id | Init event insertion | with_session_id inserts init event at beginning of invocation |
-| fake-claude-asks-questions-result | Result event auto-add | asks_questions auto-adds result event to terminate invocation |
-
-| e2e-scenario-test-pattern | Interactive scenario testing | Verify config content rather than full stdin mocking for E2E tests |
+*None yet*
 
 ### Pending Todos
 
 - **CLAUDE-CLI-OUTPUT-FLAGS**: Research Claude CLI `--output-format stream-json` and `--json-schema` flags for correct usage.
 
-### Future Features (v1.3 Candidates)
+### Future Features (v1.4 Candidates)
 
-*Note: EVAL-PARALLEL-MODES, EVAL-TUI-DASHBOARD, TUI-LLM-OUTPUT, and PLAN-TUI are now addressed in Phase 13.*
-
-None currently.
+- Verification agent (separate from build loop)
+- Notification system (completion, failure, intervals)
+- User-overridable prompts via config file paths
 
 ### Blockers/Concerns
 
@@ -253,41 +132,12 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: v1.3 milestone started, moving to research phase
+Stopped at: v1.3 roadmap created, ready to plan Phase 16
 Resume file: None
 
 ### Roadmap Evolution
 
-- Phase 15 added: Interactive Planning Input (session resume for user input during planning)
-- Phase 13 added: Parallel Eval TUI (parallel modes, eval dashboard, enhanced TUI, plan TUI)
-- Phase 13 planned: 4 plans in 2 waves (wave 1: 13-01, wave 2: 13-02, 13-03, 13-04)
-- 13-01 complete: Parallel infrastructure with --modes flag and JoinSet execution
-- 13-02 complete: Dashboard TUI for parallel eval with multi-pane grid layout
-- 13-03 complete: Enhanced conversation view in build TUI with 'c' toggle
-- 13-04 complete: Plan command TUI mode with streaming LLM output
-- Phase 13 UAT: 3 gaps found, closed with plans 13-05, 13-06, 13-07
-- Milestone audit: 2 critical gaps found (PARA-01 partial, PARA-02 partial)
-- Gap closure plans created: 13-08 (dashboard iteration progress), 13-09 (mode passthrough)
-- 13-09 complete: Mode passthrough from eval trials to plan/build commands
-- 13-08 complete: Iteration progress wired to dashboard TUI via ProgressCallback
-- Phase 13 complete: All 9 plans done, all PARA requirements fulfilled
-- Phase 14 added: TUI Visual Parity with Claude Code (brand colors, box-drawn elements, spinner, status bar)
-- 14-01 complete: Centralized theme module with Claude brand colors, model tier symbols, and style functions
-- 14-05 complete: Thread view uses theme colors and box-drawn borders for message groups
-- 14-04 complete: Box-drawn containers for thinking blocks and tool calls with collapse state tracking
-- 14-03 complete: Enhanced status bar with model tier indicator and session timer
-- 14-02 complete: Animated braille spinner widget with ThrobberState and tick integration
-- 14-06 complete: Integration of visual parity components (spinner, streaming events, thinking toggle)
-- Phase 14 complete: All 6 plans done, all TUI requirements fulfilled
-- Phase 13.1 added: Clippy fixes and crates.io release (inserted after Phase 14)
-- 13.1-01 complete: Fixed clippy warnings, configured package exclusions, published rslph v0.1.0 to crates.io
-- v1.2 milestone complete: All phases (8-14, 13.1) done, rslph v0.1.0 published
-- 15-01 complete: Session ID extraction and AskUserQuestion detection in stream_json parser
-- 15-02 complete: Interactive input collection for CLI mode (display questions, collect answers)
-- 15-03 complete: Session resume capability with --resume flag for multi-round Q&A
-- 15-04 complete: TUI input mode for interactive Q&A (InputMode enum, question rendering, keyboard handling)
-- Phase 15 UAT: 6 issues found, root cause identified as prompts forbidding questions
-- 15-06 complete: Modified all 4 planning prompts to allow AskUserQuestion in adaptive mode
-- 15-05 complete: Fake Claude extended with session_id and AskUserQuestion simulation for E2E testing
-- Phase 15 gap closure complete: All 7 plans done, interactive planning fully verified
-- Phase 15 complete: All 7 plans done, verification passed, v1.2 milestone complete
+- v1.3 Hardening milestone started (2026-02-01)
+- Phases 16-20 added for v1.3 (Cleanup, Basic Mode, TUI Enhancement, GSD Personas, E2E Tests)
+- 26 requirements mapped across 5 phases
+- Ready for `/gsd:plan-phase 16`

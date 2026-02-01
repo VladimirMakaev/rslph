@@ -4,303 +4,150 @@
 
 - v1.0 MVP -- Phases 1-6 (shipped 2026-01-19)
 - v1.1 Testing Enhancement -- Phases 7-7.1 (shipped 2026-01-19)
-- **v1.2 Context Engineering** -- Phases 8-14 (active)
+- v1.2 Context Engineering -- Phases 8-15 (shipped 2026-02-01)
+- **v1.3 Hardening** -- Phases 16-20 (active)
 
 ## Overview
 
-Current milestone: v1.2 "Context Engineering" — Build an evaluation framework to measure agent performance and improve the context engineering (prompts, iteration structure, test-driven flow) that drives autonomous execution.
+Current milestone: v1.3 "Hardening" — Consolidate and harden existing features, remove dead code paths, and establish GSD-style multi-persona workflow while ensuring robust TUI input handling.
 
 ---
 
-## v1.2 Context Engineering
+## v1.3 Hardening
 
-### Phase 8: Token Tracking
+### Phase 16: Cleanup
 
-**Goal:** Users can observe token consumption during plan/build execution
+**Goal:** Remove deprecated code paths leaving only TUI-based execution and supported prompt modes
 
-**Dependencies:** None (foundational)
+**Dependencies:** None (foundational for v1.3)
 
 **Requirements:**
 | ID | Requirement |
 |----|-------------|
-| TOK-01 | Track input/output tokens per iteration from stream-json |
-| TOK-02 | Track cache tokens (creation and read) per iteration |
-| TOK-03 | Sum total tokens consumed across all iterations |
-| TOK-04 | Store token metrics in build state for persistence |
+| MODE-01 | Remove gsd_tdd mode — Delete gsd_tdd mode entirely from codebase (prompts, CLI args, tests) |
+| TUI-01 | TUI-only mode for all commands — Remove all non-TUI code paths from plan, build, and eval commands |
 
 **Success Criteria:**
-1. User sees per-iteration token counts (input, output, cache_creation, cache_read) in build output
-2. User sees cumulative token totals at end of build command
-3. Token counts survive iteration boundaries via BuildState persistence
-4. Plan command reports token consumption for planning phase
+1. User runs `rslph plan` and it always launches TUI mode (no `--no-tui` flag exists)
+2. User runs `rslph build` and it always launches TUI mode
+3. User runs `rslph --mode gsd_tdd` and receives an error (mode does not exist)
+4. Codebase search for "gsd_tdd" returns zero matches
+5. All E2E tests pass without non-TUI code paths
 
-**Plans:** 4 plans
-
-Plans:
-- [x] 08-01-PLAN.md — Core token tracking infrastructure (types, accumulation, event routing)
-- [x] 08-02-PLAN.md — TUI display and plan command token reporting
-- [x] 08-03-PLAN.md — E2E and TUI tests with configurable fake Claude tokens
-- [x] 08-04-PLAN.md — Gap closure: fix token accumulation bug and add snapshot tests
+**Plans:** TBD
 
 ---
 
-### Phase 9: Eval Command Foundation
+### Phase 17: Basic Mode Alignment
 
-**Goal:** Users can run controlled benchmarks in isolated environments
+**Goal:** Basic mode behavior matches portableralph reference implementation exactly
 
-**Dependencies:** Phase 8 (Token Tracking)
+**Dependencies:** Phase 16 (Cleanup)
 
 **Requirements:**
 | ID | Requirement |
 |----|-------------|
-| EVAL-01 | `rslph eval <project>` command runs plan+build in isolated temp directory |
-| EVAL-04 | Track total execution time |
-| EVAL-05 | Track total token consumption across plan+build |
+| MODE-02 | Basic mode prompts match portableralph — Use exact prompt structure from snarktank/ralph reference implementation |
+| MODE-03 | Basic mode loop behavior identical — Fresh context per iteration, one task per iteration, RALPH_DONE termination |
+| MODE-04 | Basic mode progress file format — Match portableralph progress.txt structure for task tracking and learnings |
+| MODE-05 | Basic mode commit behavior — Commit after each completed task (matching ralph.sh) |
 
 **Success Criteria:**
-1. User runs `rslph eval calculator` and sees plan+build execute in a fresh temp directory
-2. User sees total execution time reported at completion
-3. User sees total token consumption (from Phase 8) aggregated across plan and build phases
-4. Temp directory is cleaned up after eval completes (or preserved with flag)
+1. User runs `rslph plan --mode basic "goal"` and gets progress file matching portableralph structure
+2. Build loop executes exactly one task per iteration with fresh context
+3. RALPH_DONE marker in status section terminates build loop
+4. Each completed task triggers a VCS commit before next iteration
+5. Progress file structure matches portableralph: status, tasks, learnings sections
 
-**Plans:** 3 plans
-
-Plans:
-- [x] 09-01-PLAN.md — Core eval module and CLI subcommand
-- [x] 09-02-PLAN.md — Eval command implementation (orchestrate plan+build)
-- [x] 09-03-PLAN.md — E2E tests and verification
+**Plans:** TBD
 
 ---
 
-### Phase 10: Eval Projects and Testing
+### Phase 18: TUI Enhancement
 
-**Goal:** Users can evaluate agent performance against built-in projects with hidden tests
+**Goal:** Users can interact with Claude via multiline text input with proper cursor navigation and streaming display
 
-**Dependencies:** Phase 9 (Eval Command Foundation)
+**Dependencies:** Phase 17 (Basic Mode Alignment)
 
 **Requirements:**
 | ID | Requirement |
 |----|-------------|
-| PROJ-01 | Calculator eval project with starting prompt |
-| PROJ-02 | Test runner script (language-agnostic, checks stdin/stdout pairs) |
-| PROJ-03 | Test data file with input/expected output pairs (hidden from agent) |
-| PROJ-04 | Second eval project of medium difficulty (TBD scope) |
-| EVAL-02 | Execute hidden test runner after build completes (black-box input/output testing) |
-| EVAL-03 | Track pass rate (passing/total test cases) |
+| TUI-02 | Multiline text input with cursor — Use tui-textarea for proper cursor navigation, word movement, and undo/redo |
+| TUI-03 | Full dialog display — Show complete Claude conversation in TUI including streaming output, questions, and user responses |
+| TUI-04 | Input widget at bottom — Following claude_dialog.py pattern, input docked at bottom with conversation history above |
+| TUI-05 | Streaming text handling — Buffer text until newlines, display complete lines as they arrive (port claude_dialog.py pattern) |
 
 **Success Criteria:**
-1. User runs `rslph eval calculator` and agent attempts to implement a calculator from the prompt
-2. After build completes, hidden tests execute automatically against the built artifact
-3. User sees pass rate displayed (e.g., "Tests: 8/10 passed (80%)")
-4. User can list available eval projects with `rslph eval --list`
-5. Hidden test data is NOT visible to the agent during build (verified by location outside project dir)
+1. User can navigate multiline input with arrow keys, Ctrl+A/E (line start/end), Alt+F/B (word movement)
+2. User can undo/redo text input with Ctrl+U/R
+3. Conversation history scrolls above fixed input widget at bottom of screen
+4. Streaming text from Claude displays line-by-line as complete lines arrive
+5. User responses appear in conversation history after submission
 
-**Plans:** 4 plans
-
-Plans:
-- [x] 10-01-PLAN.md — Project registry and calculator eval project with include_dir embedding
-- [x] 10-02-PLAN.md — Stdin/stdout test runner implementation
-- [x] 10-03-PLAN.md — Integrate test runner into eval command and add --list flag
-- [x] 10-04-PLAN.md — FizzBuzz eval project and E2E tests
+**Plans:** TBD
 
 ---
 
-### Phase 11: Prompt Engineering
+### Phase 19: GSD Personas
 
-**Goal:** Agent follows test-driven development with clear iteration guidance
+**Goal:** Ralph Loop supports persona-driven execution with executor, verifier, and checkpoint capabilities
 
-**Dependencies:** Phase 10 (Eval Projects) - need working evals to validate prompt improvements
+**Dependencies:** Phase 18 (TUI Enhancement)
 
 **Requirements:**
 | ID | Requirement |
 |----|-------------|
-| PROMPT-01 | Add deviation handling rules to build prompt |
-| PROMPT-02 | Add substantive completion summary format |
-| PROMPT-03 | TDD iteration flow (write tests -> implement -> refactor) |
-| PROMPT-04 | Configurable TDD mode (enable/disable via config flag) |
-| PROMPT-05 | Research and adopt GSD patterns (phases, research structure) |
+| GSD-01 | Progress file persona field — Add `## Next Persona` section (executor/verifier/researcher/planner) that determines system prompt for next iteration |
+| GSD-02 | Persona prompt library — Define system prompts for each persona with distinct behaviors and constraints |
+| GSD-03 | Executor persona — Standard build execution with deviation rules (auto-fix bugs, ask about architecture changes) |
+| GSD-04 | Verifier persona — Goal-backward verification (check truths, artifacts, wiring) after all tasks complete |
+| GSD-05 | Checkpoint section in progress — Add `## Checkpoint` section with type (human-verify/decision/human-action), awaiting message, resume task |
+| GSD-06 | Checkpoint iteration result — Add Checkpoint variant to IterationResult enum that pauses loop for user input |
+| GSD-07 | TUI checkpoint display — Show checkpoint information and await user response via input widget |
+| GSD-08 | Compact decisions in progress — Add decisions to Recent Attempts with format: "Decision: [what] — [why]" |
+| GSD-09 | Persona auto-transition — After all tasks complete, set next_persona to "verifier" for goal-backward check |
 
 **Success Criteria:**
-1. Build prompt includes deviation handling rules (bugs, missing deps, blocking issues)
-2. Iteration completion summaries include substantive details (what changed, what's next)
-3. With TDD mode enabled, agent writes failing tests before implementation
-4. User can enable/disable TDD mode via `rslph.toml` configuration
-5. Agent iteration structure reflects GSD patterns for structured task execution
+1. Progress file contains `## Next Persona` section with valid persona (executor, verifier, researcher, planner)
+2. Build loop selects different system prompt based on next_persona value
+3. Executor persona follows deviation rules: auto-fixes bugs, asks about architecture changes
+4. After all tasks complete, next_persona automatically changes to "verifier"
+5. Verifier persona checks goal achievement via truths/artifacts/wiring analysis
+6. Checkpoint in progress file pauses build loop and displays awaiting message in TUI
+7. User can respond to checkpoint via TUI input, resuming execution at specified task
+8. Decisions appear in Recent Attempts section with "Decision: [what] - [why]" format
 
-**Plans:** 4 plans
-
-Plans:
-- [x] 11-01-PLAN.md — Add PromptMode enum, strum dependency, update config
-- [x] 11-02-PLAN.md — Create GSD mode prompts (deviation handling, summaries, must-haves)
-- [x] 11-03-PLAN.md — Create GSD-TDD mode prompts (TDD flow with escape hatch)
-- [x] 11-04-PLAN.md — Basic mode prompts and CLI integration
+**Plans:** TBD
 
 ---
 
-### Phase 12: Multi-Trial Results
+### Phase 20: E2E Tests
 
-**Goal:** Users can run multiple trials and compare results across runs
+**Goal:** Comprehensive E2E test coverage for planning scenarios and TUI input behavior
 
-**Dependencies:** Phase 10 (Eval Projects) - need test execution for meaningful results
+**Dependencies:** Phase 19 (GSD Personas)
 
 **Requirements:**
 | ID | Requirement |
 |----|-------------|
-| EVAL-06 | Support multiple trial runs with configurable count |
-| EVAL-07 | Report mean/variance across trials |
-| EVAL-08 | Store results in JSON file |
-| EVAL-09 | Compare results between different runs |
+| TEST-01 | Planning with 0 question rounds — E2E test where Claude produces plan without asking questions |
+| TEST-02 | Planning with 1 question round — E2E test where Claude asks 1 round of clarifying questions |
+| TEST-03 | Planning with 2 question rounds — E2E test where Claude asks 2 rounds of questions |
+| TEST-04 | Planning with 3 question rounds — E2E test where Claude asks 3 rounds of questions |
+| TEST-05 | TUI input prompt with cursor — Snapshot test showing input widget with visible cursor |
+| TEST-06 | Multi-iteration build with tokens — E2E test verifying token accumulation across iterations |
+| TEST-07 | Tests use ratatui-testlib and fake claude — All TUI tests use established TestBackend + insta pattern |
 
 **Success Criteria:**
-1. User runs `rslph eval calculator --trials 5` and sees 5 independent runs execute
-2. User sees statistical summary (mean pass rate, variance, min/max) after trials complete
-3. Results are saved to JSON file (e.g., `eval-results-calculator-2026-01-20.json`)
-4. User can compare two result files with `rslph compare file1.json file2.json`
-5. Comparison shows deltas in pass rate, token consumption, and execution time
+1. E2E test for 0-question planning produces valid progress.md without interaction
+2. E2E test for 1-question planning collects answer and resumes to produce progress.md
+3. E2E test for 2-question planning handles two Q&A rounds correctly
+4. E2E test for 3-question planning handles three Q&A rounds correctly
+5. TUI snapshot captures input widget with visible cursor position
+6. Multi-iteration build test verifies token totals accumulate correctly across iterations
+7. All TUI tests use TestBackend + insta pattern for deterministic snapshots
 
-**Plans:** 5 plans
-
-Plans:
-- [x] 12-01-PLAN.md — Add --trials CLI flag and statistics module
-- [x] 12-02-PLAN.md — Multi-trial loop and statistics aggregation
-- [x] 12-03-PLAN.md — Multi-trial JSON result serialization
-- [x] 12-04-PLAN.md — Compare command with delta display
-- [x] 12-05-PLAN.md — E2E tests for multi-trial and compare features
-
----
-
-### Phase 13: Parallel Eval TUI
-
-**Goal:** Users can run parallel evals across modes with live TUI dashboard and enhanced conversation display
-
-**Dependencies:** Phase 12 (Multi-Trial Results)
-
-**Requirements:**
-| ID | Requirement |
-|----|-------------|
-| PARA-01 | Parallel eval runs across different modes (basic, gsd, gsd_tdd) with --modes flag |
-| PARA-02 | TUI dashboard for parallel eval execution showing real-time progress of each trial/mode |
-| PARA-03 | Enhanced TUI showing full LLM conversation output (thinking, tool calls, messages) like Claude Code UI |
-| PARA-04 | TUI mode for `plan` command matching enhanced TUI style (streaming output, tool calls, thinking blocks) |
-
-**Success Criteria:**
-1. User runs `rslph eval calculator --modes basic,gsd,gsd_tdd --trials 3` and sees 9 total trials (3 per mode) run in parallel
-2. TUI dashboard shows real-time progress: mode, trial number, current iteration, pass rate, elapsed time
-3. Results are grouped by mode in JSON output for comparison
-4. User can view full LLM conversation in TUI (thinking blocks, tool calls, text output) in a scrollable view
-5. Enhanced TUI applies to `build` command with full conversation display
-6. `plan` command has TUI mode showing streaming LLM output, tool calls, thinking blocks, and generated plan preview
-
-**Plans:** 9 plans
-
-Plans:
-- [x] 13-01-PLAN.md — --modes flag and parallel execution infrastructure
-- [x] 13-02-PLAN.md — Parallel eval dashboard TUI
-- [x] 13-03-PLAN.md — Enhanced conversation display
-- [x] 13-04-PLAN.md — Plan command TUI mode
-- [x] 13-05-PLAN.md — Make plan TUI default with --no-tui to disable (UAT Gap 1)
-- [x] 13-06-PLAN.md — Fix task description truncation in progress parser (UAT Gap 2)
-- [x] 13-07-PLAN.md — Wire StreamEvent to conversation view (UAT Gap 3)
-- [x] 13-08-PLAN.md — Wire iteration progress to dashboard TUI (Audit Gap 0 - blocker)
-- [x] 13-09-PLAN.md — Mode passthrough to plan/build commands (Audit Gap 1)
-
----
-
-### Phase 14: TUI Visual Parity with Claude Code
-
-**Goal:** Align TUI visual design with Claude Code's interface for consistent user experience
-
-**Dependencies:** Phase 13 (Parallel Eval TUI)
-
-**Requirements:**
-| ID | Requirement |
-|----|-------------|
-| TUI-01 | Claude brand color palette (Crail #C15F3C, Cloudy #B1ADA1) with centralized theme |
-| TUI-02 | Box-drawn thinking blocks with collapse/expand toggle |
-| TUI-03 | Box-drawn tool call containers with tool name header and indented parameters |
-| TUI-04 | Animated braille spinner during LLM streaming |
-| TUI-05 | Enhanced status bar with model tier indicator (◆◇○), token bar, session timer |
-| TUI-06 | Box-drawn message borders with type-specific styling |
-
-**Success Criteria:**
-1. TUI uses Claude brand colors via centralized `theme.rs` module
-2. Thinking blocks display with box borders and are collapsible
-3. Tool calls show as box containers with indented content
-4. Animated spinner shows during LLM response streaming
-5. Status bar shows model indicator, token usage bar, and session timer
-6. Messages have distinct box-drawn borders per type (assistant, tool, system)
-
-**Plans:** 6 plans
-
-Plans:
-- [x] 14-01-PLAN.md — Centralized theme module with Claude brand colors (TUI-01)
-- [x] 14-02-PLAN.md — Animated braille spinner widget (TUI-04)
-- [x] 14-03-PLAN.md — Enhanced status bar with model tier and timer (TUI-05)
-- [x] 14-04-PLAN.md — Box-drawn thinking blocks and tool containers (TUI-02, TUI-03)
-- [x] 14-05-PLAN.md — Themed message borders in thread view (TUI-06)
-- [x] 14-06-PLAN.md — Integration and key bindings for visual features
-
----
-
-### Phase 13.1: Clippy Fixes and Crates.io Release
-
-**Goal:** Fix all clippy warnings and publish to crates.io
-
-**Dependencies:** Phase 14 (TUI Visual Parity)
-
-**Requirements:**
-| ID | Requirement |
-|----|-------------|
-| CLIP-01 | Pass `cargo clippy --all-targets -- -D warnings` with zero errors |
-| CLIP-02 | Verify package contents exclude non-essential files (.planning, .github) |
-| CLIP-03 | Publish to crates.io via git tag triggering release workflow |
-
-**Success Criteria:**
-1. CI passes with clippy in deny-warnings mode
-2. `cargo package --list` shows only essential source files
-3. Package published to crates.io and installable via `cargo install rslph`
-
-**Plans:** 1 plan
-
-Plans:
-- [x] 13.1-01-PLAN.md — Fix clippy warnings and configure package exclusions
-
----
-
-### Phase 15: Interactive Planning Input
-
-**Goal:** Enable users to answer Claude's clarifying questions during planning via session resume
-
-**Dependencies:** Phase 13.1 (Clippy & Crates.io)
-
-**Requirements:**
-| ID | Requirement |
-|----|-------------|
-| INTER-01 | Session ID capture — Extract session_id from init event in stream-json output |
-| INTER-02 | AskUserQuestion detection — Detect tool_use with name="AskUserQuestion" in stream |
-| INTER-03 | Question parsing — Parse questions array from AskUserQuestion input |
-| INTER-04 | User input collection — Collect answers via CLI prompt or TUI input mode |
-| INTER-05 | Session resume — Resume session with `--resume $sid` and formatted answers |
-| INTER-06 | Multi-round support — Handle multiple rounds of questions if needed |
-| INTER-07 | Fallback handling — If no questions asked, proceed normally |
-
-**Success Criteria:**
-1. User can run `rslph plan --mode=gsd --adaptive INITIAL.md`
-2. When Claude asks questions, they are displayed to the user
-3. User can type answers in the terminal
-4. Claude receives answers and produces a valid progress file
-5. Parse succeeds and progress.md is written
-
-**Plans:** 7 plans (4 core + 3 gap closure)
-
-Plans:
-- [x] 15-01-PLAN.md — Session ID capture and AskUserQuestion detection (stream_json.rs)
-- [x] 15-02-PLAN.md — Interactive input collection for CLI mode (command.rs)
-- [x] 15-03-PLAN.md — Session resume with --resume flag and multi-round support
-- [x] 15-04-PLAN.md — TUI mode input for question/answer flow (plan_tui.rs)
-- [x] 15-05-PLAN.md — Gap closure: Extend fake_claude for AskUserQuestion simulation
-- [x] 15-06-PLAN.md — Gap closure: Modify prompts to allow questions in adaptive mode
-- [x] 15-07-PLAN.md — Gap closure: Add E2E tests for interactive planning
+**Plans:** TBD
 
 ---
 
@@ -325,6 +172,11 @@ Plans:
 | 14. TUI Visual Parity | v1.2 | 6/6 | Complete | 2026-01-23 |
 | 13.1 Clippy & Crates.io | v1.2 | 1/1 | Complete | 2026-01-30 |
 | 15. Interactive Planning | v1.2 | 7/7 | Complete | 2026-02-01 |
+| 16. Cleanup | v1.3 | 0/? | Pending | — |
+| 17. Basic Mode Alignment | v1.3 | 0/? | Pending | — |
+| 18. TUI Enhancement | v1.3 | 0/? | Pending | — |
+| 19. GSD Personas | v1.3 | 0/? | Pending | — |
+| 20. E2E Tests | v1.3 | 0/? | Pending | — |
 
 ---
 
@@ -354,6 +206,21 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full details.
 
 </details>
 
+<details>
+<summary>v1.2 Context Engineering (Phases 8-15) — SHIPPED 2026-02-01</summary>
+
+- [x] Phase 8: Token Tracking (4/4 plans)
+- [x] Phase 9: Eval Command Foundation (3/3 plans)
+- [x] Phase 10: Eval Projects and Testing (4/4 plans)
+- [x] Phase 11: Prompt Engineering (4/4 plans)
+- [x] Phase 12: Multi-Trial Results (5/5 plans)
+- [x] Phase 13: Parallel Eval TUI (9/9 plans)
+- [x] Phase 14: TUI Visual Parity (6/6 plans)
+- [x] Phase 13.1: Clippy & Crates.io (1/1 plan)
+- [x] Phase 15: Interactive Planning (7/7 plans)
+
+</details>
+
 ---
 
 ## Decisions Log
@@ -366,4 +233,4 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full details.
 
 ---
 
-*Last updated: 2026-02-01 — Phase 15 complete (all 7 plans verified)*
+*Last updated: 2026-02-01 — v1.3 Hardening roadmap created*

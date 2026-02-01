@@ -23,7 +23,6 @@ use tokio_util::sync::CancellationToken;
 use crate::error::RslphError;
 use crate::subprocess::StreamEvent;
 use crate::tui::conversation::{render_conversation, ConversationBuffer, ConversationItem};
-use crate::tui::event::EventHandler;
 use crate::tui::terminal::{init_terminal, restore_terminal};
 
 /// Input mode for the plan TUI.
@@ -455,6 +454,8 @@ fn render_footer(frame: &mut Frame, area: Rect, state: &PlanTuiState) {
 /// # Returns
 ///
 /// The final TUI state, which includes whether the user quit.
+/// If answers were submitted, state.answers_submitted will be true and
+/// the answers can be retrieved via state.input_buffer (before exit_question_mode).
 pub async fn run_plan_tui(
     event_rx: mpsc::UnboundedReceiver<PlanTuiEvent>,
     cancel_token: CancellationToken,
@@ -465,14 +466,21 @@ pub async fn run_plan_tui(
     let mut state = PlanTuiState::new();
     let mut event_rx = event_rx;
 
-    // Create event handler for keyboard input (30 FPS for smooth rendering)
-    let (mut kbd_handler, _subprocess_tx) = EventHandler::new(30);
+    // Create crossterm event stream directly for raw key handling
+    let mut crossterm_events = EventStream::new();
+    let tick_duration = std::time::Duration::from_millis(33); // ~30 FPS
+    let mut render_interval = tokio::time::interval(tick_duration);
 
     loop {
         // Render current state
         terminal
             .draw(|frame| render_plan_tui(frame, &state))
             .map_err(|e| RslphError::Subprocess(format!("Render failed: {}", e)))?;
+
+        // Check if answers were submitted - exit the loop to allow command to resume
+        if state.answers_submitted {
+            break;
+        }
 
         tokio::select! {
             biased;
@@ -490,32 +498,49 @@ pub async fn run_plan_tui(
                         state.update(&event);
                     }
                     None => {
-                        // Stream complete
-                        state.set_complete();
+                        // Stream complete - if we're not in question mode, we're done
+                        if !state.is_answering_questions() {
+                            state.set_complete();
+                            break;
+                        }
+                        // If in question mode, continue waiting for user input
+                    }
+                }
+            }
+
+            // Raw keyboard events from crossterm
+            crossterm_event = crossterm_events.next() => {
+                match crossterm_event {
+                    Some(Ok(CrosstermEvent::Key(key))) => {
+                        if state.is_answering_questions() {
+                            // Handle text input mode
+                            handle_input_key(&mut state, key.code, key.modifiers);
+                        } else {
+                            // Handle normal navigation mode
+                            handle_navigation_key(&mut state, key.code, key.modifiers, &cancel_token);
+                        }
+
+                        if state.should_quit {
+                            cancel_token.cancel();
+                            break;
+                        }
+                    }
+                    Some(Ok(_)) => {
+                        // Other events (mouse, resize) - ignore
+                    }
+                    Some(Err(_)) => {
+                        // Event read error - continue
+                    }
+                    None => {
+                        // Stream ended
                         break;
                     }
                 }
             }
 
-            // Keyboard events
-            kbd_event = kbd_handler.next() => {
-                if let Some(app_event) = kbd_event {
-                    match app_event {
-                        crate::tui::AppEvent::Quit => {
-                            state.should_quit = true;
-                            cancel_token.cancel();
-                            break;
-                        }
-                        crate::tui::AppEvent::ScrollUp => {
-                            state.scroll_offset = state.scroll_offset.saturating_sub(1);
-                        }
-                        crate::tui::AppEvent::ScrollDown => {
-                            state.scroll_offset = (state.scroll_offset + 1)
-                                .min(state.conversation.len().saturating_sub(1));
-                        }
-                        _ => {}
-                    }
-                }
+            // Render tick (keeps UI responsive)
+            _ = render_interval.tick() => {
+                // Just trigger re-render via loop
             }
         }
     }
@@ -525,6 +550,89 @@ pub async fn run_plan_tui(
         .map_err(|e| RslphError::Subprocess(format!("Terminal restore failed: {}", e)))?;
 
     Ok(state)
+}
+
+/// Handle keyboard input when in AnsweringQuestions mode.
+fn handle_input_key(state: &mut PlanTuiState, key_code: KeyCode, modifiers: KeyModifiers) {
+    // Check for Ctrl+C first (always quit)
+    if modifiers.contains(KeyModifiers::CONTROL) {
+        match key_code {
+            KeyCode::Char('c') => {
+                state.should_quit = true;
+                return;
+            }
+            KeyCode::Char('d') => {
+                // Ctrl+D: submit answers
+                state.exit_question_mode();
+                return;
+            }
+            KeyCode::Enter => {
+                // Ctrl+Enter: submit answers
+                state.exit_question_mode();
+                return;
+            }
+            _ => {}
+        }
+    }
+
+    match key_code {
+        KeyCode::Esc => {
+            // Esc: cancel input and quit
+            state.should_quit = true;
+        }
+        KeyCode::Backspace => {
+            state.handle_input_backspace();
+        }
+        KeyCode::Enter => {
+            // Regular Enter: add newline
+            state.handle_input_newline();
+        }
+        KeyCode::Char(c) => {
+            state.handle_input_char(c);
+        }
+        _ => {
+            // Ignore other keys
+        }
+    }
+}
+
+/// Handle keyboard input when in Normal (navigation) mode.
+fn handle_navigation_key(
+    state: &mut PlanTuiState,
+    key_code: KeyCode,
+    modifiers: KeyModifiers,
+    cancel_token: &CancellationToken,
+) {
+    // Check for Ctrl+C first (always quit)
+    if modifiers.contains(KeyModifiers::CONTROL) {
+        if let KeyCode::Char('c') = key_code {
+            state.should_quit = true;
+            cancel_token.cancel();
+            return;
+        }
+    }
+
+    match key_code {
+        KeyCode::Char('q') | KeyCode::Esc => {
+            state.should_quit = true;
+            cancel_token.cancel();
+        }
+        KeyCode::Char('j') | KeyCode::Down => {
+            state.scroll_offset = (state.scroll_offset + 1)
+                .min(state.conversation.len().saturating_sub(1));
+        }
+        KeyCode::Char('k') | KeyCode::Up => {
+            state.scroll_offset = state.scroll_offset.saturating_sub(1);
+        }
+        KeyCode::PageUp => {
+            state.scroll_offset = state.scroll_offset.saturating_sub(10);
+        }
+        KeyCode::PageDown => {
+            state.scroll_offset = (state.scroll_offset + 10)
+                .min(state.conversation.len().saturating_sub(1));
+        }
+        _ => {}
+    }
 }
 
 #[cfg(test)]

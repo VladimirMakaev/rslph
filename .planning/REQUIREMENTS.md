@@ -1,55 +1,94 @@
-# Requirements: v1.2 Context Engineering
+# Requirements: v1.3 Hardening
 
 **Project:** rslph
-**Milestone:** v1.2 "Context Engineering"
-**Created:** 2026-01-20
+**Milestone:** v1.3 "Hardening"
+**Created:** 2026-02-01
 **Status:** Approved
 
 ---
 
-## v1.2 Requirements
+## v1.3 Requirements
 
-### Token Tracking (TOK)
-
-| ID | Requirement | Priority |
-|----|-------------|----------|
-| TOK-01 | Track input/output tokens per iteration from stream-json | Must |
-| TOK-02 | Track cache tokens (creation and read) per iteration | Must |
-| TOK-03 | Sum total tokens consumed across all iterations | Must |
-| TOK-04 | Store token metrics in build state for persistence | Must |
-
-### Eval Command (EVAL)
+### TUI Consolidation (TUI)
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| EVAL-01 | `rslph eval <project>` command runs plan+build in isolated temp directory | Must |
-| EVAL-02 | Execute hidden test runner after build completes (black-box input/output testing) | Must |
-| EVAL-03 | Track pass rate (passing/total test cases) | Must |
-| EVAL-04 | Track total execution time | Must |
-| EVAL-05 | Track total token consumption across plan+build | Must |
-| EVAL-06 | Support multiple trial runs with configurable count | Must |
-| EVAL-07 | Report mean/variance across trials | Must |
-| EVAL-08 | Store results in JSON file | Must |
-| EVAL-09 | Compare results between different runs | Should |
+| TUI-01 | TUI-only mode for all commands — Remove all non-TUI code paths from plan, build, and eval commands | Must |
+| TUI-02 | Multiline text input with cursor — Use tui-textarea for proper cursor navigation, word movement, and undo/redo | Must |
+| TUI-03 | Full dialog display — Show complete Claude conversation in TUI including streaming output, questions, and user responses | Must |
+| TUI-04 | Input widget at bottom — Following claude_dialog.py pattern, input docked at bottom with conversation history above | Must |
+| TUI-05 | Streaming text handling — Buffer text until newlines, display complete lines as they arrive (port claude_dialog.py pattern) | Must |
 
-### Eval Projects (PROJ)
+### Mode Consolidation (MODE)
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| PROJ-01 | Calculator eval project with starting prompt | Must |
-| PROJ-02 | Test runner script (language-agnostic, checks stdin/stdout pairs) | Must |
-| PROJ-03 | Test data file with input/expected output pairs (hidden from agent) | Must |
-| PROJ-04 | Second eval project of medium difficulty (TBD scope) | Should |
+| MODE-01 | Remove gsd_tdd mode — Delete gsd_tdd mode entirely from codebase (prompts, CLI args, tests) | Must |
+| MODE-02 | Basic mode prompts match portableralph — Use exact prompt structure from snarktank/ralph reference implementation | Must |
+| MODE-03 | Basic mode loop behavior identical — Fresh context per iteration, one task per iteration, RALPH_DONE termination | Must |
+| MODE-04 | Basic mode progress file format — Match portableralph progress.txt structure for task tracking and learnings | Must |
+| MODE-05 | Basic mode commit behavior — Commit after each completed task (matching ralph.sh) | Must |
 
-### Prompt Engineering (PROMPT)
+### E2E Test Coverage (TEST)
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| PROMPT-01 | Add deviation handling rules to build prompt | Must |
-| PROMPT-02 | Add substantive completion summary format | Must |
-| PROMPT-03 | TDD iteration flow (write tests -> implement -> refactor) | Must |
-| PROMPT-04 | Configurable TDD mode (enable/disable via config flag) | Must |
-| PROMPT-05 | Research and adopt GSD patterns (phases, research structure) | Should |
+| TEST-01 | Planning with 0 question rounds — E2E test where Claude produces plan without asking questions | Must |
+| TEST-02 | Planning with 1 question round — E2E test where Claude asks 1 round of clarifying questions | Must |
+| TEST-03 | Planning with 2 question rounds — E2E test where Claude asks 2 rounds of questions | Must |
+| TEST-04 | Planning with 3 question rounds — E2E test where Claude asks 3 rounds of questions | Must |
+| TEST-05 | TUI input prompt with cursor — Snapshot test showing input widget with visible cursor | Must |
+| TEST-06 | Multi-iteration build with tokens — E2E test verifying token accumulation across iterations | Must |
+| TEST-07 | Tests use ratatui-testlib and fake claude — All TUI tests use established TestBackend + insta pattern | Must |
+
+### GSD Hardening — Ralph Loop Integration (GSD)
+
+**Goal:** Translate GSD's multi-persona workflow to Ralph Loop's progress file model. Each GSD pattern must serialize to progress.md and work with fresh-context-per-iteration.
+
+| ID | Requirement | Priority |
+|----|-------------|----------|
+| GSD-01 | Progress file persona field — Add `## Next Persona` section (executor/verifier/researcher/planner) that determines system prompt for next iteration | Must |
+| GSD-02 | Persona prompt library — Define system prompts for each persona with distinct behaviors and constraints | Must |
+| GSD-03 | Executor persona — Standard build execution with deviation rules (auto-fix bugs, ask about architecture changes) | Must |
+| GSD-04 | Verifier persona — Goal-backward verification (check truths, artifacts, wiring) after all tasks complete | Must |
+| GSD-05 | Checkpoint section in progress — Add `## Checkpoint` section with type (human-verify/decision/human-action), awaiting message, resume task | Should |
+| GSD-06 | Checkpoint iteration result — Add Checkpoint variant to IterationResult enum that pauses loop for user input | Should |
+| GSD-07 | TUI checkpoint display — Show checkpoint information and await user response via input widget | Should |
+| GSD-08 | Compact decisions in progress — Add decisions to Recent Attempts with format: "Decision: [what] — [why]" | Should |
+| GSD-09 | Persona auto-transition — After all tasks complete, set next_persona to "verifier" for goal-backward check | Should |
+
+**Progress File Schema (Extended):**
+```markdown
+# Progress: [Name]
+
+## Status
+In Progress
+
+## Next Persona
+executor
+
+## Tasks
+### Phase 1
+- [x] Task 1
+- [ ] Task 2
+
+## Recent Attempts
+### Iteration 3
+- Tried: Implemented auth
+- Result: Success
+- Decision: Used jose for JWT — Better TS types
+
+## Checkpoint
+Type: human-verify
+Awaiting: Verify login flow works
+Resume: Task 3
+```
+
+**Persona Behaviors:**
+- **Executor**: One task per iteration, deviation rules, auto-fix bugs
+- **Verifier**: Derives must_haves from goal, checks truths/artifacts/wiring, identifies gaps
+- **Researcher**: Survey ecosystem, produce findings (planning phase only)
+- **Planner**: Decompose goals into tasks (planning phase only)
 
 ---
 
@@ -57,13 +96,10 @@
 
 | ID | Requirement | Rationale |
 |----|-------------|-----------|
-| FUT-01 | Cost estimation from token counts | Nice-to-have, can calculate externally |
-| FUT-02 | TUI token display during execution | Polish, not core functionality |
-| FUT-03 | Docker-based isolation (like SWE-bench) | Overkill for v1.2, temp dir sufficient |
-| FUT-04 | Two-attempt mode (like Aider) | Enhancement after core eval works |
-| FUT-05 | Verification agent (separate from build loop) | Defer to v1.3+ |
-| FUT-06 | Notification system (completion, failure) | Defer to v1.3+ |
-| FUT-07 | User-overridable prompts via config paths | Defer to v1.3+ |
+| FUT-01 | Quality check enforcement before commit | Nice-to-have for strict mode |
+| FUT-02 | Branch tracking/archiving | Low priority portableralph feature |
+| FUT-03 | Full deviation tracking | Can add in v1.4 with more GSD patterns |
+| FUT-04 | Authentication gate handling | Needed for external service integration |
 
 ---
 
@@ -71,10 +107,10 @@
 
 | Item | Rationale |
 |------|-----------|
-| Database storage for results | JSON files sufficient for v1.x |
-| Web dashboard for results | CLI-focused tool |
-| IDE integration | Out of project scope |
-| Multi-model support | Claude-only via Claude CLI |
+| Parallel plan execution | Ralph Loop is inherently sequential |
+| Subagent spawning via Task tool | GSD-specific, not compatible with Ralph Loop |
+| Real-time collaboration | Single-user CLI tool |
+| GUI application | CLI/TUI only |
 
 ---
 
@@ -82,39 +118,55 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TOK-01 | Phase 8 | Complete |
-| TOK-02 | Phase 8 | Complete |
-| TOK-03 | Phase 8 | Complete |
-| TOK-04 | Phase 8 | Complete |
-| EVAL-01 | Phase 9 | Complete |
-| EVAL-02 | Phase 10 | Complete |
-| EVAL-03 | Phase 10 | Complete |
-| EVAL-04 | Phase 9 | Complete |
-| EVAL-05 | Phase 9 | Complete |
-| EVAL-06 | Phase 12 | Pending |
-| EVAL-07 | Phase 12 | Pending |
-| EVAL-08 | Phase 12 | Pending |
-| EVAL-09 | Phase 12 | Pending |
-| PROJ-01 | Phase 10 | Complete |
-| PROJ-02 | Phase 10 | Complete |
-| PROJ-03 | Phase 10 | Complete |
-| PROJ-04 | Phase 10 | Complete |
-| PROMPT-01 | Phase 11 | Complete |
-| PROMPT-02 | Phase 11 | Complete |
-| PROMPT-03 | Phase 11 | Complete |
-| PROMPT-04 | Phase 11 | Complete |
-| PROMPT-05 | Phase 11 | Complete |
+| MODE-01 | Phase 16 (Cleanup) | Pending |
+| TUI-01 | Phase 16 (Cleanup) | Pending |
+| MODE-02 | Phase 17 (Basic Mode) | Pending |
+| MODE-03 | Phase 17 (Basic Mode) | Pending |
+| MODE-04 | Phase 17 (Basic Mode) | Pending |
+| MODE-05 | Phase 17 (Basic Mode) | Pending |
+| TUI-02 | Phase 18 (TUI Enhancement) | Pending |
+| TUI-03 | Phase 18 (TUI Enhancement) | Pending |
+| TUI-04 | Phase 18 (TUI Enhancement) | Pending |
+| TUI-05 | Phase 18 (TUI Enhancement) | Pending |
+| GSD-01 | Phase 19 (GSD Personas) | Pending |
+| GSD-02 | Phase 19 (GSD Personas) | Pending |
+| GSD-03 | Phase 19 (GSD Personas) | Pending |
+| GSD-04 | Phase 19 (GSD Personas) | Pending |
+| GSD-05 | Phase 19 (GSD Personas) | Pending |
+| GSD-06 | Phase 19 (GSD Personas) | Pending |
+| GSD-07 | Phase 19 (GSD Personas) | Pending |
+| GSD-08 | Phase 19 (GSD Personas) | Pending |
+| GSD-09 | Phase 19 (GSD Personas) | Pending |
+| TEST-01 | Phase 20 (E2E Tests) | Pending |
+| TEST-02 | Phase 20 (E2E Tests) | Pending |
+| TEST-03 | Phase 20 (E2E Tests) | Pending |
+| TEST-04 | Phase 20 (E2E Tests) | Pending |
+| TEST-05 | Phase 20 (E2E Tests) | Pending |
+| TEST-06 | Phase 20 (E2E Tests) | Pending |
+| TEST-07 | Phase 20 (E2E Tests) | Pending |
+
+**Phase Order (deletions first):**
+1. **Phase 16: Cleanup** — Remove gsd_tdd mode + Remove non-TUI code paths
+2. **Phase 17: Basic Mode Alignment** — Make --basic identical to portableralph
+3. **Phase 18: TUI Enhancement** — Add tui-textarea, dialog display, streaming
+4. **Phase 19: GSD Personas** — Persona prompts, progress schema, checkpoints, verification
+5. **Phase 20: E2E Tests** — Comprehensive test coverage
+
+**Coverage:**
+- v1.3 requirements: 26 total
+- Mapped to phases: 26
+- Unmapped: 0 ✓
 
 ---
 
 ## Research Sources
 
-- [HumanEval Benchmark](https://klu.ai/glossary/humaneval-benchmark) — pass@k metric, unit test evaluation
-- [Aider Polyglot](https://epoch.ai/benchmarks/aider-polyglot) — two-attempt mode, cost tracking
-- [SWE-bench Docker Setup](https://www.swebench.com/SWE-bench/guides/docker_setup/) — container isolation patterns
-- [2025 Coding LLM Benchmarks Guide](https://www.marktechpost.com/2025/07/31/the-ultimate-2025-guide-to-coding-llm-benchmarks-and-performance-metrics/)
-- GSD skill files at `~/.claude/get-shit-done/` — prompt engineering patterns
+- `.planning/research/TUI-INPUT.md` — tui-textarea integration patterns
+- `.planning/research/PORTABLERALPH.md` — Basic mode alignment reference
+- `.planning/research/GSD-WORKFLOW.md` — Persona definitions and checkpoint patterns
+- `.planning/research/INTEGRATION-PITFALLS.md` — Anti-patterns and recommended approach
+- `claude_dialog.py` — Reference Python implementation for TUI/conversation flow
 
 ---
 
-*22 requirements | 4 categories | Roadmap complete*
+*26 requirements | 4 categories | Roadmap ready*

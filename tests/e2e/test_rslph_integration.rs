@@ -24,9 +24,27 @@ fn rslph_with_fake_claude(scenario: &FakeClaudeHandle) -> Command {
 
 #[test]
 fn test_rslph_build_single_iteration_success() {
-    // Scenario: Claude provides a response in a single iteration
+    // Valid progress file format for Claude to return
+    let valid_progress = r#"# Progress: Test
+
+## Status
+
+In Progress
+
+## Tasks
+
+### Phase 1
+
+- [x] Task 1
+
+## Testing Strategy
+
+Unit tests.
+"#;
+
+    // Scenario: Claude provides a valid progress file response
     let scenario = ScenarioBuilder::new()
-        .respond_with_text("I'll work on Task 1. The task has been completed.")
+        .respond_with_text(valid_progress)
         .build();
 
     let workspace = WorkspaceBuilder::new()
@@ -58,13 +76,68 @@ fn test_rslph_build_single_iteration_success() {
 
 #[test]
 fn test_rslph_build_multi_iteration_invokes_claude_multiple_times() {
-    // Scenario: Two invocations with different responses
+    // Valid progress files for each invocation
+    let progress_iter1 = r#"# Progress: Test
+
+## Status
+
+In Progress
+
+## Tasks
+
+### Phase 1
+
+- [ ] Task 1
+- [ ] Task 2
+
+## Testing Strategy
+
+Unit tests.
+"#;
+
+    let progress_iter2 = r#"# Progress: Test
+
+## Status
+
+In Progress
+
+## Tasks
+
+### Phase 1
+
+- [x] Task 1
+- [ ] Task 2
+
+## Testing Strategy
+
+Unit tests.
+"#;
+
+    let progress_done = r#"# Progress: Test
+
+## Status
+
+RALPH_DONE - All tasks complete
+
+## Tasks
+
+### Phase 1
+
+- [x] Task 1
+- [x] Task 2
+
+## Testing Strategy
+
+Unit tests.
+"#;
+
+    // Scenario: Multiple invocations with valid progress file responses
     let scenario = ScenarioBuilder::new()
-        .respond_with_text("Working on Task 1...")
+        .respond_with_text(progress_iter1)
         .next_invocation()
-        .respond_with_text("Still working...")
+        .respond_with_text(progress_iter2)
         .next_invocation()
-        .respond_with_text("Task complete!")
+        .respond_with_text(progress_done)
         .build();
 
     let workspace = WorkspaceBuilder::new()
@@ -92,15 +165,33 @@ fn test_rslph_build_multi_iteration_invokes_claude_multiple_times() {
 
 #[test]
 fn test_rslph_build_respects_max_iterations() {
-    // Scenario: Claude never completes the task (no RALPH_DONE)
+    // Valid progress file that never completes (no RALPH_DONE)
+    let progress_incomplete = r#"# Progress: Test
+
+## Status
+
+In Progress
+
+## Tasks
+
+### Phase 1
+
+- [ ] Never-ending task
+
+## Testing Strategy
+
+Unit tests.
+"#;
+
+    // Scenario: Claude returns valid but incomplete progress file
     let scenario = ScenarioBuilder::new()
-        .respond_with_text("Still working...")
+        .respond_with_text(progress_incomplete)
         .next_invocation()
-        .respond_with_text("Still working...")
+        .respond_with_text(progress_incomplete)
         .next_invocation()
-        .respond_with_text("Still working...")
+        .respond_with_text(progress_incomplete)
         .next_invocation()
-        .respond_with_text("Still working...")
+        .respond_with_text(progress_incomplete)
         .build();
 
     let workspace = WorkspaceBuilder::new()
@@ -367,10 +458,29 @@ fn test_rslph_plan_single_response() {
     // Scenario: Plan command runs and invokes fake Claude
     // Note: Plan command may invoke Claude twice - once for planning and once
     // for project name generation if the output doesn't include a name.
+
+    // Valid progress file format that will pass parsing validation
+    let valid_progress = r#"# Progress: Test Plan
+
+## Status
+
+In Progress
+
+## Tasks
+
+### Phase 1: Setup
+
+- [ ] Task 1 description
+
+## Testing Strategy
+
+Run unit tests.
+"#;
+
     let scenario = ScenarioBuilder::new()
-        .respond_with_text("Here is a plan for your task...")
+        .respond_with_text(valid_progress)
         .next_invocation()
-        .respond_with_text("test-project") // Project name generation response
+        .respond_with_text("test-project") // Project name generation response (not needed but ok)
         .build();
 
     let workspace = WorkspaceBuilder::new()
@@ -405,10 +515,29 @@ fn test_rslph_plan_uses_rslph_claude_cmd_env() {
     // Verify RSLPH_CLAUDE_CMD env var works for plan command
     // Note: Plan command may invoke Claude twice - once for planning and once
     // for project name generation if the output doesn't include a name.
+
+    // Valid progress file format that will pass parsing validation
+    let valid_progress = r#"# Progress: ENV Test Plan
+
+## Status
+
+In Progress
+
+## Tasks
+
+### Phase 1: Setup
+
+- [ ] Task from env test
+
+## Testing Strategy
+
+Run unit tests.
+"#;
+
     let scenario = ScenarioBuilder::new()
-        .respond_with_text("Plan generated via RSLPH_CLAUDE_CMD env var")
+        .respond_with_text(valid_progress)
         .next_invocation()
-        .respond_with_text("env-test-project") // Project name generation response
+        .respond_with_text("env-test-project") // Project name generation response (not needed but ok)
         .build();
 
     // Create workspace without any config - rely solely on env var
@@ -438,5 +567,111 @@ fn test_rslph_plan_uses_rslph_claude_cmd_env() {
         output.status.success(),
         "plan with RSLPH_CLAUDE_CMD should succeed, stderr: {}",
         String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn test_rslph_plan_adaptive_mode_produces_valid_progress() {
+    // Scenario: Plan command with --adaptive flag runs the full adaptive flow:
+    // 1. First invocation: clarifying questions response
+    // 2. Second invocation: testing strategy response
+    // 3. Third invocation: final plan with valid progress file content
+    // 4. Fourth invocation: project name generation (if name is empty)
+    //
+    // The fake Claude must return VALID progress file markdown format.
+
+    let valid_progress_file = r#"# Progress: Test Project
+
+## Status
+
+In Progress
+
+## Tasks
+
+### Phase 1: Setup
+
+- [ ] Create configuration file
+- [ ] Set up project structure
+
+## Testing Strategy
+
+Run unit tests to verify functionality.
+"#;
+
+    let scenario = ScenarioBuilder::new()
+        // Invocation 1: Clarifying questions (adaptive mode asks questions when vague)
+        .respond_with_text("Here are some clarifying questions:\n1. What language?\n2. What features?")
+        .next_invocation()
+        // Invocation 2: Testing strategy
+        .respond_with_text("Testing strategy:\n- Unit tests for core logic\n- Integration tests for API")
+        .next_invocation()
+        // Invocation 3: Final plan with VALID progress file format
+        .respond_with_text(valid_progress_file)
+        .next_invocation()
+        // Invocation 4: Project name generation (in case parser doesn't extract name)
+        .respond_with_text("test-project")
+        .build();
+
+    // Create workspace with a simple input file (the actual content passed to plan)
+    let workspace = WorkspaceBuilder::new()
+        .with_source_file("INITIAL.md", "Build a test project")
+        .build();
+
+    let mut cmd = rslph_with_fake_claude(&scenario);
+    cmd.arg("plan")
+        .arg("INITIAL.md")
+        .arg("--adaptive")
+        .arg("--no-tui")
+        .current_dir(workspace.path());
+
+    // Run the plan command with adaptive mode
+    let output = cmd.output().expect("Failed to run rslph plan --adaptive");
+
+    // Debug: Print stderr to see what happened
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    eprintln!("[TEST STDERR] {}", stderr);
+
+    // Verify the command succeeded
+    assert!(
+        output.status.success(),
+        "plan --adaptive should succeed, stderr: {}",
+        stderr
+    );
+
+    // Verify fake Claude was invoked at least 3 times (questions, strategy, final plan)
+    assert!(
+        scenario.invocation_count() >= 3,
+        "Expected at least 3 invocations for adaptive mode, got {}",
+        scenario.invocation_count()
+    );
+
+    // Verify progress.md file was created
+    let progress_path = workspace.path().join("progress.md");
+    assert!(
+        progress_path.exists(),
+        "progress.md should exist at {:?}",
+        progress_path
+    );
+
+    // Read and validate the progress.md content
+    let progress_content = std::fs::read_to_string(&progress_path)
+        .expect("Should be able to read progress.md");
+
+    // Verify the content is NOT empty
+    assert!(
+        !progress_content.trim().is_empty(),
+        "progress.md should NOT be empty"
+    );
+
+    // Verify it contains expected sections
+    assert!(
+        progress_content.contains("## Status"),
+        "progress.md should contain Status section, got: {}",
+        progress_content
+    );
+    assert!(
+        progress_content.contains("## Tasks"),
+        "progress.md should contain Tasks section, got: {}",
+        progress_content
     );
 }

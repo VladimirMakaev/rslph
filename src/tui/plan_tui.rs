@@ -12,7 +12,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Paragraph},
+    widgets::{Block, Borders, Paragraph, Wrap},
     Frame,
 };
 use tokio::sync::mpsc;
@@ -247,7 +247,13 @@ impl PlanTuiState {
 pub fn render_plan_tui(frame: &mut Frame, state: &PlanTuiState) {
     let area = frame.area();
 
-    // Split: top for status, middle for conversation, bottom for plan preview
+    // If in AnsweringQuestions mode, render the question input interface
+    if matches!(state.input_mode, InputMode::AnsweringQuestions) {
+        render_question_input(frame, area, state);
+        return;
+    }
+
+    // Normal mode: Split: top for status, middle for conversation, bottom for plan preview
     let [header_area, main_area, footer_area] = Layout::vertical([
         Constraint::Length(3),
         Constraint::Min(10),
@@ -270,6 +276,110 @@ pub fn render_plan_tui(frame: &mut Frame, state: &PlanTuiState) {
 
     // Render plan preview footer
     render_footer(frame, footer_area, state);
+}
+
+/// Render the question input interface when in AnsweringQuestions mode.
+fn render_question_input(frame: &mut Frame, area: Rect, state: &PlanTuiState) {
+    // Layout for question input mode:
+    // - Top: Header with status "Answering Questions..."
+    // - Middle-top: Questions box (scrollable)
+    // - Middle-bottom: Input text area with cursor
+    // - Bottom: Instructions footer
+    let [header_area, questions_area, input_area, footer_area] = Layout::vertical([
+        Constraint::Length(3),
+        Constraint::Percentage(40),
+        Constraint::Percentage(40),
+        Constraint::Length(3),
+    ])
+    .areas(area);
+
+    // Render header with "Answering Questions" status
+    let elapsed = state.start_time.elapsed().as_secs();
+    let header = Paragraph::new(vec![Line::from(vec![
+        Span::styled("Plan ", Style::default().add_modifier(Modifier::BOLD)),
+        Span::styled(
+            "| Answering Questions... ",
+            Style::default().fg(Color::Yellow),
+        ),
+        Span::styled(format!("| {}s", elapsed), Style::default().fg(Color::Cyan)),
+    ])])
+    .block(Block::default().borders(Borders::BOTTOM));
+    frame.render_widget(header, header_area);
+
+    // Render questions box with yellow border (indicating input mode)
+    let question_lines: Vec<Line> = state
+        .pending_questions
+        .iter()
+        .enumerate()
+        .map(|(i, q)| {
+            Line::from(vec![
+                Span::styled(
+                    format!("{}. ", i + 1),
+                    Style::default()
+                        .fg(Color::Yellow)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(q),
+            ])
+        })
+        .collect();
+
+    let questions_box = Paragraph::new(question_lines)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Yellow))
+                .title("Questions from Claude"),
+        )
+        .wrap(Wrap { trim: false });
+    frame.render_widget(questions_box, questions_area);
+
+    // Render input area with cursor indicator
+    let input_display = if state.input_buffer.is_empty() {
+        vec![Line::from(Span::styled(
+            "Type your answers here...",
+            Style::default().fg(Color::DarkGray),
+        ))]
+    } else {
+        // Show the input buffer with a cursor at the end
+        let mut lines: Vec<Line> = state
+            .input_buffer
+            .lines()
+            .map(|l| Line::from(l.to_string()))
+            .collect();
+
+        // Add cursor to the last line
+        if lines.is_empty() {
+            lines.push(Line::from("_"));
+        } else if let Some(last) = lines.last_mut() {
+            *last = Line::from(format!("{}_", last.to_string()));
+        }
+        lines
+    };
+
+    let input_box = Paragraph::new(input_display)
+        .block(
+            Block::default()
+                .borders(Borders::ALL)
+                .border_style(Style::default().fg(Color::Cyan))
+                .title("Your Answers"),
+        )
+        .wrap(Wrap { trim: false });
+    frame.render_widget(input_box, input_area);
+
+    // Render footer with instructions
+    let footer = Paragraph::new(Line::from(vec![
+        Span::styled("Enter", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(": new line  "),
+        Span::styled("Ctrl+Enter", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(" or "),
+        Span::styled("Ctrl+D", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(": submit  "),
+        Span::styled("Esc", Style::default().add_modifier(Modifier::BOLD)),
+        Span::raw(": cancel"),
+    ]))
+    .block(Block::default().borders(Borders::TOP));
+    frame.render_widget(footer, footer_area);
 }
 
 /// Render the header showing status and elapsed time.

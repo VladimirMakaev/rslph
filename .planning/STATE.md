@@ -11,8 +11,8 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 
 Phase: 16 - Cleanup
 Plan: —
-Status: Ready for planning
-Last activity: 2026-02-01 — v1.3 roadmap created
+Status: Planned (3 plans ready)
+Last activity: 2026-02-01 — Phase 16 planned
 
 Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2 | [░░░░░░░░░░] 0% v1.3
 

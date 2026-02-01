@@ -338,7 +338,20 @@ impl StreamEvent {
                         if let Some(questions_array) = questions_value.as_array() {
                             let questions: Vec<String> = questions_array
                                 .iter()
-                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                .filter_map(|v| {
+                                    // Questions can be either:
+                                    // 1. Simple strings: ["Question 1?", "Question 2?"]
+                                    // 2. Objects with question field: [{"question": "...", "options": [...]}]
+                                    if let Some(s) = v.as_str() {
+                                        Some(s.to_string())
+                                    } else if let Some(obj) = v.as_object() {
+                                        obj.get("question")
+                                            .and_then(|q| q.as_str())
+                                            .map(|s| s.to_string())
+                                    } else {
+                                        None
+                                    }
+                                })
                                 .collect();
 
                             if !questions.is_empty() {
@@ -904,5 +917,17 @@ mod tests {
 
         // Empty questions array should return None
         assert!(event.extract_ask_user_questions().is_none());
+    }
+
+    #[test]
+    fn test_extract_ask_user_questions_object_format() {
+        // Real Claude CLI format: questions are objects with header, question, options
+        let json = r#"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"AskUserQuestion","input":{"questions":[{"header":"Data Source","question":"What API will provide the data?","options":[{"label":"Alpha Vantage"}]},{"header":"Auth","question":"Should auth be required?","options":[{"label":"Yes"},{"label":"No"}]}]}}]}}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+
+        let ask = event.extract_ask_user_questions().expect("should have AskUserQuestion");
+        assert_eq!(ask.questions.len(), 2);
+        assert_eq!(ask.questions[0], "What API will provide the data?");
+        assert_eq!(ask.questions[1], "Should auth be required?");
     }
 }

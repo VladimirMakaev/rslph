@@ -19,16 +19,18 @@ A Rust CLI application implementing the Ralph Wiggum Loop — an autonomous AI c
 - ScenarioBuilder/WorkspaceBuilder fluent APIs for test fixtures
 - 26 E2E tests + TUI snapshot testing
 
-## Current Milestone: v1.2 Context Engineering
+## Current Milestone: v1.3 Hardening
 
-**Goal:** Build an evaluation framework to measure agent performance and improve the context engineering (prompts, iteration structure, test-driven flow) that drives autonomous execution.
+**Goal:** Consolidate and harden existing features, remove dead code paths, and establish GSD-style multi-persona workflow while ensuring robust TUI input handling.
 
 **Target features:**
-- Token consumption tracking in plan/build commands (via stream-json parsing)
-- `rslph eval` command for running controlled benchmarks
-- Built-in eval projects with hidden test suites
-- Test-driven iteration flow (write failing tests → implement → refactor)
-- Research and adopt GSD's prompt engineering patterns
+- TUI-only mode for all commands (remove non-TUI code paths)
+- Proper multiline text input with cursor for interactive Q&A
+- `--basic` mode aligned with portableralph reference
+- Remove `gsd_tdd` mode, replace with GSD multi-persona flow
+- GSD personas (research, planning, execution, verification) compatible with Ralph Loop
+- Comprehensive E2E tests for planning with 0-3 question rounds
+- TUI input prompt tests with ratatui-testlib
 
 ## Core Value
 
@@ -36,7 +38,7 @@ Autonomous task execution with fresh context per iteration and accumulated learn
 
 ## Requirements
 
-### Validated (v1.0, v1.1)
+### Validated (v1.0, v1.1, v1.2)
 
 - ✓ `rslph plan <plan>` command with basic and adaptive modes — v1.0
 - ✓ `rslph build <plan>` command with autonomous iteration — v1.0
@@ -48,14 +50,23 @@ Autonomous task execution with fresh context per iteration and accumulated learn
 - ✓ Ctrl+C graceful handling and timeout support — v1.0
 - ✓ E2E Testing Framework with fake Claude simulation — v1.1
 - ✓ TUI snapshot testing with TestBackend + insta — v1.1
+- ✓ Token consumption tracking in plan/build via stream-json — v1.2
+- ✓ `rslph eval` command for controlled benchmarks — v1.2
+- ✓ Built-in eval projects with hidden test suites — v1.2
+- ✓ Prompt modes (basic, gsd, gsd_tdd) — v1.2
+- ✓ Multi-trial evaluation with statistics — v1.2
+- ✓ Parallel eval TUI with dashboard — v1.2
+- ✓ Interactive planning Q&A via session resume — v1.2
 
-### Active (v1.2)
+### Active (v1.3)
 
-- [ ] Token consumption tracking in plan/build via stream-json
-- [ ] `rslph eval` command for controlled benchmarks
-- [ ] Built-in eval projects with hidden test suites
-- [ ] Test-driven iteration flow (failing tests → implement → refactor)
-- [ ] GSD-inspired prompt engineering patterns
+- [ ] TUI-only mode for all commands (remove non-TUI code)
+- [ ] Multiline text input with cursor for Q&A
+- [ ] `--basic` mode aligned with portableralph
+- [ ] Remove `gsd_tdd` mode
+- [ ] GSD multi-persona flow (research, plan, execute, verify)
+- [ ] E2E tests for planning with 0-3 question rounds
+- [ ] TUI input tests with ratatui-testlib
 
 ### Future
 
@@ -104,4 +115,4 @@ Autonomous task execution with fresh context per iteration and accumulated learn
 - **STREAM-JSON-RESEARCH**: Need to research Claude CLI `--output-format stream-json` and `--json-schema` flags for correct usage
 
 ---
-*Last updated: 2026-01-20 — v1.2 Context Engineering milestone started*
+*Last updated: 2026-02-01 — v1.3 Hardening milestone started*

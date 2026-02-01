@@ -212,6 +212,16 @@ pub struct Usage {
     pub cache_read_input_tokens: Option<u64>,
 }
 
+/// Parsed AskUserQuestion tool call containing questions for the user.
+///
+/// Claude uses this tool to request user input when it needs clarification
+/// or additional information during planning or execution.
+#[derive(Debug, Clone)]
+pub struct AskUserQuestion {
+    /// List of questions to ask the user.
+    pub questions: Vec<String>,
+}
+
 impl StreamEvent {
     /// Parse a single JSON line into a StreamEvent.
     pub fn parse(line: &str) -> Result<Self, serde_json::Error> {
@@ -289,6 +299,43 @@ impl StreamEvent {
         } else {
             None
         }
+    }
+
+    /// Extract AskUserQuestion tool calls from this event.
+    ///
+    /// Looks for tool_use blocks with name "AskUserQuestion" and parses
+    /// the questions from the input payload.
+    ///
+    /// Returns None if no AskUserQuestion tool calls are found.
+    pub fn extract_ask_user_questions(&self) -> Option<AskUserQuestion> {
+        let message = self.message.as_ref()?;
+        let blocks = match &message.content {
+            MessageContent::Blocks(blocks) => blocks,
+            _ => return None,
+        };
+
+        // Find AskUserQuestion tool_use blocks
+        for block in blocks {
+            if block.block_type == "tool_use" && block.name.as_deref() == Some("AskUserQuestion") {
+                if let Some(input) = &block.input {
+                    // Parse questions from input.questions array
+                    if let Some(questions_value) = input.get("questions") {
+                        if let Some(questions_array) = questions_value.as_array() {
+                            let questions: Vec<String> = questions_array
+                                .iter()
+                                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                                .collect();
+
+                            if !questions.is_empty() {
+                                return Some(AskUserQuestion { questions });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        None
     }
 
     /// Extract text content from an assistant message.
@@ -700,5 +747,51 @@ mod tests {
 
         assert!(!event.is_init_event());
         assert_eq!(event.extract_session_id(), None);
+    }
+
+    #[test]
+    fn test_extract_ask_user_questions() {
+        let json = r#"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"AskUserQuestion","input":{"questions":["What is your project name?","What language do you prefer?"]}}]}}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+
+        let ask = event.extract_ask_user_questions().expect("should have AskUserQuestion");
+        assert_eq!(ask.questions.len(), 2);
+        assert_eq!(ask.questions[0], "What is your project name?");
+        assert_eq!(ask.questions[1], "What language do you prefer?");
+    }
+
+    #[test]
+    fn test_extract_ask_user_questions_single_question() {
+        let json = r#"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"AskUserQuestion","input":{"questions":["What is the target framework?"]}}]}}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+
+        let ask = event.extract_ask_user_questions().expect("should have AskUserQuestion");
+        assert_eq!(ask.questions.len(), 1);
+        assert_eq!(ask.questions[0], "What is the target framework?");
+    }
+
+    #[test]
+    fn test_extract_ask_user_questions_not_found_for_other_tools() {
+        let json = r#"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/tmp/test"}}]}}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+
+        assert!(event.extract_ask_user_questions().is_none());
+    }
+
+    #[test]
+    fn test_extract_ask_user_questions_not_found_for_text() {
+        let json = r#"{"type":"assistant","message":{"content":[{"type":"text","text":"Hello world"}]}}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+
+        assert!(event.extract_ask_user_questions().is_none());
+    }
+
+    #[test]
+    fn test_extract_ask_user_questions_empty_questions() {
+        let json = r#"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"AskUserQuestion","input":{"questions":[]}}]}}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+
+        // Empty questions array should return None
+        assert!(event.extract_ask_user_questions().is_none());
     }
 }

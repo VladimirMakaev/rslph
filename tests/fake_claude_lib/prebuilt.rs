@@ -300,6 +300,79 @@ Run the calculator with test inputs and verify outputs.
         .respond_with_text(progress)
 }
 
+#[allow(dead_code)]
+/// Create a fake Claude scenario with AskUserQuestion flow.
+///
+/// This scenario simulates:
+/// 1. Initial call: Emits system init + AskUserQuestion
+/// 2. Resume call: Receives answers, produces progress file
+pub fn interactive_planning() -> ScenarioBuilder {
+    let progress = r#"# Progress: Interactive Test
+
+## Status
+
+RALPH_DONE - All tasks complete
+
+## Tasks
+
+### Phase 1: Setup
+
+- [x] Configure project based on user answers
+
+## Testing Strategy
+
+Basic tests.
+"#;
+
+    ScenarioBuilder::new()
+        // Invocation 0: Ask questions
+        .with_session_id("test-session-123")
+        .asks_questions(vec![
+            "What programming language do you want to use?",
+            "What database backend should we use?",
+        ])
+        .next_invocation()
+        // Invocation 1: Resume with answers, produce progress file
+        .with_session_id("test-session-123")
+        .respond_with_text(progress)
+}
+
+#[allow(dead_code)]
+/// Create a multi-round Q&A scenario.
+///
+/// Simulates two rounds of questions before producing final output.
+pub fn multi_round_qa() -> ScenarioBuilder {
+    let progress = r#"# Progress: Multi-Round Test
+
+## Status
+
+RALPH_DONE - All tasks complete
+
+## Tasks
+
+### Phase 1: Done
+
+- [x] Task complete based on multi-round Q&A
+
+## Testing Strategy
+
+Verified through multiple question rounds.
+"#;
+
+    ScenarioBuilder::new()
+        // Round 1: First questions
+        .with_session_id("multi-session-456")
+        .asks_questions(vec!["Question round 1?"])
+        .next_invocation()
+        // Round 2: Follow-up questions
+        .with_session_id("multi-session-456")
+        .asks_questions(vec!["Question round 2?"])
+        .next_invocation()
+        // Round 3: Final response
+        .with_session_id("multi-session-456")
+        .respond_with_text(progress)
+}
+
 #[cfg(test)]
 mod tests {
     #[allow(unused_imports)]
@@ -375,5 +448,29 @@ mod tests {
                 assert!(result.trim() == "5", "Expected 5, got: {}", result.trim());
             }
         }
+    }
+
+    #[test]
+    fn test_interactive_planning_scenario_builds() {
+        let handle = interactive_planning().build();
+        // Verify handle was created successfully
+        let _ = handle.executable_path.exists();
+    }
+
+    #[test]
+    fn test_multi_round_qa_scenario_builds() {
+        let handle = multi_round_qa().build();
+        // Verify handle was created successfully
+        let _ = handle.executable_path.exists();
+    }
+
+    #[test]
+    fn test_interactive_planning_invocations() {
+        // Verify the scenario can be built and env vars retrieved
+        let handle = interactive_planning().build();
+        let env_vars = handle.env_vars();
+        assert_eq!(env_vars.len(), 2);
+        assert_eq!(env_vars[0].0, "FAKE_CLAUDE_CONFIG");
+        assert_eq!(env_vars[1].0, "RSLPH_CLAUDE_CMD");
     }
 }

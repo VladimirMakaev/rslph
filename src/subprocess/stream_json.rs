@@ -34,6 +34,25 @@ pub struct StreamEvent {
     /// Timestamp of the event.
     #[serde(default)]
     pub timestamp: Option<String>,
+
+    /// Permission denials (present in result events when tools were denied).
+    #[serde(default)]
+    pub permission_denials: Option<Vec<PermissionDenial>>,
+}
+
+/// A permission denial record from a result event.
+#[derive(Debug, Clone, Deserialize)]
+pub struct PermissionDenial {
+    /// The tool that was denied.
+    pub tool_name: String,
+
+    /// The tool use ID that was denied.
+    #[serde(default)]
+    pub tool_use_id: Option<String>,
+
+    /// The input that was provided to the tool.
+    #[serde(default)]
+    pub tool_input: Option<serde_json::Value>,
 }
 
 /// A message within a stream event.
@@ -368,6 +387,47 @@ impl StreamEvent {
         None
     }
 
+    /// Extract questions from denied AskUserQuestion tool calls in result events.
+    ///
+    /// When Claude CLI runs in print mode (-p), it auto-denies AskUserQuestion
+    /// and records them in permission_denials. This extracts those questions.
+    pub fn extract_denied_questions(&self) -> Option<AskUserQuestion> {
+        if self.event_type != "result" {
+            return None;
+        }
+
+        let denials = self.permission_denials.as_ref()?;
+        let mut all_questions = Vec::new();
+
+        for denial in denials {
+            if denial.tool_name == "AskUserQuestion" {
+                if let Some(ref input) = denial.tool_input {
+                    if let Some(questions_value) = input.get("questions") {
+                        if let Some(questions_array) = questions_value.as_array() {
+                            for q in questions_array {
+                                // Handle both string and object formats
+                                if let Some(s) = q.as_str() {
+                                    all_questions.push(s.to_string());
+                                } else if let Some(obj) = q.as_object() {
+                                    if let Some(question) = obj.get("question").and_then(|q| q.as_str()) {
+                                        all_questions.push(question.to_string());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if !all_questions.is_empty() {
+            debug!(questions = ?all_questions, "Found {} denied AskUserQuestion(s)", all_questions.len());
+            Some(AskUserQuestion { questions: all_questions })
+        } else {
+            None
+        }
+    }
+
     /// Extract text content from an assistant message.
     ///
     /// Returns all text blocks concatenated together.
@@ -530,10 +590,16 @@ impl StreamResponse {
             }
         }
 
-        // Collect AskUserQuestion events
+        // Collect AskUserQuestion events (from tool calls)
         if let Some(ask) = event.extract_ask_user_questions() {
             self.questions.push(ask);
             debug!(count = %self.questions.len(), "AskUserQuestion collected, total so far");
+        }
+
+        // Also collect denied AskUserQuestion from result events (print mode auto-denies)
+        if let Some(ask) = event.extract_denied_questions() {
+            self.questions.push(ask);
+            debug!(count = %self.questions.len(), "Denied AskUserQuestion collected from result event, total so far");
         }
 
         if event.is_assistant() {
@@ -929,5 +995,37 @@ mod tests {
         assert_eq!(ask.questions.len(), 2);
         assert_eq!(ask.questions[0], "What API will provide the data?");
         assert_eq!(ask.questions[1], "Should auth be required?");
+    }
+
+    #[test]
+    fn test_extract_denied_questions_from_result() {
+        // Simulates the result event from Claude CLI with permission_denials
+        let json = r#"{"type":"result","subtype":"success","permission_denials":[{"tool_name":"AskUserQuestion","tool_use_id":"toolu_123","tool_input":{"questions":[{"question":"What API?","header":"API","options":[{"label":"A"}]},{"question":"What auth?","header":"Auth","options":[{"label":"Yes"}]}]}}]}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+
+        let ask = event.extract_denied_questions().expect("should have denied questions");
+        assert_eq!(ask.questions.len(), 2);
+        assert_eq!(ask.questions[0], "What API?");
+        assert_eq!(ask.questions[1], "What auth?");
+    }
+
+    #[test]
+    fn test_extract_denied_questions_multiple_denials() {
+        // Multiple denied AskUserQuestion calls in one result event
+        let json = r#"{"type":"result","permission_denials":[{"tool_name":"AskUserQuestion","tool_input":{"questions":[{"question":"Q1?"}]}},{"tool_name":"AskUserQuestion","tool_input":{"questions":[{"question":"Q2?"}]}},{"tool_name":"Read","tool_input":{"file_path":"/tmp"}}]}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+
+        let ask = event.extract_denied_questions().expect("should have denied questions");
+        assert_eq!(ask.questions.len(), 2);
+        assert_eq!(ask.questions[0], "Q1?");
+        assert_eq!(ask.questions[1], "Q2?");
+    }
+
+    #[test]
+    fn test_extract_denied_questions_none_for_non_result() {
+        let json = r#"{"type":"assistant","message":{"content":[{"type":"text","text":"Hello"}]}}"#;
+        let event = StreamEvent::parse(json).expect("should parse");
+
+        assert!(event.extract_denied_questions().is_none());
     }
 }

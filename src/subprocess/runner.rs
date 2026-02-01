@@ -141,7 +141,7 @@ impl ClaudeRunner {
                 result = self.stderr.next_line(), if !self.stderr_done => {
                     match result {
                         Ok(Some(line)) => {
-                            trace!(line_len = %line.len(), "Received stderr from subprocess");
+                            trace!(line_len = %line.len(), stderr_content = %line, "Received stderr from subprocess");
                             return Some(OutputLine::Stderr(line));
                         }
                         Ok(None) => {

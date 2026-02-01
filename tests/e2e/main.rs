@@ -27,6 +27,9 @@ mod eval_command;
 // Eval integration tests with fake Claude (Plan 10-UAT)
 mod test_eval_integration;
 
+// Interactive planning tests (Phase 15)
+mod test_interactive_planning;
+
 // Include fake_claude_lib for scenario builder access
 #[path = "../fake_claude_lib/mod.rs"]
 mod fake_claude_lib;

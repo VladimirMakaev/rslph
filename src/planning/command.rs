@@ -738,11 +738,12 @@ mod tests {
     use tempfile::TempDir;
 
     #[tokio::test]
-    async fn test_run_plan_command_spawns_and_writes_file() {
+    async fn test_run_plan_command_rejects_invalid_response() {
         use crate::config::ClaudeCommand;
 
-        // This test verifies the full command flow using echo as a mock.
-        // Echo outputs garbage but ProgressFile::parse is lenient so it succeeds.
+        // This test verifies that invalid/empty Claude output is rejected.
+        // Echo outputs garbage (not stream-json format) so StreamResponse.text is empty,
+        // and the new validation in ProgressFile::parse correctly rejects empty content.
         let dir = TempDir::new().expect("temp dir");
 
         // Create a config pointing to echo instead of claude
@@ -769,16 +770,14 @@ mod tests {
         )
         .await;
 
-        // Echo outputs something, parse is lenient, so this actually succeeds
-        assert!(result.is_ok(), "Command should complete: {:?}", result);
-
-        // Verify progress.md was created
-        let (output_path, tokens) = result.unwrap();
-        assert!(output_path.exists(), "Progress file should exist");
-        assert!(output_path.ends_with("progress.md"));
-        // Verify tokens are returned (will be zero from echo mock)
-        assert_eq!(tokens.input_tokens, 0);
-        assert_eq!(tokens.output_tokens, 0);
+        // With validation, echo output (not valid stream-json) should fail to parse
+        assert!(result.is_err(), "Invalid output should be rejected");
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains("parse") || err.contains("valid sections"),
+            "Should report parse error: {}",
+            err
+        );
     }
 
     #[tokio::test]

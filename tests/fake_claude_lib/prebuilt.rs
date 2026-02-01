@@ -88,13 +88,13 @@ pub fn calculator() -> ScenarioBuilder {
         // Invocation 0: Planning phase - output progress file
         .respond_with_text(CALCULATOR_PROGRESS)
         .next_invocation()
-        // Invocation 1: Build phase iteration 1 - create calculator AND write RALPH_DONE progress
+        // Invocation 1: Build phase iteration 1 - create calculator AND output RALPH_DONE progress
+        // Note: Build command parses Claude's text response as the updated progress file,
+        // so we must return valid progress file format, not just a status message.
         .uses_write("main.py", PYTHON_CALCULATOR)
         .uses_bash("chmod +x main.py")
-        // Also write the updated progress file with RALPH_DONE
-        .uses_write("progress.md", CALCULATOR_PROGRESS_DONE)
         .with_execute_tools()
-        .respond_with_text("I've created a Python calculator that reads expressions from stdin and outputs the result. The calculator uses Python's eval() for computation and handles integer division correctly. All tasks are complete.")
+        .respond_with_text(CALCULATOR_PROGRESS_DONE)
         .next_invocation()
         // Invocation 2: Test discovery phase - return run script
         .respond_with_text("#!/bin/sh\npython main.py")
@@ -158,12 +158,11 @@ else:
         // Invocation 0: Planning phase
         .respond_with_text(progress)
         .next_invocation()
-        // Invocation 1: Build phase
+        // Invocation 1: Build phase - return valid progress file with RALPH_DONE
         .uses_write("main.py", python_fizzbuzz)
         .uses_bash("chmod +x main.py")
-        .uses_write("progress.md", progress_done)
         .with_execute_tools()
-        .respond_with_text("I've created a Python FizzBuzz program that reads a number from stdin and outputs the appropriate result. All tasks are complete.")
+        .respond_with_text(progress_done)
         .next_invocation()
         // Invocation 2: Test discovery phase - return run script
         .respond_with_text("#!/bin/sh\npython main.py")
@@ -249,11 +248,11 @@ print(result)
         .respond_with_text(progress) // Returns same progress since it times out
         .next_invocation()
         // Invocation 2: Build phase attempt 2 (retry) - quick response with RALPH_DONE
+        // Note: Must return valid progress file format for validation to pass
         .uses_write("main.py", python_calculator)
         .uses_bash("chmod +x main.py")
-        .uses_write("progress.md", progress_done)
         .with_execute_tools()
-        .respond_with_text("I've created a Python calculator. All tasks are complete.")
+        .respond_with_text(progress_done)
         .next_invocation()
         // Invocation 3: Test discovery phase
         .respond_with_text("#!/bin/sh\npython main.py")

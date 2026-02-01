@@ -476,6 +476,12 @@ pub struct StreamResponse {
 
     /// Final stop reason.
     pub stop_reason: Option<String>,
+
+    /// Session ID captured from init event.
+    pub session_id: Option<String>,
+
+    /// Questions collected from AskUserQuestion tool calls.
+    pub questions: Vec<AskUserQuestion>,
 }
 
 impl StreamResponse {
@@ -486,6 +492,18 @@ impl StreamResponse {
 
     /// Process a stream event and accumulate its content.
     pub fn process_event(&mut self, event: &StreamEvent) {
+        // Extract session_id from init events (first one wins)
+        if self.session_id.is_none() {
+            if let Some(session_id) = event.extract_session_id() {
+                self.session_id = Some(session_id.to_string());
+            }
+        }
+
+        // Collect AskUserQuestion events
+        if let Some(ask) = event.extract_ask_user_questions() {
+            self.questions.push(ask);
+        }
+
         if event.is_assistant() {
             if let Some(text) = event.extract_text() {
                 self.text.push_str(&text);
@@ -510,6 +528,19 @@ impl StreamResponse {
                 }
             }
         }
+    }
+
+    /// Check if any AskUserQuestion events were collected.
+    pub fn has_questions(&self) -> bool {
+        !self.questions.is_empty()
+    }
+
+    /// Get all questions from all AskUserQuestion events, flattened.
+    pub fn get_all_questions(&self) -> Vec<String> {
+        self.questions
+            .iter()
+            .flat_map(|ask| ask.questions.clone())
+            .collect()
     }
 
     /// Parse a line and process it if valid JSON.
@@ -578,6 +609,67 @@ mod tests {
         // Tokens are accumulated across all messages
         assert_eq!(response.input_tokens, 100); // 50 + 50
         assert_eq!(response.output_tokens, 30); // 10 + 20
+    }
+
+    #[test]
+    fn test_stream_response_session_id_extraction() {
+        let mut response = StreamResponse::new();
+
+        let init_json = r#"{"type":"system","subtype":"init","session_id":"test-session-123","tools":[]}"#;
+        let text_json = r#"{"type":"assistant","message":{"content":[{"type":"text","text":"Hello"}]}}"#;
+
+        response.process_line(init_json);
+        response.process_line(text_json);
+
+        assert_eq!(response.session_id, Some("test-session-123".to_string()));
+    }
+
+    #[test]
+    fn test_stream_response_session_id_first_wins() {
+        let mut response = StreamResponse::new();
+
+        let init1 = r#"{"type":"system","subtype":"init","session_id":"first-session"}"#;
+        let init2 = r#"{"type":"system","subtype":"init","session_id":"second-session"}"#;
+
+        response.process_line(init1);
+        response.process_line(init2);
+
+        // First session ID should be kept
+        assert_eq!(response.session_id, Some("first-session".to_string()));
+    }
+
+    #[test]
+    fn test_stream_response_questions_accumulation() {
+        let mut response = StreamResponse::new();
+
+        let init_json = r#"{"type":"system","subtype":"init","session_id":"session-456"}"#;
+        let ask1 = r#"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"AskUserQuestion","input":{"questions":["Question 1?"]}}]}}"#;
+        let ask2 = r#"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"AskUserQuestion","input":{"questions":["Question 2?","Question 3?"]}}]}}"#;
+
+        response.process_line(init_json);
+        response.process_line(ask1);
+        response.process_line(ask2);
+
+        assert!(response.has_questions());
+        assert_eq!(response.questions.len(), 2);
+
+        let all_questions = response.get_all_questions();
+        assert_eq!(all_questions.len(), 3);
+        assert_eq!(all_questions[0], "Question 1?");
+        assert_eq!(all_questions[1], "Question 2?");
+        assert_eq!(all_questions[2], "Question 3?");
+    }
+
+    #[test]
+    fn test_stream_response_no_questions() {
+        let mut response = StreamResponse::new();
+
+        let text_json = r#"{"type":"assistant","message":{"content":[{"type":"text","text":"Just text, no questions"}]}}"#;
+
+        response.process_line(text_json);
+
+        assert!(!response.has_questions());
+        assert!(response.get_all_questions().is_empty());
     }
 
     #[test]

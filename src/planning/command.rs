@@ -577,7 +577,7 @@ pub async fn run_adaptive_planning(
             stream_response.process_line(s);
         }
     }
-    let response_text = stream_response.text;
+    let response_text = stream_response.text.clone();
 
     // Display token summary for user
     println!(
@@ -587,6 +587,29 @@ pub async fn run_adaptive_planning(
         format_tokens(stream_response.cache_creation_input_tokens),
         format_tokens(stream_response.cache_read_input_tokens),
     );
+
+    // Check if Claude asked questions and collect answers
+    if stream_response.has_questions() {
+        let questions = stream_response.get_all_questions();
+        eprintln!(
+            "[TRACE] Claude asked {} question(s) in final planning step",
+            questions.len()
+        );
+
+        // Display questions and collect answers
+        display_questions(&questions);
+        let answers = read_multiline_input()?;
+        let _formatted_answers = format_answers_for_resume(&questions, &answers);
+
+        // Store session_id for potential resume (Plan 03)
+        if let Some(ref session_id) = stream_response.session_id {
+            eprintln!("[TRACE] Session ID: {}", session_id);
+            eprintln!("[TRACE] Answers collected. Session resume will be implemented in the next phase.");
+        }
+
+        println!("\nAnswers collected. Session resume will be implemented in the next phase.");
+        println!("Continuing with available context...\n");
+    }
 
     // Parse response into ProgressFile
     let mut progress_file = ProgressFile::parse(&response_text)?;

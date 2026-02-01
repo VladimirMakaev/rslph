@@ -578,6 +578,15 @@ pub async fn run_adaptive_planning(
         }
     }
 
+    // Debug tracing for session_id and questions
+    if let Some(ref session_id) = stream_response.session_id {
+        eprintln!("[TRACE] Session ID captured: {}", session_id);
+    } else {
+        eprintln!("[TRACE] No session_id in response");
+    }
+    let initial_question_count = stream_response.get_all_questions().len();
+    eprintln!("[TRACE] Questions detected: {}", initial_question_count);
+
     // Track accumulated tokens across all resume calls
     let mut total_input_tokens = stream_response.input_tokens;
     let mut total_output_tokens = stream_response.output_tokens;
@@ -628,7 +637,11 @@ pub async fn run_adaptive_planning(
 
         // Resume session with answers
         println!("Resuming session with your answers...\n");
-        eprintln!("[TRACE] Resuming session {}", session_id);
+        eprintln!(
+            "[TRACE] Resuming session {} with answers (length: {} chars)",
+            session_id,
+            formatted_answers.len()
+        );
 
         match resume_session(
             &session_id,
@@ -1125,5 +1138,56 @@ mod tests {
             "Should fail to spawn: {}",
             err
         );
+    }
+
+    #[test]
+    fn test_display_questions_formats_correctly() {
+        // Test that display_questions doesn't panic with various inputs
+        let questions = vec![
+            "What programming language?".to_string(),
+            "What database?".to_string(),
+        ];
+        display_questions(&questions);
+
+        // Empty questions should also not panic
+        display_questions(&[]);
+    }
+
+    #[test]
+    fn test_format_answers_for_resume_pairs_correctly() {
+        let questions = vec![
+            "What language?".to_string(),
+            "What database?".to_string(),
+        ];
+        let answers = "Rust\nPostgreSQL";
+
+        let formatted = format_answers_for_resume(&questions, answers);
+
+        assert!(formatted.contains("Q1: What language?"));
+        assert!(formatted.contains("Q2: What database?"));
+        assert!(formatted.contains("Rust\nPostgreSQL"));
+        assert!(formatted.starts_with("Here are my answers to your questions:"));
+    }
+
+    #[test]
+    fn test_format_answers_for_resume_handles_empty_questions() {
+        let questions: Vec<String> = vec![];
+        let answers = "Some answers anyway";
+
+        let formatted = format_answers_for_resume(&questions, answers);
+
+        assert!(formatted.contains("Some answers anyway"));
+        assert!(!formatted.contains("Q1:"));
+    }
+
+    #[test]
+    fn test_format_answers_for_resume_handles_empty_answers() {
+        let questions = vec!["Question 1?".to_string()];
+        let answers = "";
+
+        let formatted = format_answers_for_resume(&questions, answers);
+
+        assert!(formatted.contains("Q1: Question 1?"));
+        assert!(formatted.contains("My answers:"));
     }
 }

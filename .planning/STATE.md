@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-01-20)
 ## Current Position
 
 Phase: 15 - Interactive Planning Input (Gap Closure)
-Plan: 6 of 7 complete (gap closure in progress)
-Status: Gap closure in progress
-Last activity: 2026-02-01 - Completed 15-06-PLAN.md (allow clarifying questions in adaptive mode)
+Plan: 7 of 7 complete (gap closure complete)
+Status: Gap closure complete
+Last activity: 2026-02-01 - Completed 15-05-PLAN.md (fake_claude AskUserQuestion simulation)
 
 Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2
 
@@ -207,6 +207,9 @@ All decisions are archived in milestone roadmap files:
 | prompt-questions-conditional | Prompt question behavior | Conditional on --adaptive flag: standard mode makes assumptions, adaptive mode allows AskUserQuestion |
 | question-limit | Question count limit | 2-5 questions max to prevent over-questioning |
 
+| fake-claude-with-session-id | Init event insertion | with_session_id inserts init event at beginning of invocation |
+| fake-claude-asks-questions-result | Result event auto-add | asks_questions auto-adds result event to terminate invocation |
+
 ### Pending Todos
 
 - **CLAUDE-CLI-OUTPUT-FLAGS**: Research Claude CLI `--output-format stream-json` and `--json-schema` flags for correct usage.
@@ -247,8 +250,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: 15-06-PLAN.md complete (prompt modifications for adaptive mode)
-Resume file: None (continue with 15-07 UAT rerun)
+Stopped at: 15-05-PLAN.md complete (fake_claude AskUserQuestion simulation)
+Resume file: None (Phase 15 gap closure complete)
 
 ### Roadmap Evolution
 
@@ -282,4 +285,6 @@ Resume file: None (continue with 15-07 UAT rerun)
 - 15-04 complete: TUI input mode for interactive Q&A (InputMode enum, question rendering, keyboard handling)
 - Phase 15 UAT: 6 issues found, root cause identified as prompts forbidding questions
 - 15-06 complete: Modified all 4 planning prompts to allow AskUserQuestion in adaptive mode
+- 15-05 complete: Fake Claude extended with session_id and AskUserQuestion simulation for E2E testing
+- Phase 15 gap closure complete: All 7 plans done, interactive planning fully verified
 - Phase 15 complete: All 4 plans done, interactive planning fully implemented

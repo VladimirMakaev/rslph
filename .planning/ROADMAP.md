@@ -298,9 +298,9 @@ Plans:
 - [x] 15-02-PLAN.md — Interactive input collection for CLI mode (command.rs)
 - [x] 15-03-PLAN.md — Session resume with --resume flag and multi-round support
 - [x] 15-04-PLAN.md — TUI mode input for question/answer flow (plan_tui.rs)
-- [ ] 15-05-PLAN.md — Gap closure: Extend fake_claude for AskUserQuestion simulation
-- [ ] 15-06-PLAN.md — Gap closure: Modify prompts to allow questions in adaptive mode
-- [ ] 15-07-PLAN.md — Gap closure: Add E2E tests for interactive planning
+- [x] 15-05-PLAN.md — Gap closure: Extend fake_claude for AskUserQuestion simulation
+- [x] 15-06-PLAN.md — Gap closure: Modify prompts to allow questions in adaptive mode
+- [x] 15-07-PLAN.md — Gap closure: Add E2E tests for interactive planning
 
 ---
 
@@ -324,7 +324,7 @@ Plans:
 | 13. Parallel Eval TUI | v1.2 | 9/9 | Complete | 2026-01-22 |
 | 14. TUI Visual Parity | v1.2 | 6/6 | Complete | 2026-01-23 |
 | 13.1 Clippy & Crates.io | v1.2 | 1/1 | Complete | 2026-01-30 |
-| 15. Interactive Planning | v1.2 | 4/7 | Gap Closure | — |
+| 15. Interactive Planning | v1.2 | 7/7 | Complete | 2026-02-01 |
 
 ---
 
@@ -366,4 +366,4 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full details.
 
 ---
 
-*Last updated: 2026-02-01 — Phase 15 gap closure plans created (15-05, 15-06, 15-07)*
+*Last updated: 2026-02-01 — Phase 15 complete (all 7 plans verified)*

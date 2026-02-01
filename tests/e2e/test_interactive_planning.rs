@@ -12,6 +12,7 @@ use crate::fake_claude_lib::prebuilt;
 use crate::fake_claude_lib::scenario::ScenarioBuilder;
 use crate::fixtures::WorkspaceBuilder;
 use assert_cmd::Command;
+use predicates::prelude::*;
 use std::fs;
 
 /// Test INTER-07: Fallback when no questions asked
@@ -130,6 +131,13 @@ fn test_interactive_scenario_builds_correctly() {
         config_content.contains("test-session-123"),
         "Config should contain session ID"
     );
+
+    // Verify 3 invocations: testing strategist, questions, resume
+    let invocation_count = config_content.matches("\"events\"").count();
+    assert_eq!(
+        invocation_count, 3,
+        "Should have exactly 3 invocations (testing strategist, questions, resume)"
+    );
 }
 
 /// Test that multi-round Q&A scenario is properly configured (INTER-06)
@@ -144,11 +152,11 @@ fn test_multi_round_scenario_builds_correctly() {
         "Config should contain multi-round session ID"
     );
 
-    // Count invocations (should be 3: question, question, answer)
+    // Count invocations (should be 4: testing strategist, question1, question2, answer)
     let invocation_count = config_content.matches("\"events\"").count();
-    assert!(
-        invocation_count >= 3,
-        "Should have at least 3 invocations for multi-round"
+    assert_eq!(
+        invocation_count, 4,
+        "Should have exactly 4 invocations for multi-round (testing strategist + 2 question rounds + answer)"
     );
 }
 
@@ -196,5 +204,55 @@ fn test_ask_questions_event_structure() {
     assert!(
         config_content.contains("custom-session"),
         "Config should contain custom session ID"
+    );
+}
+
+/// Test the full interactive Q&A flow end-to-end (INTER-02, INTER-03, INTER-05)
+///
+/// This test verifies that when Claude asks questions via AskUserQuestion:
+/// 1. Questions are detected in the stream output
+/// 2. The session resume mechanism works
+/// 3. A valid progress file is produced
+///
+/// Note: This test uses --adaptive flag which enables the Q&A flow.
+/// The test provides empty stdin which triggers the resume with empty answers.
+#[test]
+fn test_interactive_planning_detects_questions() {
+    let temp_dir = tempfile::TempDir::new().expect("Failed to create temp dir");
+    let initial_file = temp_dir.path().join("INITIAL.md");
+    fs::write(&initial_file, "# Build a web app\n\nA simple web application.").unwrap();
+
+    // Use the interactive_planning scenario with correct invocation count
+    let handle = prebuilt::interactive_planning().build();
+
+    let mut cmd = Command::cargo_bin("rslph").expect("Failed to find rslph binary");
+    for (key, val) in handle.env_vars() {
+        cmd.env(key, val);
+    }
+
+    // Run with --adaptive flag to enable Q&A flow
+    // Provide empty stdin to auto-submit with empty answers
+    cmd.arg("plan")
+        .arg("--no-tui")
+        .arg("--adaptive")
+        .arg(&initial_file)
+        .current_dir(temp_dir.path())
+        .write_stdin("\n\n") // Empty input with double-newline to submit
+        .assert()
+        .success()
+        // Verify questions were detected (appears in stderr trace)
+        .stderr(predicate::str::contains("Questions detected: 2"));
+
+    // Verify progress.md was created after resume
+    let progress_path = temp_dir.path().join("progress.md");
+    assert!(
+        progress_path.exists(),
+        "progress.md should be created after Q&A flow"
+    );
+
+    let content = fs::read_to_string(&progress_path).unwrap();
+    assert!(
+        content.contains("Interactive Test"),
+        "Should contain project name from resumed response"
     );
 }

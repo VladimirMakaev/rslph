@@ -303,10 +303,16 @@ Run the calculator with test inputs and verify outputs.
 #[allow(dead_code)]
 /// Create a fake Claude scenario with AskUserQuestion flow.
 ///
-/// This scenario simulates:
-/// 1. Initial call: Emits system init + AskUserQuestion
-/// 2. Resume call: Receives answers, produces progress file
+/// This scenario simulates the full adaptive planning flow:
+/// 1. Testing strategist call: Returns testing strategy text
+/// 2. Final planning call: Emits AskUserQuestion tool_use
+/// 3. Session resume: Receives answers, produces progress file
+///
+/// Note: The adaptive planning flow calls Claude twice before questions
+/// are detected - once for testing strategy, once for final planning.
 pub fn interactive_planning() -> ScenarioBuilder {
+    let testing_strategy = "Testing Strategy:\n1. Unit tests for core logic\n2. Integration tests for API endpoints\n3. E2E tests for user workflows";
+
     let progress = r#"# Progress: Interactive Test
 
 ## Status
@@ -325,14 +331,17 @@ Basic tests.
 "#;
 
     ScenarioBuilder::new()
-        // Invocation 0: Ask questions
+        // Invocation 0: Testing strategist (consumed by run_claude_headless)
+        .respond_with_text(testing_strategy)
+        .next_invocation()
+        // Invocation 1: Final planning - ask questions
         .with_session_id("test-session-123")
         .asks_questions(vec![
             "What programming language do you want to use?",
             "What database backend should we use?",
         ])
         .next_invocation()
-        // Invocation 1: Resume with answers, produce progress file
+        // Invocation 2: Resume with answers, produce progress file
         .with_session_id("test-session-123")
         .respond_with_text(progress)
 }
@@ -341,7 +350,10 @@ Basic tests.
 /// Create a multi-round Q&A scenario.
 ///
 /// Simulates two rounds of questions before producing final output.
+/// Includes the testing strategist invocation that happens first.
 pub fn multi_round_qa() -> ScenarioBuilder {
+    let testing_strategy = "Testing Strategy:\n1. Multi-round verification tests";
+
     let progress = r#"# Progress: Multi-Round Test
 
 ## Status
@@ -360,15 +372,18 @@ Verified through multiple question rounds.
 "#;
 
     ScenarioBuilder::new()
-        // Round 1: First questions
+        // Invocation 0: Testing strategist (consumed first)
+        .respond_with_text(testing_strategy)
+        .next_invocation()
+        // Invocation 1: Round 1 - First questions
         .with_session_id("multi-session-456")
         .asks_questions(vec!["Question round 1?"])
         .next_invocation()
-        // Round 2: Follow-up questions
+        // Invocation 2: Round 2 - Follow-up questions
         .with_session_id("multi-session-456")
         .asks_questions(vec!["Question round 2?"])
         .next_invocation()
-        // Round 3: Final response
+        // Invocation 3: Final response
         .with_session_id("multi-session-456")
         .respond_with_text(progress)
 }

@@ -169,6 +169,14 @@ impl ClaudeRunner {
         Ok(())
     }
 
+    /// Close stdin, sending EOF to the subprocess.
+    ///
+    /// Some processes wait for stdin EOF before starting output.
+    /// Call this after spawning if you don't need to send any input.
+    pub fn close_stdin(&mut self) {
+        self.stdin = None;
+    }
+
     /// Wait for the process to complete.
     pub async fn wait(&mut self) -> std::io::Result<std::process::ExitStatus> {
         self.child.wait().await

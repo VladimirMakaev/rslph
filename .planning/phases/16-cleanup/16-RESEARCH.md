@@ -248,10 +248,11 @@ After decision:
 
 ## Open Questions
 
-1. **E2E Test Strategy**
+1. **E2E Test Strategy** — RESOLVED
    - What we know: `assert_cmd` cannot handle TUI, 22+ tests affected
-   - What's unclear: Whether to keep hidden headless mode or rewrite tests
-   - Recommendation: Keep `RSLPH_FORCE_HEADLESS` env var for testing only (not a public API)
+   - Decision: **Restructure tests to use library directly** (like tui_tests.rs pattern)
+   - Tests will call command functions (run_build_command, run_plan_command) with TestBackend
+   - No hidden env vars or flags needed
 
 2. **Config Migration**
    - What we know: Users may have `prompt_mode = "gsd_tdd"` in config

@@ -151,7 +151,7 @@ async fn run_basic_planning(
             stream_response.process_line(s);
         }
     }
-    let response_text = stream_response.text;
+    let response_text = stream_response.text.clone();
 
     eprintln!(
         "[TRACE] Claude output length: {} chars",
@@ -176,6 +176,20 @@ async fn run_basic_planning(
         format_tokens(stream_response.cache_creation_input_tokens),
         format_tokens(stream_response.cache_read_input_tokens),
     );
+
+    // Step 7.5: Check if Claude asked questions (basic mode doesn't support interactive)
+    if stream_response.has_questions() {
+        let questions = stream_response.get_all_questions();
+        eprintln!(
+            "[TRACE] Claude asked {} question(s), but basic mode doesn't support interactive input",
+            questions.len()
+        );
+        display_questions(&questions);
+        println!("\nNote: Basic planning mode does not support interactive question answering.");
+        println!("Please run with --adaptive flag for full interactive planning flow:");
+        println!("  rslph plan --adaptive \"{}\"", input);
+        println!("\nContinuing with available context...\n");
+    }
 
     // Step 8: Parse response into ProgressFile
     let mut progress_file = ProgressFile::parse(&response_text)?;

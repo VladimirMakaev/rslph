@@ -267,6 +267,40 @@ Plans:
 
 ---
 
+### Phase 15: Interactive Planning Input
+
+**Goal:** Enable users to answer Claude's clarifying questions during planning via session resume
+
+**Dependencies:** Phase 13.1 (Clippy & Crates.io)
+
+**Requirements:**
+| ID | Requirement |
+|----|-------------|
+| INTER-01 | Session ID capture — Extract session_id from init event in stream-json output |
+| INTER-02 | AskUserQuestion detection — Detect tool_use with name="AskUserQuestion" in stream |
+| INTER-03 | Question parsing — Parse questions array from AskUserQuestion input |
+| INTER-04 | User input collection — Collect answers via CLI prompt or TUI input mode |
+| INTER-05 | Session resume — Resume session with `--resume $sid` and formatted answers |
+| INTER-06 | Multi-round support — Handle multiple rounds of questions if needed |
+| INTER-07 | Fallback handling — If no questions asked, proceed normally |
+
+**Success Criteria:**
+1. User can run `rslph plan --mode=gsd --adaptive INITIAL.md`
+2. When Claude asks questions, they are displayed to the user
+3. User can type answers in the terminal
+4. Claude receives answers and produces a valid progress file
+5. Parse succeeds and progress.md is written
+
+**Plans:** 4 plans
+
+Plans:
+- [ ] 15-01-PLAN.md — Session ID capture and AskUserQuestion detection (stream_json.rs)
+- [ ] 15-02-PLAN.md — Interactive input collection for CLI mode (command.rs)
+- [ ] 15-03-PLAN.md — Session resume with --resume flag and multi-round support
+- [ ] 15-04-PLAN.md — TUI mode input for question/answer flow (plan_tui.rs)
+
+---
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -287,6 +321,7 @@ Plans:
 | 13. Parallel Eval TUI | v1.2 | 9/9 | Complete | 2026-01-22 |
 | 14. TUI Visual Parity | v1.2 | 6/6 | Complete | 2026-01-23 |
 | 13.1 Clippy & Crates.io | v1.2 | 1/1 | Complete | 2026-01-30 |
+| 15. Interactive Planning | v1.2 | 0/4 | Planning | — |
 
 ---
 

@@ -702,6 +702,40 @@ Example outputs:
     }
 }
 
+/// Display questions to the user in a formatted way.
+///
+/// Prints a header, numbered questions, and footer with instructions.
+fn display_questions(questions: &[String]) {
+    println!("\n========================================");
+    println!("Claude is asking clarifying questions:");
+    println!("========================================\n");
+
+    for (i, question) in questions.iter().enumerate() {
+        println!("{}. {}", i + 1, question);
+    }
+
+    println!("\n----------------------------------------");
+    println!("Please answer the questions above.");
+    println!("(Type your answers, then press Enter twice to submit)");
+    println!("----------------------------------------\n");
+}
+
+/// Format user answers for session resume.
+///
+/// Creates a formatted message that pairs questions with the user's free-form answers.
+/// Claude will interpret which parts of the answer address each question.
+fn format_answers_for_resume(questions: &[String], answers: &str) -> String {
+    let mut formatted = String::from("Here are my answers to your questions:\n\n");
+
+    for (i, question) in questions.iter().enumerate() {
+        formatted.push_str(&format!("Q{}: {}\n", i + 1, question));
+    }
+
+    formatted.push_str(&format!("\nMy answers:\n{}\n", answers));
+
+    formatted
+}
+
 /// Read multi-line input from stdin.
 ///
 /// Reading continues until two consecutive empty lines are entered.

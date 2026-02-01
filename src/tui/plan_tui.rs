@@ -8,6 +8,8 @@
 use std::collections::HashMap;
 use std::time::Instant;
 
+use crossterm::event::{Event as CrosstermEvent, EventStream, KeyCode, KeyModifiers};
+use futures::StreamExt;
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},

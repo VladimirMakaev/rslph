@@ -4,6 +4,7 @@
 //! containing content blocks, usage information, and other metadata.
 
 use serde::Deserialize;
+use tracing::{debug, trace};
 
 use crate::tui::conversation::ConversationItem;
 
@@ -225,7 +226,10 @@ pub struct AskUserQuestion {
 impl StreamEvent {
     /// Parse a single JSON line into a StreamEvent.
     pub fn parse(line: &str) -> Result<Self, serde_json::Error> {
-        serde_json::from_str(line)
+        trace!(line = %line, "Parsing stream event");
+        let event: Self = serde_json::from_str(line)?;
+        trace!(event_type = %event.event_type, "Parsed stream event");
+        Ok(event)
     }
 
     /// Extract conversation items from this event for TUI display.
@@ -286,8 +290,12 @@ impl StreamEvent {
     ///
     /// Init events have type="system" and subtype="init".
     pub fn is_init_event(&self) -> bool {
-        self.event_type == "system"
-            && self.subtype.as_deref() == Some("init")
+        let is_init = self.event_type == "system"
+            && self.subtype.as_deref() == Some("init");
+        if is_init {
+            debug!(session_id = ?self.session_id, "Detected init event");
+        }
+        is_init
     }
 
     /// Extract session ID from this event.
@@ -295,6 +303,9 @@ impl StreamEvent {
     /// Session ID is present in init events.
     pub fn extract_session_id(&self) -> Option<&str> {
         if self.is_init_event() {
+            if let Some(ref session_id) = self.session_id {
+                debug!(session_id = %session_id, "Extracted session ID");
+            }
             self.session_id.as_deref()
         } else {
             None
@@ -308,10 +319,14 @@ impl StreamEvent {
     ///
     /// Returns None if no AskUserQuestion tool calls are found.
     pub fn extract_ask_user_questions(&self) -> Option<AskUserQuestion> {
+        trace!("Checking for AskUserQuestion tool calls");
         let message = self.message.as_ref()?;
         let blocks = match &message.content {
             MessageContent::Blocks(blocks) => blocks,
-            _ => return None,
+            _ => {
+                trace!("No AskUserQuestion tool calls in event");
+                return None;
+            }
         };
 
         // Find AskUserQuestion tool_use blocks
@@ -327,6 +342,7 @@ impl StreamEvent {
                                 .collect();
 
                             if !questions.is_empty() {
+                                debug!(questions = ?questions, "Found AskUserQuestion with {} question(s)", questions.len());
                                 return Some(AskUserQuestion { questions });
                             }
                         }
@@ -335,6 +351,7 @@ impl StreamEvent {
             }
         }
 
+        trace!("No AskUserQuestion tool calls in event");
         None
     }
 
@@ -495,6 +512,7 @@ impl StreamResponse {
         // Extract session_id from init events (first one wins)
         if self.session_id.is_none() {
             if let Some(session_id) = event.extract_session_id() {
+                debug!(session_id = %session_id, "Captured session ID (first wins)");
                 self.session_id = Some(session_id.to_string());
             }
         }
@@ -502,6 +520,7 @@ impl StreamResponse {
         // Collect AskUserQuestion events
         if let Some(ask) = event.extract_ask_user_questions() {
             self.questions.push(ask);
+            debug!(count = %self.questions.len(), "AskUserQuestion collected, total so far");
         }
 
         if event.is_assistant() {

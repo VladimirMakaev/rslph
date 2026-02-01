@@ -55,6 +55,7 @@ pub async fn run_plan_command(
     if tui {
         return run_tui_planning(
             input,
+            adaptive,
             mode,
             no_dsp,
             config,
@@ -237,6 +238,7 @@ async fn run_basic_planning(
 /// 5. Parses output and writes progress file
 async fn run_tui_planning(
     input: &str,
+    adaptive: bool,
     mode: PromptMode,
     no_dsp: bool,
     config: &Config,
@@ -250,7 +252,17 @@ async fn run_tui_planning(
     let stack = detect_stack(working_dir);
 
     // Step 2: Get the planning prompt for the specified mode
-    let system_prompt = get_plan_prompt_for_mode(mode);
+    let base_prompt = get_plan_prompt_for_mode(mode);
+
+    // Step 2.5: Append mode indicator for adaptive mode
+    let system_prompt = if adaptive {
+        format!(
+            "{}\n\n---\n\n**ACTIVE MODE: ADAPTIVE**\n\nYou are running in adaptive mode. You SHOULD use the `AskUserQuestion` tool to ask 2-5 clarifying questions before generating the plan. Focus on ambiguous technology choices, critical scope decisions, and project-specific context.",
+            base_prompt
+        )
+    } else {
+        base_prompt
+    };
 
     // Step 3: Build user input with stack context
     let full_input = format!(
@@ -651,7 +663,12 @@ pub async fn run_adaptive_planning(
     // Step 6: Run final planning with all context
     println!("Generating final plan...\n");
 
-    let plan_prompt = get_plan_prompt_for_mode(mode);
+    let base_prompt = get_plan_prompt_for_mode(mode);
+    // Append adaptive mode indicator
+    let plan_prompt = format!(
+        "{}\n\n---\n\n**ACTIVE MODE: ADAPTIVE**\n\nYou are running in adaptive mode. You SHOULD use the `AskUserQuestion` tool to ask 2-5 clarifying questions before generating the plan. Focus on ambiguous technology choices, critical scope decisions, and project-specific context.",
+        base_prompt
+    );
     let final_input = format!(
         "## Detected Stack\n{}\n\n## Requirements\n{}\n\n## Clarifications\n{}\n\n## Testing Strategy\n{}",
         stack.to_summary(),

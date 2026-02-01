@@ -388,6 +388,46 @@ Verified through multiple question rounds.
         .respond_with_text(progress)
 }
 
+#[allow(dead_code)]
+/// Create a fake Claude scenario for TUI adaptive planning.
+///
+/// This scenario is for TUI mode (default), not CLI adaptive mode.
+/// TUI mode has a simpler flow:
+/// 1. Single planning call with stream-json
+/// 2. If questions asked, session resume with answers
+///
+/// Unlike CLI adaptive mode, there's no separate testing strategist call.
+pub fn tui_adaptive_planning() -> ScenarioBuilder {
+    let progress = r#"# Progress: TUI Test
+
+## Status
+
+RALPH_DONE - All tasks complete
+
+## Tasks
+
+### Phase 1: Setup
+
+- [x] Configure project based on user answers
+
+## Testing Strategy
+
+Basic tests.
+"#;
+
+    ScenarioBuilder::new()
+        // Invocation 0: Planning call - ask questions
+        .with_session_id("tui-session-789")
+        .asks_questions(vec![
+            "What programming language do you want to use?",
+            "What database should we use?",
+        ])
+        .next_invocation()
+        // Invocation 1: Resume with answers, produce progress file
+        .with_session_id("tui-session-789")
+        .respond_with_text(progress)
+}
+
 #[cfg(test)]
 mod tests {
     #[allow(unused_imports)]

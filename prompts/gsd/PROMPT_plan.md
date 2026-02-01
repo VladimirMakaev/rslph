@@ -52,21 +52,13 @@ In Progress
 
 ### Phase 1: [Phase Name]
 
-<task>
-  <name>Task name</name>
-  <action>Specific, actionable implementation instructions</action>
-  <verify>Command or check to verify completion</verify>
-  <done>Observable criteria for completion</done>
-</task>
+- [ ] Task 1 description (verify: command to verify, done: completion criteria)
+- [ ] Task 2 description (verify: how to verify, done: when complete)
 
 ### Phase 2: [Phase Name]
 
-<task>
-  <name>Another task</name>
-  <action>What to do</action>
-  <verify>How to verify</verify>
-  <done>When it's done</done>
-</task>
+- [ ] Task 3 description (verify: verification step, done: completion criteria)
+- [ ] Task 4 description (verify: how to verify, done: when complete)
 
 ## Must-Haves
 
@@ -110,20 +102,24 @@ test_types:
 |-----------|---------|----------|-----------------|-------|
 ```
 
-## Task XML Structure
+## Task Structure
 
-Each task should follow this format:
+Each task should be a checkbox item with inline metadata:
 
-<task>
-  <name>Brief, descriptive task name</name>
-  <action>
-What to do - specific, actionable instructions.
-Include enough detail for autonomous execution.
-Reference files and patterns when relevant.
-  </action>
-  <verify>Command or check to verify completion (e.g., `cargo test`, `curl endpoint`, file exists)</verify>
-  <done>Observable criteria for completion - what proves the task is done</done>
-</task>
+```
+- [ ] Brief task description (verify: command/check, done: completion criteria)
+```
+
+For complex tasks, you can include additional context in the description:
+
+```
+- [ ] Create User model with email and password_hash fields, validation for email format, timestamps (verify: Model file exists with all fields, done: User model complete)
+```
+
+**Task components:**
+- **Description**: Specific, actionable task name
+- **verify**: Command or check to verify completion (e.g., `npm test`, `curl endpoint`)
+- **done**: Observable criteria for completion - what proves the task is done
 
 ## Must-Haves Section
 
@@ -244,83 +240,16 @@ Implementing user authentication with login, logout, and session management. Wil
 
 ### Phase 1: Foundation
 
-<task>
-  <name>Configure test framework</name>
-  <action>
-Set up Jest for unit and integration testing.
-Create jest.config.js with TypeScript support.
-Add test scripts to package.json.
-  </action>
-  <verify>npm test runs without errors</verify>
-  <done>Jest configured and sample test passes</done>
-</task>
-
-<task>
-  <name>Create User model</name>
-  <action>
-Create User model with email and password_hash fields.
-Add validation for email format.
-Add timestamps for created_at and updated_at.
-  </action>
-  <verify>Model file exists with all fields defined</verify>
-  <done>User model exists with email, password_hash, and timestamp fields</done>
-</task>
-
-<task>
-  <name>Write User model tests</name>
-  <action>
-Create tests for User model validation.
-Test email format validation.
-Test required fields.
-  </action>
-  <verify>npm test -- user.test passes</verify>
-  <done>User model tests exist and pass</done>
-</task>
+- [ ] Configure test framework - set up Jest with TypeScript support (verify: npm test runs, done: Jest configured)
+- [ ] Create User model with email and password_hash fields (verify: model file exists, done: User model complete)
+- [ ] Write User model tests for validation (verify: npm test -- user.test passes, done: tests exist and pass)
 
 ### Phase 2: Authentication Core
 
-<task>
-  <name>Implement password hashing</name>
-  <action>
-Create auth utility with hashPassword and verifyPassword functions.
-Use bcrypt with appropriate salt rounds.
-  </action>
-  <verify>Unit tests for hash functions pass</verify>
-  <done>Password hashing utility works correctly</done>
-</task>
-
-<task>
-  <name>Write password hashing tests</name>
-  <action>
-Test hashPassword produces different hashes for same input (salt).
-Test verifyPassword returns true for correct password.
-Test verifyPassword returns false for incorrect password.
-  </action>
-  <verify>npm test -- auth.test passes</verify>
-  <done>Password hashing tests exist and pass</done>
-</task>
-
-<task>
-  <name>Create login endpoint</name>
-  <action>
-Create POST /auth/login endpoint.
-Validate email and password from request body.
-Return JWT token on success, 401 on failure.
-  </action>
-  <verify>curl POST /auth/login returns token or error</verify>
-  <done>Login endpoint authenticates users and returns JWT</done>
-</task>
-
-<task>
-  <name>Write login endpoint tests</name>
-  <action>
-Test successful login returns 200 and token.
-Test invalid credentials return 401.
-Test missing fields return 400.
-  </action>
-  <verify>npm test -- login.test passes</verify>
-  <done>Login endpoint tests exist and pass</done>
-</task>
+- [ ] Implement password hashing with bcrypt (verify: unit tests pass, done: hash utility works)
+- [ ] Write password hashing tests (verify: npm test -- auth.test passes, done: tests exist and pass)
+- [ ] Create login endpoint with JWT token response (verify: curl returns token, done: endpoint works)
+- [ ] Write login endpoint tests (verify: npm test -- login.test passes, done: tests exist and pass)
 
 ## Must-Haves
 
@@ -371,5 +300,5 @@ Notice how:
 - Phase 1 includes test framework setup
 - Each feature is followed by its tests
 - Must-Haves define observable success criteria
-- Tasks use XML structure with verify/done criteria
+- Tasks use checkbox format with inline verify/done metadata
 - There is NO separate "Testing Phase" at the end

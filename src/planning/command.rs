@@ -577,38 +577,107 @@ pub async fn run_adaptive_planning(
             stream_response.process_line(s);
         }
     }
-    let response_text = stream_response.text.clone();
 
-    // Display token summary for user
-    println!(
-        "Tokens used: In: {} | Out: {} | CacheW: {} | CacheR: {}",
-        format_tokens(stream_response.input_tokens),
-        format_tokens(stream_response.output_tokens),
-        format_tokens(stream_response.cache_creation_input_tokens),
-        format_tokens(stream_response.cache_read_input_tokens),
-    );
+    // Track accumulated tokens across all resume calls
+    let mut total_input_tokens = stream_response.input_tokens;
+    let mut total_output_tokens = stream_response.output_tokens;
+    let mut total_cache_creation = stream_response.cache_creation_input_tokens;
+    let mut total_cache_read = stream_response.cache_read_input_tokens;
 
-    // Check if Claude asked questions and collect answers
-    if stream_response.has_questions() {
+    // Interactive loop: handle questions with session resume
+    const MAX_QUESTION_ROUNDS: u32 = 5;
+    let mut round = 0;
+
+    while stream_response.has_questions() {
+        round += 1;
+        if round > MAX_QUESTION_ROUNDS {
+            eprintln!(
+                "[TRACE] Maximum question rounds ({}) reached, proceeding with current response",
+                MAX_QUESTION_ROUNDS
+            );
+            println!(
+                "\nMaximum clarification rounds ({}) reached. Proceeding with available context.\n",
+                MAX_QUESTION_ROUNDS
+            );
+            break;
+        }
+
         let questions = stream_response.get_all_questions();
         eprintln!(
-            "[TRACE] Claude asked {} question(s) in final planning step",
+            "[TRACE] Round {}: Claude asked {} question(s)",
+            round,
             questions.len()
         );
 
-        // Display questions and collect answers
+        // Check if we have a session_id for resumption
+        let session_id = match &stream_response.session_id {
+            Some(id) => id.clone(),
+            None => {
+                eprintln!("[TRACE] No session_id available, cannot resume session");
+                println!("\nNote: Session ID not available. Cannot continue with follow-up questions.");
+                println!("Proceeding with current response...\n");
+                break;
+            }
+        };
+
+        // Display questions and collect user answers
+        println!("\n--- Round {} of clarifications ---", round);
         display_questions(&questions);
         let answers = read_multiline_input()?;
-        let _formatted_answers = format_answers_for_resume(&questions, &answers);
+        let formatted_answers = format_answers_for_resume(&questions, &answers);
 
-        // Store session_id for potential resume (Plan 03)
-        if let Some(ref session_id) = stream_response.session_id {
-            eprintln!("[TRACE] Session ID: {}", session_id);
-            eprintln!("[TRACE] Answers collected. Session resume will be implemented in the next phase.");
+        // Resume session with answers
+        println!("Resuming session with your answers...\n");
+        eprintln!("[TRACE] Resuming session {}", session_id);
+
+        match resume_session(
+            &session_id,
+            &formatted_answers,
+            no_dsp,
+            config,
+            working_dir,
+            cancel_token.clone(),
+            timeout,
+        )
+        .await
+        {
+            Ok(new_response) => {
+                // Accumulate tokens
+                total_input_tokens += new_response.input_tokens;
+                total_output_tokens += new_response.output_tokens;
+                total_cache_creation += new_response.cache_creation_input_tokens;
+                total_cache_read += new_response.cache_read_input_tokens;
+
+                // Update stream_response for next iteration or final output
+                stream_response = new_response;
+
+                eprintln!(
+                    "[TRACE] Resume complete, output length: {} chars, has_questions: {}",
+                    stream_response.text.len(),
+                    stream_response.has_questions()
+                );
+            }
+            Err(e) => {
+                eprintln!("[TRACE] Resume failed: {}", e);
+                println!("\nFailed to resume session: {}. Proceeding with previous response.\n", e);
+                break;
+            }
         }
+    }
 
-        println!("\nAnswers collected. Session resume will be implemented in the next phase.");
-        println!("Continuing with available context...\n");
+    // Final response is in stream_response
+    let response_text = stream_response.text.clone();
+
+    // Display total token summary for user
+    println!(
+        "Total tokens used: In: {} | Out: {} | CacheW: {} | CacheR: {}",
+        format_tokens(total_input_tokens),
+        format_tokens(total_output_tokens),
+        format_tokens(total_cache_creation),
+        format_tokens(total_cache_read),
+    );
+    if round > 0 {
+        println!("(Accumulated across {} round(s) of Q&A)", round);
     }
 
     // Parse response into ProgressFile
@@ -634,12 +703,12 @@ pub async fn run_adaptive_planning(
     let output_path = working_dir.join("progress.md");
     progress_file.write(&output_path)?;
 
-    // Create TokenUsage from stream_response
+    // Create TokenUsage from accumulated totals
     let tokens = TokenUsage {
-        input_tokens: stream_response.input_tokens,
-        output_tokens: stream_response.output_tokens,
-        cache_creation_input_tokens: stream_response.cache_creation_input_tokens,
-        cache_read_input_tokens: stream_response.cache_read_input_tokens,
+        input_tokens: total_input_tokens,
+        output_tokens: total_output_tokens,
+        cache_creation_input_tokens: total_cache_creation,
+        cache_read_input_tokens: total_cache_read,
     };
 
     Ok((output_path, tokens))

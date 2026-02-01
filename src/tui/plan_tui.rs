@@ -2,6 +2,8 @@
 //!
 //! Provides streaming display of LLM output during planning, including
 //! thinking blocks, tool calls, and generated plan preview.
+//!
+//! Also supports interactive Q&A when Claude asks clarifying questions.
 
 use std::collections::HashMap;
 use std::time::Instant;
@@ -22,6 +24,18 @@ use crate::tui::conversation::{render_conversation, ConversationBuffer, Conversa
 use crate::tui::event::EventHandler;
 use crate::tui::terminal::{init_terminal, restore_terminal};
 
+/// Input mode for the plan TUI.
+///
+/// Determines how keyboard input is handled.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub enum InputMode {
+    /// Normal viewing mode - keyboard navigates and scrolls.
+    #[default]
+    Normal,
+    /// User is answering questions - keyboard input goes to text buffer.
+    AnsweringQuestions,
+}
+
 /// Events that can be sent to the plan TUI.
 #[derive(Debug, Clone)]
 pub enum PlanTuiEvent {
@@ -31,6 +45,13 @@ pub enum PlanTuiEvent {
     RawStdout(String),
     /// Stderr line from Claude.
     Stderr(String),
+    /// Claude asked clarifying questions during planning.
+    QuestionsAsked {
+        /// The questions Claude is asking.
+        questions: Vec<String>,
+        /// Session ID for resuming the session with answers.
+        session_id: String,
+    },
 }
 
 /// Status of the planning operation.
@@ -42,6 +63,10 @@ pub enum PlanStatus {
     Planning,
     /// Generating a project name.
     GeneratingName,
+    /// Awaiting user input (answering questions).
+    AwaitingInput,
+    /// Resuming session with user answers.
+    ResumingSession,
     /// Planning complete.
     Complete,
     /// Planning failed with error.
@@ -67,6 +92,18 @@ pub struct PlanTuiState {
     pub stderr_without_stdout: usize,
     /// Whether we've received any stdout event.
     pub has_stdout: bool,
+
+    // Input mode state for Q&A
+    /// Current input mode (Normal or AnsweringQuestions).
+    pub input_mode: InputMode,
+    /// Questions waiting for answers.
+    pub pending_questions: Vec<String>,
+    /// Current user input buffer.
+    pub input_buffer: String,
+    /// Session ID for resuming after answers.
+    pub session_id: Option<String>,
+    /// Flag indicating answers have been submitted.
+    pub answers_submitted: bool,
 }
 
 impl Default for PlanTuiState {
@@ -87,6 +124,11 @@ impl PlanTuiState {
             should_quit: false,
             stderr_without_stdout: 0,
             has_stdout: false,
+            input_mode: InputMode::Normal,
+            pending_questions: Vec::new(),
+            input_buffer: String::new(),
+            session_id: None,
+            answers_submitted: false,
         }
     }
 
@@ -120,14 +162,63 @@ impl PlanTuiState {
                 self.conversation
                     .push(ConversationItem::System(format!("[stderr] {}", line)));
             }
+            PlanTuiEvent::QuestionsAsked {
+                questions,
+                session_id,
+            } => {
+                self.enter_question_mode(questions.clone(), session_id.clone());
+            }
         }
 
         // Auto-scroll to bottom (keep recent items visible)
         self.scroll_offset = self.conversation.len().saturating_sub(15);
 
         // Update status based on what we're seeing
-        if matches!(self.status, PlanStatus::StackDetection) {
+        if matches!(self.status, PlanStatus::StackDetection) && !matches!(self.input_mode, InputMode::AnsweringQuestions) {
             self.status = PlanStatus::Planning;
+        }
+    }
+
+    /// Enter question-answering mode.
+    ///
+    /// Switches TUI to input mode, stores questions and session ID.
+    pub fn enter_question_mode(&mut self, questions: Vec<String>, session_id: String) {
+        self.input_mode = InputMode::AnsweringQuestions;
+        self.pending_questions = questions;
+        self.session_id = Some(session_id);
+        self.input_buffer.clear();
+        self.status = PlanStatus::AwaitingInput;
+        self.answers_submitted = false;
+    }
+
+    /// Exit question-answering mode and return collected input.
+    ///
+    /// Returns the user's answers and resets input mode to Normal.
+    pub fn exit_question_mode(&mut self) -> String {
+        self.input_mode = InputMode::Normal;
+        self.answers_submitted = true;
+        self.status = PlanStatus::ResumingSession;
+        std::mem::take(&mut self.input_buffer)
+    }
+
+    /// Handle a character input in question mode.
+    pub fn handle_input_char(&mut self, c: char) {
+        if matches!(self.input_mode, InputMode::AnsweringQuestions) {
+            self.input_buffer.push(c);
+        }
+    }
+
+    /// Handle backspace in question mode.
+    pub fn handle_input_backspace(&mut self) {
+        if matches!(self.input_mode, InputMode::AnsweringQuestions) {
+            self.input_buffer.pop();
+        }
+    }
+
+    /// Handle enter (newline) in question mode.
+    pub fn handle_input_newline(&mut self) {
+        if matches!(self.input_mode, InputMode::AnsweringQuestions) {
+            self.input_buffer.push('\n');
         }
     }
 
@@ -139,6 +230,16 @@ impl PlanTuiState {
     /// Set status to complete.
     pub fn set_complete(&mut self) {
         self.status = PlanStatus::Complete;
+    }
+
+    /// Check if currently in question-answering mode.
+    pub fn is_answering_questions(&self) -> bool {
+        matches!(self.input_mode, InputMode::AnsweringQuestions)
+    }
+
+    /// Get the session ID if available.
+    pub fn get_session_id(&self) -> Option<&str> {
+        self.session_id.as_deref()
     }
 }
 
@@ -188,6 +289,8 @@ fn render_header(frame: &mut Frame, area: Rect, state: &PlanTuiState) {
             PlanStatus::StackDetection => ("Detecting project stack...", Color::Yellow),
             PlanStatus::Planning => ("Generating plan...", Color::Yellow),
             PlanStatus::GeneratingName => ("Generating project name...", Color::Yellow),
+            PlanStatus::AwaitingInput => ("Awaiting user input...", Color::Cyan),
+            PlanStatus::ResumingSession => ("Resuming session...", Color::Yellow),
             PlanStatus::Complete => ("Complete!", Color::Green),
             PlanStatus::Failed(e) => (e.as_str(), Color::Red),
         }

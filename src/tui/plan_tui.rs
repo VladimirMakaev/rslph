@@ -197,15 +197,16 @@ impl PlanTuiState {
         self.answers_submitted = false;
     }
 
-    /// Exit question-answering mode and return collected input.
+    /// Exit question-answering mode, keeping answers in input_buffer.
     ///
-    /// Returns the user's answers and resets input mode to Normal.
-    pub fn exit_question_mode(&mut self) -> String {
+    /// Sets answers_submitted flag. The caller can access the answers
+    /// via self.input_buffer.
+    pub fn exit_question_mode(&mut self) {
         debug!(answer_len = %self.input_buffer.len(), "Exiting question-answering mode, answers submitted");
         self.input_mode = InputMode::Normal;
         self.answers_submitted = true;
         self.status = PlanStatus::ResumingSession;
-        std::mem::take(&mut self.input_buffer)
+        // Note: input_buffer is preserved for the command to read
     }
 
     /// Handle a character input in question mode.
@@ -789,9 +790,10 @@ mod tests {
         state.enter_question_mode(vec!["Q?".to_string()], "session-123".to_string());
         state.input_buffer = "My answer".to_string();
 
-        let answers = state.exit_question_mode();
+        state.exit_question_mode();
 
-        assert_eq!(answers, "My answer");
+        // Answers remain in input_buffer for command to read
+        assert_eq!(state.input_buffer, "My answer");
         assert!(matches!(state.input_mode, InputMode::Normal));
         assert!(state.answers_submitted);
         assert!(matches!(state.status, PlanStatus::ResumingSession));

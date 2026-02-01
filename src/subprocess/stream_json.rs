@@ -590,13 +590,10 @@ impl StreamResponse {
             }
         }
 
-        // Collect AskUserQuestion events (from tool calls)
-        if let Some(ask) = event.extract_ask_user_questions() {
-            self.questions.push(ask);
-            debug!(count = %self.questions.len(), "AskUserQuestion collected, total so far");
-        }
-
-        // Also collect denied AskUserQuestion from result events (print mode auto-denies)
+        // Collect denied AskUserQuestion from result events (print mode auto-denies)
+        // Note: We only collect from permission_denials, not from tool_use events,
+        // because permission_denials is the authoritative source after Claude CLI
+        // has processed (and denied) the tool calls.
         if let Some(ask) = event.extract_denied_questions() {
             self.questions.push(ask);
             debug!(count = %self.questions.len(), "Denied AskUserQuestion collected from result event, total so far");

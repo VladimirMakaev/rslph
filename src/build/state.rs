@@ -94,7 +94,7 @@ pub struct BuildContext {
     pub progress: ProgressFile,
     /// Application configuration.
     pub config: Config,
-    /// Prompt mode for this build (Basic, Gsd, GsdTdd).
+    /// Prompt mode for this build (Basic, Gsd).
     pub mode: PromptMode,
     /// Cancellation token for graceful shutdown.
     pub cancel_token: CancellationToken,

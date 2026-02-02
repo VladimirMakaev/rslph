@@ -29,7 +29,7 @@ use crate::tui::plan_tui::{run_plan_tui, PlanTuiEvent};
 ///
 /// * `input` - User's idea/plan description
 /// * `adaptive` - Whether to use adaptive mode with clarifying questions
-/// * `mode` - The prompt mode to use (Basic, Gsd, GsdTdd)
+/// * `mode` - The prompt mode to use (Basic, Gsd)
 /// * `no_dsp` - If true, append --dangerously-skip-permissions to Claude
 /// * `config` - Application configuration
 /// * `working_dir` - Directory to use as working directory and output location
@@ -932,7 +932,6 @@ mod tests {
         let result = run_plan_command(
             "build something",
             false, // basic mode
-            false, // no TUI
             PromptMode::Basic,
             false, // no_dsp
             &config,
@@ -982,7 +981,6 @@ mod tests {
         let result = run_plan_command(
             "anything",
             false, // basic mode
-            false, // no TUI
             PromptMode::Basic,
             false, // no_dsp
             &config,
@@ -1035,7 +1033,6 @@ mod tests {
         let result = run_plan_command(
             "anything",
             false, // basic mode
-            false, // no TUI
             PromptMode::Basic,
             false, // no_dsp
             &config,
@@ -1068,7 +1065,6 @@ mod tests {
         let result = run_plan_command(
             "anything",
             false, // basic mode
-            false, // no TUI
             PromptMode::Basic,
             false, // no_dsp
             &config,

@@ -22,7 +22,7 @@ pub struct Cli {
     #[arg(long, global = true)]
     pub max_iterations: Option<u32>,
 
-    /// Prompt mode selection (basic, gsd, gsd_tdd)
+    /// Prompt mode selection (basic, gsd)
     #[arg(long, global = true, value_parser = clap::value_parser!(PromptMode))]
     pub mode: Option<PromptMode>,
 
@@ -70,7 +70,7 @@ pub enum Commands {
         #[arg(long, default_value = "1")]
         trials: u32,
 
-        /// Comma-separated list of modes to evaluate (basic,gsd,gsd_tdd)
+        /// Comma-separated list of modes to evaluate (basic,gsd)
         #[arg(long, value_delimiter = ',')]
         modes: Option<Vec<PromptMode>>,
 
@@ -327,7 +327,7 @@ mod tests {
             "eval",
             "calculator",
             "--modes",
-            "basic,gsd,gsd_tdd",
+            "basic,gsd",
         ])
         .expect("Should parse");
         match cli.command {
@@ -341,10 +341,9 @@ mod tests {
                 assert_eq!(project, Some("calculator".to_string()));
                 assert_eq!(trials, 1);
                 let modes = modes.expect("modes should be present");
-                assert_eq!(modes.len(), 3);
+                assert_eq!(modes.len(), 2);
                 assert_eq!(modes[0], PromptMode::Basic);
                 assert_eq!(modes[1], PromptMode::Gsd);
-                assert_eq!(modes[2], PromptMode::GsdTdd);
                 assert!(!keep);
                 assert!(!list);
             }
@@ -399,10 +398,10 @@ mod tests {
 
     #[test]
     fn test_parse_with_mode_flag() {
-        let cli = Cli::try_parse_from(["rslph", "--mode", "gsd_tdd", "plan", "idea.txt"])
+        let cli = Cli::try_parse_from(["rslph", "--mode", "gsd", "plan", "idea.txt"])
             .expect("Should parse");
 
-        assert_eq!(cli.mode, Some(PromptMode::GsdTdd));
+        assert_eq!(cli.mode, Some(PromptMode::Gsd));
     }
 
     #[test]
@@ -411,7 +410,6 @@ mod tests {
         for (input, expected) in [
             ("basic", PromptMode::Basic),
             ("gsd", PromptMode::Gsd),
-            ("gsd_tdd", PromptMode::GsdTdd),
         ] {
             let cli = Cli::try_parse_from(["rslph", "--mode", input, "plan", "idea.txt"])
                 .expect("Should parse");

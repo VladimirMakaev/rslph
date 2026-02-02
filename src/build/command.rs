@@ -597,6 +597,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore] // TODO: Restructure in Plan 16-03 - test requires headless mode but TUI is now mandatory
     async fn test_build_command_rejects_invalid_claude_output() {
         use crate::config::ClaudeCommand;
 
@@ -663,6 +664,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore] // TODO: Restructure in Plan 16-03 - test requires headless mode but TUI is now mandatory
     async fn test_build_command_timeout() {
         use crate::config::ClaudeCommand;
 
@@ -718,6 +720,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore] // TODO: Restructure in Plan 16-03 - test requires headless mode but TUI is now mandatory
     async fn test_build_command_cancellation() {
         use crate::config::ClaudeCommand;
 

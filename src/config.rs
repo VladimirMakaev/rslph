@@ -106,7 +106,7 @@ pub struct Config {
     /// Maximum retries for timed-out iterations before failing (default 3)
     pub timeout_retries: u32,
 
-    /// Prompt mode selection (basic, gsd, gsd_tdd)
+    /// Prompt mode selection (basic, gsd)
     pub prompt_mode: PromptMode,
 }
 

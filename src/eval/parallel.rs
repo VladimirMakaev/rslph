@@ -261,7 +261,7 @@ mod tests {
     #[test]
     fn test_trial_event_failed() {
         let event = TrialEvent {
-            mode: PromptMode::GsdTdd,
+            mode: PromptMode::Gsd,
             trial_num: 5,
             event: TrialEventKind::Failed {
                 error: "Test error".to_string(),

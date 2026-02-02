@@ -31,8 +31,6 @@ pub enum PromptMode {
     Basic,
     /// GSD-adapted prompts with XML structure and must-haves
     Gsd,
-    /// GSD with strict test-driven development flow
-    GsdTdd,
 }
 
 #[cfg(test)]
@@ -56,24 +54,19 @@ mod tests {
             <PromptMode as FromStr>::from_str("gsd").unwrap(),
             PromptMode::Gsd
         );
-        assert_eq!(
-            <PromptMode as FromStr>::from_str("gsd_tdd").unwrap(),
-            PromptMode::GsdTdd
-        );
     }
 
     #[test]
     fn test_display() {
         assert_eq!(PromptMode::Basic.to_string(), "basic");
         assert_eq!(PromptMode::Gsd.to_string(), "gsd");
-        assert_eq!(PromptMode::GsdTdd.to_string(), "gsd_tdd");
     }
 
     #[test]
     fn test_serde_roundtrip() {
-        let mode = PromptMode::GsdTdd;
+        let mode = PromptMode::Gsd;
         let json = serde_json::to_string(&mode).unwrap();
-        assert_eq!(json, "\"gsd_tdd\"");
+        assert_eq!(json, "\"gsd\"");
         let parsed: PromptMode = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed, mode);
     }

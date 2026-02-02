@@ -110,11 +110,11 @@ mod tests {
     #[test]
     fn test_get_build_prompt_respects_mode() {
         let config = Config {
-            prompt_mode: PromptMode::GsdTdd,
+            prompt_mode: PromptMode::Gsd,
             ..Default::default()
         };
-        let prompt = get_build_prompt(&config).expect("Should get TDD prompt");
-        assert!(prompt.contains("TDD") || prompt.contains("tdd"));
+        let prompt = get_build_prompt(&config).expect("Should get Gsd prompt");
+        assert!(prompt.contains("deviation") || prompt.contains("Deviation"));
     }
 
     #[test]
@@ -124,7 +124,7 @@ mod tests {
 
         let config = Config {
             build_prompt: Some(temp.path().to_path_buf()),
-            prompt_mode: PromptMode::GsdTdd, // Mode should be ignored
+            prompt_mode: PromptMode::Gsd, // Mode should be ignored
             ..Default::default()
         };
 

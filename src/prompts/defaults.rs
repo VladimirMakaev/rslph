@@ -10,10 +10,6 @@ const BASIC_BUILD: &str = include_str!("../../prompts/basic/PROMPT_build.md");
 const GSD_PLAN: &str = include_str!("../../prompts/gsd/PROMPT_plan.md");
 const GSD_BUILD: &str = include_str!("../../prompts/gsd/PROMPT_build.md");
 
-// GSD-TDD mode prompts
-const GSD_TDD_PLAN: &str = include_str!("../../prompts/gsd_tdd/PROMPT_plan.md");
-const GSD_TDD_BUILD: &str = include_str!("../../prompts/gsd_tdd/PROMPT_build.md");
-
 /// Test discovery prompt (mode-independent)
 pub const TEST_DISCOVERY_PROMPT: &str = include_str!("../../prompts/PROMPT_test_discovery.md");
 
@@ -23,7 +19,6 @@ impl PromptMode {
         match self {
             PromptMode::Basic => BASIC_PLAN,
             PromptMode::Gsd => GSD_PLAN,
-            PromptMode::GsdTdd => GSD_TDD_PLAN,
         }
     }
 
@@ -32,7 +27,6 @@ impl PromptMode {
         match self {
             PromptMode::Basic => BASIC_BUILD,
             PromptMode::Gsd => GSD_BUILD,
-            PromptMode::GsdTdd => GSD_TDD_BUILD,
         }
     }
 }
@@ -68,16 +62,6 @@ mod tests {
         assert!(!build.is_empty());
         // GSD prompts should have deviation handling
         assert!(build.contains("deviation") || build.contains("Deviation"));
-    }
-
-    #[test]
-    fn test_gsd_tdd_prompts_exist() {
-        let plan = PromptMode::GsdTdd.plan_prompt();
-        let build = PromptMode::GsdTdd.build_prompt();
-        assert!(!plan.is_empty());
-        assert!(!build.is_empty());
-        // TDD prompts should reference TDD
-        assert!(build.contains("TDD") || build.contains("tdd"));
     }
 
     #[test]

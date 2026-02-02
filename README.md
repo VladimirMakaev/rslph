@@ -16,7 +16,7 @@ rslph is a Rust CLI application that implements the Ralph Wiggum Loop pattern: a
 - **VCS Auto-Commit** - Automatic Git or Sapling commits after each iteration, creating a clear audit trail
 - **Flexible Configuration** - Configure via TOML config file, environment variables, or CLI flags with clear precedence rules
 - **Built-in Evaluation Framework** - Benchmark agent performance with hidden test suites and multi-trial statistics
-- **Multiple Prompt Modes** - Choose between basic rslph prompts, GSD-adapted prompts, or strict test-driven development flow
+- **Multiple Prompt Modes** - Choose between basic rslph prompts or GSD-adapted prompts
 - **Token Tracking** - Monitor Claude API token usage (input, output, cache creation, cache reads) across iterations
 
 ## Prerequisites
@@ -93,8 +93,7 @@ rslph plan <PLAN> [OPTIONS]
 
 **Options:**
 - `--adaptive` - Enable adaptive mode with clarifying questions for detailed plans
-- `--mode <MODE>` - Prompt mode: `basic`, `gsd`, or `gsd_tdd` (default: basic)
-- `--no-tui` - Disable TUI and use plain output
+- `--mode <MODE>` - Prompt mode: `basic` or `gsd` (default: basic)
 - `--config <CONFIG>` - Override config file path
 - `--claude-path <PATH>` - Override Claude CLI path
 - `--max-iterations <N>` - Override max iterations setting
@@ -110,8 +109,8 @@ rslph plan idea.txt
 # With adaptive mode for complex plans
 rslph plan --adaptive complex-feature.txt
 
-# Using GSD test-driven mode
-rslph plan --mode gsd_tdd "implement a calculator library"
+# Using GSD mode
+rslph plan --mode gsd "implement a calculator library"
 ```
 
 ### `rslph build`
@@ -129,8 +128,7 @@ rslph build <PLAN> [OPTIONS]
 - `--once` - Run only a single iteration (for debugging)
 - `--dry-run` - Preview what would happen without executing
 - `--max-iterations <N>` - Override max iterations (default: 20)
-- `--mode <MODE>` - Prompt mode: `basic`, `gsd`, or `gsd_tdd`
-- `--no-tui` - Disable TUI interface
+- `--mode <MODE>` - Prompt mode: `basic` or `gsd`
 - `--config <CONFIG>` - Override config file path
 - `--claude-path <PATH>` - Override Claude CLI path
 
@@ -170,7 +168,7 @@ rslph eval [PROJECT] [OPTIONS]
 **Options:**
 - `--list` - List available built-in projects
 - `--trials <N>` - Number of independent trials to run (default: 1)
-- `--modes <MODES>` - Comma-separated modes to compare: `basic,gsd,gsd_tdd`
+- `--modes <MODES>` - Comma-separated modes to compare: `basic,gsd`
 - `--keep` - Keep temporary workspace after completion (for debugging)
 - `--max-iterations <N>` - Override max iterations
 - `--no-tui` - Disable TUI dashboard
@@ -192,7 +190,7 @@ rslph eval calculator
 rslph eval --trials 5 fizzbuzz
 
 # Compare prompt modes
-rslph eval --modes basic,gsd,gsd_tdd calculator
+rslph eval --modes basic,gsd calculator
 
 # Evaluate custom project with tests
 rslph eval ./my-project --trials 3
@@ -236,7 +234,7 @@ iteration_timeout = 600
 # Maximum retries for timed-out iterations (default: 3)
 timeout_retries = 3
 
-# Default prompt mode (basic, gsd, gsd_tdd)
+# Default prompt mode (basic, gsd)
 prompt_mode = "basic"
 
 # Directory for eval workspaces and results (default: ~/.rslph/evals)
@@ -263,7 +261,7 @@ Override config with environment variables using the `RSLPH_` prefix:
 ```bash
 export RSLPH_MAX_ITERATIONS=50
 export RSLPH_TUI_ENABLED=false
-export RSLPH_PROMPT_MODE=gsd_tdd
+export RSLPH_PROMPT_MODE=gsd
 export RSLPH_CLAUDE_PATH=/custom/path/to/claude
 ```
 
@@ -278,7 +276,7 @@ Settings are applied in this order (later overrides earlier):
 
 ## Prompt Modes
 
-rslph supports three prompt engineering approaches:
+rslph supports two prompt engineering approaches:
 
 ### `basic` (Default)
 
@@ -296,21 +294,13 @@ GSD-adapted prompts with structured XML format and "must-haves" specification.
 - **Features:** Explicit success criteria, structured output, must-haves tracking
 - **Use when:** You have well-defined requirements and want structured execution
 
-### `gsd_tdd` (Test-Driven Development)
-
-Strict test-driven development flow with three-phase cycle (write test → implement → refactor).
-
-- **Best for:** Projects requiring high code quality and test coverage
-- **Features:** Enforced red-green-refactor cycle, automatic test infrastructure setup
-- **Use when:** Building libraries, APIs, or critical functionality requiring tests
-
 **Select mode:**
 ```bash
 # Via CLI flag
-rslph plan --mode gsd_tdd "build a calculator library"
+rslph plan --mode gsd "build a calculator library"
 
 # Via config file
-# config.toml: prompt_mode = "gsd_tdd"
+# config.toml: prompt_mode = "gsd"
 
 # Via environment
 export RSLPH_PROMPT_MODE=gsd
@@ -386,7 +376,7 @@ Benchmark your prompt engineering:
 
 ```bash
 # Compare all modes across 5 trials
-rslph eval --modes basic,gsd,gsd_tdd --trials 5 calculator
+rslph eval --modes basic,gsd --trials 5 calculator
 
 # Analyze results JSON
 cat ~/.rslph/evals/eval-results-calculator-multimode-*.json | jq

@@ -5,6 +5,8 @@
 //! - AskUserQuestion detection (INTER-02)
 //! - Question parsing (INTER-03)
 //! - Fallback when no questions asked (INTER-07)
+//!
+//! TUI is disabled via config file (tui_enabled = false) for headless testing.
 
 #![allow(deprecated)] // Command::cargo_bin is deprecated but still functional
 
@@ -14,6 +16,38 @@ use crate::fixtures::WorkspaceBuilder;
 use assert_cmd::Command;
 use predicates::prelude::*;
 use std::fs;
+use tempfile::TempDir;
+
+/// Helper to get rslph command configured with fake Claude and TUI disabled via config.
+///
+/// Creates a temporary config file with tui_enabled = false and sets up the
+/// environment for fake Claude.
+fn rslph_with_fake_claude_and_config(
+    scenario: &crate::fake_claude_lib::FakeClaudeHandle,
+) -> (assert_cmd::Command, TempDir) {
+    // Create a temporary directory for the config
+    let config_dir = TempDir::new().expect("temp dir for config");
+    let config_path = config_dir.path().join("config.toml");
+
+    // Write config with TUI disabled
+    let config_content = format!(
+        r#"claude_path = "{}"
+tui_enabled = false
+"#,
+        scenario.executable_path.display()
+    );
+    std::fs::write(&config_path, config_content).expect("write config");
+
+    let mut cmd = Command::cargo_bin("rslph").expect("rslph binary should exist");
+    // Set environment variables for fake Claude
+    for (key, value) in scenario.env_vars() {
+        cmd.env(key, value);
+    }
+    // Use the config file
+    cmd.arg("-c").arg(&config_path);
+
+    (cmd, config_dir)
+}
 
 /// Test INTER-07: Fallback when no questions asked
 ///
@@ -28,14 +62,9 @@ fn test_no_questions_proceeds_normally() {
     // Use calculator scenario which doesn't ask questions
     let handle = prebuilt::calculator().build();
 
-    let mut cmd = Command::cargo_bin("rslph").expect("Failed to find rslph binary");
-    for (key, val) in handle.env_vars() {
-        cmd.env(key, val);
-    }
-
+    let (mut cmd, _config_dir) = rslph_with_fake_claude_and_config(&handle);
     cmd.arg("plan")
         .arg(&initial_file)
-        .arg("--no-tui")
         .current_dir(temp_dir.path())
         .assert()
         .success();
@@ -84,13 +113,8 @@ Basic tests.
     let initial_file = temp_dir.path().join("INITIAL.md");
     fs::write(&initial_file, "# Test project").unwrap();
 
-    let mut cmd = Command::cargo_bin("rslph").expect("Failed to find rslph binary");
-    for (key, val) in handle.env_vars() {
-        cmd.env(key, val);
-    }
-
+    let (mut cmd, _config_dir) = rslph_with_fake_claude_and_config(&handle);
     cmd.arg("plan")
-        .arg("--no-tui")
         .arg(&initial_file)
         .current_dir(temp_dir.path())
         .assert()
@@ -225,15 +249,10 @@ fn test_interactive_planning_detects_questions() {
     // Use the interactive_planning scenario with correct invocation count
     let handle = prebuilt::interactive_planning().build();
 
-    let mut cmd = Command::cargo_bin("rslph").expect("Failed to find rslph binary");
-    for (key, val) in handle.env_vars() {
-        cmd.env(key, val);
-    }
-
+    let (mut cmd, _config_dir) = rslph_with_fake_claude_and_config(&handle);
     // Run with --adaptive flag to enable Q&A flow
     // Provide empty stdin to auto-submit with empty answers
     cmd.arg("plan")
-        .arg("--no-tui")
         .arg("--adaptive")
         .arg(&initial_file)
         .current_dir(temp_dir.path())

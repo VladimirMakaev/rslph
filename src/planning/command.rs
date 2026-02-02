@@ -50,8 +50,22 @@ pub async fn run_plan_command(
     cancel_token: CancellationToken,
     timeout: Duration,
 ) -> color_eyre::Result<(PathBuf, TokenUsage)> {
-    // Always use TUI mode now (unless adaptive which has its own flow)
-    if !adaptive {
+    // Adaptive mode has its own flow
+    if adaptive {
+        return run_adaptive_planning(
+            input,
+            mode,
+            no_dsp,
+            config,
+            working_dir,
+            cancel_token,
+            timeout,
+        )
+        .await;
+    }
+
+    // Check if TUI is enabled
+    if config.tui_enabled {
         return run_tui_planning(
             input,
             adaptive,
@@ -65,8 +79,8 @@ pub async fn run_plan_command(
         .await;
     }
 
-    // Adaptive mode: run the adaptive planning flow
-    run_adaptive_planning(
+    // Headless mode: run without TUI for CI/testing
+    run_headless_planning(
         input,
         mode,
         no_dsp,
@@ -76,6 +90,145 @@ pub async fn run_plan_command(
         timeout,
     )
     .await
+}
+
+/// Run headless planning mode without TUI display.
+///
+/// This mode is used when TUI is disabled (config.tui_enabled = false).
+/// It processes Claude's output without any terminal UI, making it suitable
+/// for CI environments and automated testing.
+async fn run_headless_planning(
+    input: &str,
+    mode: PromptMode,
+    no_dsp: bool,
+    config: &Config,
+    working_dir: &Path,
+    cancel_token: CancellationToken,
+    timeout: Duration,
+) -> color_eyre::Result<(PathBuf, TokenUsage)> {
+    use tokio::time::timeout as tokio_timeout;
+
+    // Step 1: Detect project stack for testing strategy
+    let stack = detect_stack(working_dir);
+
+    // Step 2: Get the planning prompt for the specified mode
+    let system_prompt = get_plan_prompt_for_mode(mode);
+
+    // Step 3: Build user input with stack context
+    let full_input = format!(
+        "## Detected Stack\n{}\n\n## User Request\n{}",
+        stack.to_summary(),
+        input
+    );
+
+    // Step 4: Build Claude CLI args for streaming mode
+    let args = vec![
+        "-p".to_string(),
+        "--verbose".to_string(),
+        "--output-format".to_string(),
+        "stream-json".to_string(),
+        "--system-prompt".to_string(),
+        system_prompt,
+        full_input.clone(),
+    ];
+
+    // Step 5: Spawn Claude
+    let combined_args = build_claude_args(&config.claude_cmd.base_args, &args, no_dsp);
+    let mut runner =
+        ClaudeRunner::spawn_interactive(&config.claude_cmd.command, &combined_args, working_dir)
+            .await
+            .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
+
+    debug!(pid = ?runner.id(), "Spawned Claude for headless planning");
+
+    // Close stdin immediately for headless mode
+    runner.close_stdin();
+
+    // Step 6: Stream and process events without TUI
+    let mut stream_response = StreamResponse::new();
+    let stream_cancel = cancel_token.clone();
+
+    let stream_result = tokio_timeout(timeout, async {
+        loop {
+            tokio::select! {
+                biased;
+
+                _ = stream_cancel.cancelled() => {
+                    runner.terminate_gracefully(Duration::from_secs(5)).await
+                        .map_err(|e| RslphError::Subprocess(e.to_string()))?;
+                    return Err::<(), RslphError>(RslphError::Cancelled);
+                }
+
+                line = runner.next_output() => {
+                    match line {
+                        Some(OutputLine::Stdout(s)) => {
+                            trace!(line_len = %s.len(), "Processing stdout line (headless)");
+                            if let Ok(event) = StreamEvent::parse(&s) {
+                                stream_response.process_event(&event);
+                            }
+                        }
+                        Some(OutputLine::Stderr(_)) => {
+                            // Skip stderr in headless mode
+                        }
+                        None => {
+                            // Stream complete
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    })
+    .await;
+
+    // Check for timeout or errors
+    match &stream_result {
+        Err(_) => {
+            return Err(RslphError::Timeout(timeout.as_secs()).into());
+        }
+        Ok(Err(e)) => {
+            return Err(RslphError::Subprocess(e.to_string()).into());
+        }
+        Ok(Ok(())) => {}
+    }
+
+    debug!(
+        has_questions = %stream_response.has_questions(),
+        text_len = %stream_response.text.len(),
+        "Headless planning stream complete"
+    );
+
+    // Step 7: Parse response into ProgressFile
+    let mut progress_file = ProgressFile::parse(&stream_response.text)?;
+
+    // Step 8: Generate project name if empty
+    if progress_file.name.is_empty() {
+        let generated_name = generate_project_name(
+            input,
+            no_dsp,
+            config,
+            working_dir,
+            cancel_token.clone(),
+            timeout,
+        )
+        .await?;
+        progress_file.name = generated_name;
+    }
+
+    // Step 9: Write to file
+    let output_path = working_dir.join("progress.md");
+    progress_file.write(&output_path)?;
+
+    // Step 10: Create TokenUsage from stream_response
+    let tokens = TokenUsage {
+        input_tokens: stream_response.input_tokens,
+        output_tokens: stream_response.output_tokens,
+        cache_creation_input_tokens: stream_response.cache_creation_input_tokens,
+        cache_read_input_tokens: stream_response.cache_read_input_tokens,
+    };
+
+    Ok((output_path, tokens))
 }
 
 /// Run TUI planning mode with streaming output display.

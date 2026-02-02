@@ -22,7 +22,6 @@ fn main() {
         Ok(path) => path,
         Err(_) => {
             // Exit gracefully when not configured (e.g., when cargo runs this as a test target)
-            eprintln!("fake_claude: FAKE_CLAUDE_CONFIG not set, exiting gracefully");
             return;
         }
     };

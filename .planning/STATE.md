@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 ## Current Position
 
 Phase: 16 - Cleanup
-Plan: —
-Status: Planned (3 plans ready)
-Last activity: 2026-02-01 — Phase 16 planned
+Plan: 02 of 3
+Status: In Progress (Plan 02 complete)
+Last activity: 2026-02-01 — Completed 16-02 (Remove --no-tui flags)
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2 | [░░░░░░░░░░] 0% v1.3
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2 | [##░░░░░░░░] 20% v1.3
 
 ## Phase Summary (v1.3)
 
@@ -89,7 +89,8 @@ All decisions are archived in milestone roadmap files:
 
 **v1.3 Decisions:**
 
-*None yet*
+- **16-02**: TUI behavior controlled by config.tui_enabled and dry_run flag, not CLI --no-tui
+- **16-02**: Tests requiring headless mode marked #[ignore] for restructuring in Plan 16-03
 
 ### Pending Todos
 
@@ -132,8 +133,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: v1.3 roadmap created, ready to plan Phase 16
-Resume file: None
+Stopped at: Completed 16-02-PLAN.md
+Resume file: .planning/phases/16-cleanup/16-03-PLAN.md
 
 ### Roadmap Evolution
 

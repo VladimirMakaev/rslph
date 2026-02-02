@@ -5,6 +5,8 @@
 //!
 //! The integration point is RSLPH_CLAUDE_CMD env var which overrides the
 //! claude command, allowing rslph to use our fake Claude binary.
+//!
+//! TUI is disabled via config file (tui_enabled = false) for headless testing.
 
 #![allow(deprecated)] // Command::cargo_bin is deprecated but still functional
 
@@ -12,14 +14,37 @@ use crate::fake_claude_lib::{FakeClaudeHandle, ScenarioBuilder};
 use crate::fixtures::WorkspaceBuilder;
 use assert_cmd::Command;
 
-/// Helper to get rslph command configured with fake Claude
-fn rslph_with_fake_claude(scenario: &FakeClaudeHandle) -> Command {
+/// Helper to get rslph command configured with fake Claude and TUI disabled.
+///
+/// Creates a workspace config with tui_enabled = false and sets up the
+/// environment for fake Claude.
+fn rslph_with_fake_claude_and_config(
+    scenario: &FakeClaudeHandle,
+    workspace: &crate::fixtures::Workspace,
+) -> Command {
     let mut cmd = Command::cargo_bin("rslph").expect("rslph binary should exist");
     // Set environment variables for fake Claude
     for (key, value) in scenario.env_vars() {
         cmd.env(key, value);
     }
+    // Use the workspace config with tui_enabled = false
+    let config_path = workspace.path().join(".rslph/config.toml");
+    cmd.arg("-c").arg(&config_path);
     cmd
+}
+
+/// Create a workspace with TUI disabled config and fake Claude path.
+fn workspace_with_tui_disabled(scenario: &FakeClaudeHandle, progress_content: &str) -> crate::fixtures::Workspace {
+    let config_toml = format!(
+        r#"claude_path = "{}"
+tui_enabled = false
+"#,
+        scenario.executable_path.display()
+    );
+    WorkspaceBuilder::new()
+        .with_config(&config_toml)
+        .with_progress_file(progress_content)
+        .build()
 }
 
 #[test]
@@ -47,16 +72,13 @@ Unit tests.
         .respond_with_text(valid_progress)
         .build();
 
-    let workspace = WorkspaceBuilder::new()
-        .with_progress_file("# Progress\n\n- [ ] Task 1\n")
-        .build();
+    let workspace = workspace_with_tui_disabled(&scenario, "# Progress\n\n- [ ] Task 1\n");
 
-    let mut cmd = rslph_with_fake_claude(&scenario);
+    let mut cmd = rslph_with_fake_claude_and_config(&scenario, &workspace);
     cmd.arg("build")
         .arg("PROGRESS.md")
         .arg("--max-iterations")
         .arg("1")
-        .arg("--no-tui")
         .current_dir(workspace.path());
 
     let output = cmd.output().expect("Failed to run rslph");
@@ -140,16 +162,13 @@ Unit tests.
         .respond_with_text(progress_done)
         .build();
 
-    let workspace = WorkspaceBuilder::new()
-        .with_progress_file("# Progress\n\n- [ ] Task 1\n- [ ] Task 2\n")
-        .build();
+    let workspace = workspace_with_tui_disabled(&scenario, "# Progress\n\n- [ ] Task 1\n- [ ] Task 2\n");
 
-    let mut cmd = rslph_with_fake_claude(&scenario);
+    let mut cmd = rslph_with_fake_claude_and_config(&scenario, &workspace);
     cmd.arg("build")
         .arg("PROGRESS.md")
         .arg("--max-iterations")
         .arg("3")
-        .arg("--no-tui")
         .current_dir(workspace.path());
 
     cmd.output().expect("Failed to run rslph");
@@ -194,16 +213,13 @@ Unit tests.
         .respond_with_text(progress_incomplete)
         .build();
 
-    let workspace = WorkspaceBuilder::new()
-        .with_progress_file("# Progress\n\n- [ ] Never-ending task\n")
-        .build();
+    let workspace = workspace_with_tui_disabled(&scenario, "# Progress\n\n- [ ] Never-ending task\n");
 
-    let mut cmd = rslph_with_fake_claude(&scenario);
+    let mut cmd = rslph_with_fake_claude_and_config(&scenario, &workspace);
     cmd.arg("build")
         .arg("PROGRESS.md")
         .arg("--max-iterations")
         .arg("2") // Limit to 2
-        .arg("--no-tui")
         .current_dir(workspace.path());
 
     cmd.output().expect("Failed to run rslph");
@@ -224,16 +240,13 @@ fn test_rslph_build_handles_claude_crash() {
         .crash_after(1) // Crash after first event
         .build();
 
-    let workspace = WorkspaceBuilder::new()
-        .with_progress_file("# Progress\n\n- [ ] Task 1\n")
-        .build();
+    let workspace = workspace_with_tui_disabled(&scenario, "# Progress\n\n- [ ] Task 1\n");
 
-    let mut cmd = rslph_with_fake_claude(&scenario);
+    let mut cmd = rslph_with_fake_claude_and_config(&scenario, &workspace);
     cmd.arg("build")
         .arg("PROGRESS.md")
         .arg("--max-iterations")
         .arg("1")
-        .arg("--no-tui")
         .current_dir(workspace.path());
 
     let output = cmd.output().expect("Failed to run rslph");
@@ -255,17 +268,24 @@ fn test_rslph_build_with_tool_calls() {
         .uses_bash("echo 'Building...'")
         .build();
 
+    // Need custom workspace with source file
+    let config_toml = format!(
+        r#"claude_path = "{}"
+tui_enabled = false
+"#,
+        scenario.executable_path.display()
+    );
     let workspace = WorkspaceBuilder::new()
+        .with_config(&config_toml)
         .with_progress_file("# Progress\n\n- [ ] Create file\n")
         .with_source_file("src/main.rs", "fn main() {}\n")
         .build();
 
-    let mut cmd = rslph_with_fake_claude(&scenario);
+    let mut cmd = rslph_with_fake_claude_and_config(&scenario, &workspace);
     cmd.arg("build")
         .arg("PROGRESS.md")
         .arg("--max-iterations")
         .arg("1")
-        .arg("--no-tui")
         .current_dir(workspace.path());
 
     cmd.output().expect("Failed to run rslph");
@@ -276,7 +296,7 @@ fn test_rslph_build_with_tool_calls() {
 
 #[test]
 fn test_rslph_build_with_workspace_config() {
-    // Alternative approach: Use workspace .rslph/config.toml instead of env var
+    // Test that config file with tui_enabled = false and custom max_iterations works
     let scenario = ScenarioBuilder::new()
         .respond_with_text("Using config file path for Claude")
         .build();
@@ -296,15 +316,9 @@ tui_enabled = false
         .with_progress_file("# Progress\n\n- [ ] Task 1\n")
         .build();
 
-    let config_path = workspace.path().join(".rslph/config.toml");
-
-    let mut cmd = Command::cargo_bin("rslph").expect("rslph binary should exist");
-    // Use -c flag to specify config file path explicitly
-    // rslph should read claude_path from the workspace config
-    cmd.env("FAKE_CLAUDE_CONFIG", &scenario.config_path)
-        .arg("-c")
-        .arg(&config_path)
-        .arg("build")
+    // Use the helper which sets both RSLPH_CLAUDE_CMD and FAKE_CLAUDE_CONFIG
+    let mut cmd = rslph_with_fake_claude_and_config(&scenario, &workspace);
+    cmd.arg("build")
         .arg("PROGRESS.md")
         .arg("--max-iterations")
         .arg("1")
@@ -326,27 +340,10 @@ fn test_rslph_build_tui_disabled_via_config() {
         .respond_with_text("Working without TUI")
         .build();
 
-    // Note: Config file uses flat TOML (no section header)
-    let config_toml = format!(
-        r#"claude_path = "{}"
-tui_enabled = false
-"#,
-        scenario.executable_path.display()
-    );
+    let workspace = workspace_with_tui_disabled(&scenario, "# Progress\n\n- [ ] Task\n");
 
-    let workspace = WorkspaceBuilder::new()
-        .with_config(&config_toml)
-        .with_progress_file("# Progress\n\n- [ ] Task\n")
-        .build();
-
-    let config_path = workspace.path().join(".rslph/config.toml");
-
-    let mut cmd = Command::cargo_bin("rslph").expect("rslph binary should exist");
-    // Use -c flag to specify config file path explicitly
-    cmd.env("FAKE_CLAUDE_CONFIG", &scenario.config_path)
-        .arg("-c")
-        .arg(&config_path)
-        .arg("build")
+    let mut cmd = rslph_with_fake_claude_and_config(&scenario, &workspace);
+    cmd.arg("build")
         .arg("PROGRESS.md")
         .arg("--max-iterations")
         .arg("1")
@@ -368,15 +365,12 @@ fn test_rslph_build_once_flag() {
         .respond_with_text("This should NOT be reached")
         .build();
 
-    let workspace = WorkspaceBuilder::new()
-        .with_progress_file("# Progress\n\n- [ ] Task 1\n")
-        .build();
+    let workspace = workspace_with_tui_disabled(&scenario, "# Progress\n\n- [ ] Task 1\n");
 
-    let mut cmd = rslph_with_fake_claude(&scenario);
+    let mut cmd = rslph_with_fake_claude_and_config(&scenario, &workspace);
     cmd.arg("build")
         .arg("PROGRESS.md")
         .arg("--once")
-        .arg("--no-tui")
         .current_dir(workspace.path());
 
     cmd.output().expect("Failed to run rslph");
@@ -396,15 +390,12 @@ fn test_rslph_build_dry_run() {
         .respond_with_text("This should NOT be called")
         .build();
 
-    let workspace = WorkspaceBuilder::new()
-        .with_progress_file("# Progress\n\n- [ ] Task 1\n")
-        .build();
+    let workspace = workspace_with_tui_disabled(&scenario, "# Progress\n\n- [ ] Task 1\n");
 
-    let mut cmd = rslph_with_fake_claude(&scenario);
+    let mut cmd = rslph_with_fake_claude_and_config(&scenario, &workspace);
     cmd.arg("build")
         .arg("PROGRESS.md")
         .arg("--dry-run")
-        .arg("--no-tui")
         .current_dir(workspace.path());
 
     let output = cmd.output().expect("Failed to run rslph");
@@ -421,35 +412,40 @@ fn test_rslph_build_dry_run() {
 }
 
 #[test]
-fn test_rslph_uses_rslph_claude_path_env() {
-    // Verify RSLPH_CLAUDE_PATH env var correctly overrides claude_path
+fn test_rslph_uses_rslph_claude_cmd_env() {
+    // Verify RSLPH_CLAUDE_CMD env var correctly overrides default claude command
     let scenario = ScenarioBuilder::new()
-        .respond_with_text("Invoked via RSLPH_CLAUDE_PATH env var")
+        .respond_with_text("Invoked via RSLPH_CLAUDE_CMD env var")
         .build();
 
-    // Create workspace with DEFAULT config (uses "claude" as claude_path)
+    // Create workspace with TUI disabled but default claude_path (env will override)
+    let config_toml = "tui_enabled = false\n";
     let workspace = WorkspaceBuilder::new()
+        .with_config(config_toml)
         .with_progress_file("# Progress\n\n- [ ] Task 1\n")
         .build();
 
+    let config_path = workspace.path().join(".rslph/config.toml");
+
     let mut cmd = Command::cargo_bin("rslph").expect("rslph binary should exist");
-    // Set RSLPH_CLAUDE_PATH to override the config
-    cmd.env("RSLPH_CLAUDE_PATH", &scenario.executable_path)
+    // Set RSLPH_CLAUDE_CMD to override the default
+    cmd.env("RSLPH_CLAUDE_CMD", &scenario.executable_path)
         .env("FAKE_CLAUDE_CONFIG", &scenario.config_path)
+        .arg("-c")
+        .arg(&config_path)
         .arg("build")
         .arg("PROGRESS.md")
         .arg("--max-iterations")
         .arg("1")
-        .arg("--no-tui")
         .current_dir(workspace.path());
 
     cmd.output().expect("Failed to run rslph");
 
-    // RSLPH_CLAUDE_PATH should have overridden the config
+    // RSLPH_CLAUDE_CMD should have overridden the default
     assert_eq!(
         scenario.invocation_count(),
         1,
-        "Expected Claude to be invoked via RSLPH_CLAUDE_PATH env var"
+        "Expected Claude to be invoked via RSLPH_CLAUDE_CMD env var"
     );
 }
 
@@ -483,14 +479,11 @@ Run unit tests.
         .respond_with_text("test-project") // Project name generation response (not needed but ok)
         .build();
 
-    let workspace = WorkspaceBuilder::new()
-        .with_progress_file("# Progress\n\n- [ ] Task 1\n")
-        .build();
+    let workspace = workspace_with_tui_disabled(&scenario, "# Progress\n\n- [ ] Task 1\n");
 
-    let mut cmd = rslph_with_fake_claude(&scenario);
+    let mut cmd = rslph_with_fake_claude_and_config(&scenario, &workspace);
     cmd.arg("plan")
         .arg("PROGRESS.md")
-        .arg("--no-tui")
         .current_dir(workspace.path());
 
     let output = cmd.output().expect("Failed to run rslph plan");
@@ -540,18 +533,23 @@ Run unit tests.
         .respond_with_text("env-test-project") // Project name generation response (not needed but ok)
         .build();
 
-    // Create workspace without any config - rely solely on env var
+    // Create workspace with TUI disabled but relying on env var for Claude
+    let config_toml = "tui_enabled = false\n";
     let workspace = WorkspaceBuilder::new()
+        .with_config(config_toml)
         .with_progress_file("# Progress\n\n- [ ] Task 1\n")
         .build();
+
+    let config_path = workspace.path().join(".rslph/config.toml");
 
     let mut cmd = Command::cargo_bin("rslph").expect("rslph binary should exist");
     // Set RSLPH_CLAUDE_CMD explicitly (not via env_vars helper)
     cmd.env("RSLPH_CLAUDE_CMD", &scenario.executable_path)
         .env("FAKE_CLAUDE_CONFIG", &scenario.config_path)
+        .arg("-c")
+        .arg(&config_path)
         .arg("plan")
         .arg("PROGRESS.md")
-        .arg("--no-tui")
         .current_dir(workspace.path());
 
     let output = cmd.output().expect("Failed to run rslph plan");
@@ -612,16 +610,22 @@ Run unit tests to verify functionality.
         .respond_with_text("test-project")
         .build();
 
-    // Create workspace with a simple input file (the actual content passed to plan)
+    // Create workspace with TUI disabled and an input file
+    let config_toml = format!(
+        r#"claude_path = "{}"
+tui_enabled = false
+"#,
+        scenario.executable_path.display()
+    );
     let workspace = WorkspaceBuilder::new()
+        .with_config(&config_toml)
         .with_source_file("INITIAL.md", "Build a test project")
         .build();
 
-    let mut cmd = rslph_with_fake_claude(&scenario);
+    let mut cmd = rslph_with_fake_claude_and_config(&scenario, &workspace);
     cmd.arg("plan")
         .arg("INITIAL.md")
         .arg("--adaptive")
-        .arg("--no-tui")
         .current_dir(workspace.path());
 
     // Run the plan command with adaptive mode

@@ -34,7 +34,7 @@ fn test_eval_help() {
         .success()
         .stdout(predicate::str::contains("PROJECT"))
         .stdout(predicate::str::contains("--keep"))
-        .stdout(predicate::str::contains("--no-tui"));
+        .stdout(predicate::str::contains("--trials"));
 }
 
 #[test]

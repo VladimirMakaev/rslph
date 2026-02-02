@@ -10,17 +10,17 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 ## Current Position
 
 Phase: 16 - Cleanup
-Plan: 02 of 3
-Status: In Progress (Plans 01, 02 complete)
-Last activity: 2026-02-02 — Completed 16-01 (Remove gsd_tdd mode)
+Plan: 03 of 3 (Complete)
+Status: Phase Complete
+Last activity: 2026-02-02 — Completed 16-03 (E2E Test Restructuring)
 
-Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2 | [##░░░░░░░░] 20% v1.3
+Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2 | [###░░░░░░░] 30% v1.3
 
 ## Phase Summary (v1.3)
 
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
-| 16 - Cleanup | Remove deprecated code paths | MODE-01, TUI-01 | Pending |
+| 16 - Cleanup | Remove deprecated code paths | MODE-01, TUI-01 | Complete |
 | 17 - Basic Mode Alignment | Match portableralph exactly | MODE-02, MODE-03, MODE-04, MODE-05 | Pending |
 | 18 - TUI Enhancement | Multiline input + streaming display | TUI-02, TUI-03, TUI-04, TUI-05 | Pending |
 | 19 - GSD Personas | Persona-driven execution | GSD-01 to GSD-09 | Pending |
@@ -91,7 +91,8 @@ All decisions are archived in milestone roadmap files:
 
 - **16-01**: Removed gsd_tdd mode entirely, PromptMode enum now has only Basic and Gsd variants
 - **16-02**: TUI behavior controlled by config.tui_enabled and dry_run flag, not CLI --no-tui
-- **16-02**: Tests requiring headless mode marked #[ignore] for restructuring in Plan 16-03
+- **16-03**: E2E tests use tui_enabled = false in config for headless testing
+- **16-03**: Added run_headless_planning() to planning/command.rs for non-TUI plan execution
 
 ### Pending Todos
 
@@ -134,8 +135,8 @@ None.
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 16-01-PLAN.md
-Resume file: .planning/phases/16-cleanup/16-03-PLAN.md
+Stopped at: Completed 16-03-PLAN.md (Phase 16 Complete)
+Resume file: None (ready for Phase 17)
 
 ### Roadmap Evolution
 

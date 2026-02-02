@@ -3,6 +3,8 @@
 //! These tests verify the eval command runs with fake Claude scenarios.
 //! Full end-to-end testing with working test execution requires more
 //! complex subprocess coordination.
+//!
+//! TUI is disabled via config file (tui_enabled = false) for headless testing.
 
 #![allow(deprecated)] // Command::cargo_bin is deprecated but still functional
 
@@ -11,15 +13,35 @@ use tempfile::TempDir;
 
 use crate::fake_claude_lib::prebuilt;
 
-/// Helper to get rslph command configured with fake Claude
-fn rslph_with_fake_claude(
+/// Helper to get rslph command configured with fake Claude and TUI disabled via config.
+///
+/// Creates a temporary config file with tui_enabled = false and sets up the
+/// environment for fake Claude.
+fn rslph_with_fake_claude_and_config(
     scenario: &crate::fake_claude_lib::FakeClaudeHandle,
-) -> assert_cmd::Command {
+) -> (assert_cmd::Command, TempDir) {
+    // Create a temporary directory for the config
+    let config_dir = TempDir::new().expect("temp dir for config");
+    let config_path = config_dir.path().join("config.toml");
+
+    // Write config with TUI disabled
+    let config_content = format!(
+        r#"claude_path = "{}"
+tui_enabled = false
+"#,
+        scenario.executable_path.display()
+    );
+    std::fs::write(&config_path, config_content).expect("write config");
+
     let mut cmd = Command::cargo_bin("rslph").expect("rslph binary should exist");
+    // Set environment variables for fake Claude
     for (key, value) in scenario.env_vars() {
         cmd.env(key, value);
     }
-    cmd
+    // Use the config file
+    cmd.arg("-c").arg(&config_path);
+
+    (cmd, config_dir)
 }
 
 /// Test that eval calculator with fake Claude executes the planning and build phases.
@@ -34,8 +56,8 @@ fn rslph_with_fake_claude(
 fn test_eval_runs_with_fake_claude() {
     let handle = prebuilt::calculator().build();
 
-    let mut cmd = rslph_with_fake_claude(&handle);
-    cmd.args(["eval", "calculator", "--no-tui"]);
+    let (mut cmd, _config_dir) = rslph_with_fake_claude_and_config(&handle);
+    cmd.args(["eval", "calculator"]);
 
     let output = cmd.output().expect("Failed to run rslph eval");
 
@@ -84,9 +106,9 @@ fn test_eval_persists_workspace_and_results() {
     let eval_dir = TempDir::new().expect("temp dir for evals");
     let handle = prebuilt::calculator().build();
 
-    let mut cmd = rslph_with_fake_claude(&handle);
+    let (mut cmd, _config_dir) = rslph_with_fake_claude_and_config(&handle);
     cmd.env("RSLPH_EVAL_DIR", eval_dir.path().to_str().unwrap());
-    cmd.args(["eval", "calculator", "--no-tui"]);
+    cmd.args(["eval", "calculator"]);
 
     let output = cmd.output().expect("Failed to run rslph eval");
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -153,9 +175,9 @@ fn test_eval_dir_config_via_env() {
     let custom_eval_dir = TempDir::new().expect("custom eval dir");
     let handle = prebuilt::fizzbuzz().build();
 
-    let mut cmd = rslph_with_fake_claude(&handle);
+    let (mut cmd, _config_dir) = rslph_with_fake_claude_and_config(&handle);
     cmd.env("RSLPH_EVAL_DIR", custom_eval_dir.path().to_str().unwrap());
-    cmd.args(["eval", "fizzbuzz", "--no-tui"]);
+    cmd.args(["eval", "fizzbuzz"]);
 
     let output = cmd.output().expect("Failed to run rslph eval");
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -205,9 +227,9 @@ fn test_eval_discovery_and_test_execution() {
     let eval_dir = TempDir::new().expect("temp dir for evals");
     let handle = prebuilt::calculator().build();
 
-    let mut cmd = rslph_with_fake_claude(&handle);
+    let (mut cmd, _config_dir) = rslph_with_fake_claude_and_config(&handle);
     cmd.env("RSLPH_EVAL_DIR", eval_dir.path().to_str().unwrap());
-    cmd.args(["eval", "calculator", "--no-tui"]);
+    cmd.args(["eval", "calculator"]);
 
     let output = cmd.output().expect("Failed to run rslph eval");
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -280,11 +302,11 @@ fn test_timeout_retry_succeeds() {
     let eval_dir = TempDir::new().expect("temp dir for evals");
     let handle = prebuilt::timeout_retry().build();
 
-    let mut cmd = rslph_with_fake_claude(&handle);
+    let (mut cmd, _config_dir) = rslph_with_fake_claude_and_config(&handle);
     cmd.env("RSLPH_EVAL_DIR", eval_dir.path().to_str().unwrap());
     cmd.env("RSLPH_ITERATION_TIMEOUT", "2"); // 2 second timeout
     cmd.env("RSLPH_TIMEOUT_RETRIES", "3"); // Allow up to 3 retries
-    cmd.args(["eval", "calculator", "--no-tui"]);
+    cmd.args(["eval", "calculator"]);
 
     let output = cmd.output().expect("Failed to run rslph eval");
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -344,11 +366,11 @@ fn test_timeout_exhausted_fails() {
     let eval_dir = TempDir::new().expect("temp dir for evals");
     let handle = prebuilt::timeout_exhausted().build();
 
-    let mut cmd = rslph_with_fake_claude(&handle);
+    let (mut cmd, _config_dir) = rslph_with_fake_claude_and_config(&handle);
     cmd.env("RSLPH_EVAL_DIR", eval_dir.path().to_str().unwrap());
     cmd.env("RSLPH_ITERATION_TIMEOUT", "2"); // 2 second timeout
     cmd.env("RSLPH_TIMEOUT_RETRIES", "2"); // Only 2 retries (will be exhausted)
-    cmd.args(["eval", "calculator", "--no-tui"]);
+    cmd.args(["eval", "calculator"]);
 
     let output = cmd.output().expect("Failed to run rslph eval");
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -388,9 +410,9 @@ fn test_retest_reruns_tests_on_existing_workspace() {
     let handle = prebuilt::calculator().build();
 
     // Step 1: Run eval to create workspace
-    let mut eval_cmd = rslph_with_fake_claude(&handle);
+    let (mut eval_cmd, _config_dir1) = rslph_with_fake_claude_and_config(&handle);
     eval_cmd.env("RSLPH_EVAL_DIR", eval_dir.path().to_str().unwrap());
-    eval_cmd.args(["eval", "calculator", "--no-tui"]);
+    eval_cmd.args(["eval", "calculator"]);
 
     let eval_output = eval_cmd.output().expect("Failed to run rslph eval");
     let eval_stdout = String::from_utf8_lossy(&eval_output.stdout);
@@ -431,7 +453,7 @@ fn test_retest_reruns_tests_on_existing_workspace() {
     let invocations_before = handle.invocation_count();
 
     // Step 2: Run retest command on the workspace
-    let mut retest_cmd = rslph_with_fake_claude(&handle);
+    let (mut retest_cmd, _config_dir2) = rslph_with_fake_claude_and_config(&handle);
     retest_cmd.env("RSLPH_EVAL_DIR", eval_dir.path().to_str().unwrap());
     retest_cmd.args(["retest", workspace_path]);
 
@@ -482,7 +504,7 @@ fn test_retest_reruns_tests_on_existing_workspace() {
 fn test_retest_fails_for_nonexistent_workspace() {
     let handle = prebuilt::calculator().build();
 
-    let mut cmd = rslph_with_fake_claude(&handle);
+    let (mut cmd, _config_dir) = rslph_with_fake_claude_and_config(&handle);
     cmd.args(["retest", "/nonexistent/workspace/path"]);
 
     let output = cmd.output().expect("Failed to run rslph retest");
@@ -508,7 +530,7 @@ fn test_retest_fails_for_missing_result_json() {
     let workspace = TempDir::new().expect("temp workspace");
     let handle = prebuilt::calculator().build();
 
-    let mut cmd = rslph_with_fake_claude(&handle);
+    let (mut cmd, _config_dir) = rslph_with_fake_claude_and_config(&handle);
     cmd.args(["retest", workspace.path().to_str().unwrap()]);
 
     let output = cmd.output().expect("Failed to run rslph retest");

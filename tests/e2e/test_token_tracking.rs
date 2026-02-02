@@ -2,6 +2,8 @@
 //!
 //! These tests verify that token usage is correctly captured from fake Claude
 //! responses and made available to the application.
+//!
+//! TUI is disabled via config file (tui_enabled = false) for headless testing.
 
 #![allow(deprecated)] // Command::cargo_bin is deprecated but still functional
 
@@ -9,15 +11,37 @@ use crate::fake_claude_lib::ScenarioBuilder;
 use crate::fixtures::WorkspaceBuilder;
 use assert_cmd::Command;
 
-/// Helper to get rslph command configured with fake Claude
-fn rslph_with_fake_claude(
+/// Helper to get rslph command configured with fake Claude and TUI disabled.
+///
+/// Creates a workspace config with tui_enabled = false and sets up the
+/// environment for fake Claude.
+fn rslph_with_fake_claude_and_config(
     scenario: &crate::fake_claude_lib::FakeClaudeHandle,
-) -> assert_cmd::Command {
+    workspace: &crate::fixtures::Workspace,
+) -> Command {
     let mut cmd = Command::cargo_bin("rslph").expect("rslph binary should exist");
+    // Set environment variables for fake Claude
     for (key, value) in scenario.env_vars() {
         cmd.env(key, value);
     }
+    // Use the workspace config with tui_enabled = false
+    let config_path = workspace.path().join(".rslph/config.toml");
+    cmd.arg("-c").arg(&config_path);
     cmd
+}
+
+/// Create a workspace with TUI disabled config and fake Claude path.
+fn workspace_with_tui_disabled(scenario: &crate::fake_claude_lib::FakeClaudeHandle, progress_content: &str) -> crate::fixtures::Workspace {
+    let config_toml = format!(
+        r#"claude_path = "{}"
+tui_enabled = false
+"#,
+        scenario.executable_path.display()
+    );
+    WorkspaceBuilder::new()
+        .with_config(&config_toml)
+        .with_progress_file(progress_content)
+        .build()
 }
 
 /// Test that fake Claude returns configured token values in output.
@@ -107,16 +131,13 @@ fn test_rslph_build_with_token_tracking() {
         .respond_with_text("I'll work on Task 1. The task has been completed.")
         .build();
 
-    let workspace = WorkspaceBuilder::new()
-        .with_progress_file("# Progress\n\n- [ ] Task 1\n")
-        .build();
+    let workspace = workspace_with_tui_disabled(&scenario, "# Progress\n\n- [ ] Task 1\n");
 
-    let mut cmd = rslph_with_fake_claude(&scenario);
+    let mut cmd = rslph_with_fake_claude_and_config(&scenario, &workspace);
     cmd.arg("build")
         .arg("PROGRESS.md")
         .arg("--max-iterations")
         .arg("1")
-        .arg("--no-tui")
         .current_dir(workspace.path());
 
     let output = cmd.output().expect("Failed to run rslph");

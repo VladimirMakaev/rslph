@@ -40,7 +40,6 @@ use super::{EvalResult, StatSummary, TrialStatistics};
 /// * `trials` - Number of independent trials to run
 /// * `modes` - Optional list of prompt modes to evaluate (parallel when > 1)
 /// * `_keep` - Deprecated: workspaces are always persisted now
-/// * `no_tui` - If true, disable TUI output
 /// * `config` - Application configuration
 /// * `cancel_token` - Token for graceful cancellation
 ///
@@ -53,7 +52,6 @@ pub async fn run_eval_command(
     trials: u32,
     modes: Option<Vec<PromptMode>>,
     _keep: bool, // Deprecated: always persist
-    no_tui: bool,
     config: &Config,
     cancel_token: CancellationToken,
 ) -> color_eyre::Result<EvalResult> {
@@ -66,7 +64,6 @@ pub async fn run_eval_command(
             &project,
             trials,
             &resolved_modes,
-            no_tui,
             config,
             cancel_token,
         )
@@ -88,7 +85,6 @@ pub async fn run_eval_command(
             &project,
             trial_num,
             mode,
-            no_tui,
             config,
             cancel_token.clone(),
             None,
@@ -125,7 +121,6 @@ pub async fn run_eval_command(
 /// * `project` - Path to project directory to evaluate
 /// * `trials_per_mode` - Number of trials per mode
 /// * `modes` - List of prompt modes to evaluate
-/// * `no_tui` - If true, disable TUI output
 /// * `config` - Application configuration
 /// * `cancel_token` - Token for graceful cancellation
 ///
@@ -137,27 +132,17 @@ async fn run_parallel_eval_mode(
     project: &str,
     trials_per_mode: u32,
     modes: &[PromptMode],
-    no_tui: bool,
     config: &Config,
     cancel_token: CancellationToken,
 ) -> color_eyre::Result<EvalResult> {
     use std::collections::HashMap;
     use tokio::sync::mpsc;
 
-    if no_tui {
-        println!(
-            "\n=== PARALLEL EVAL: {} modes x {} trials = {} total trials ===\n",
-            modes.len(),
-            trials_per_mode,
-            modes.len() as u32 * trials_per_mode
-        );
-    }
-
     // Create channel for trial events
     let (event_tx, event_rx) = mpsc::unbounded_channel::<TrialEvent>();
 
-    // Spawn TUI or print-based event handler based on no_tui flag
-    let tui_handle = if !no_tui {
+    // Spawn TUI if enabled in config
+    let tui_handle = if config.tui_enabled {
         // Spawn dashboard TUI
         let modes_clone = modes.to_vec();
         let cancel_clone = cancel_token.clone();
@@ -169,7 +154,13 @@ async fn run_parallel_eval_mode(
             }
         }))
     } else {
-        // Spawn print-based event handler for no-TUI mode
+        // Spawn print-based event handler for non-TUI mode
+        println!(
+            "\n=== PARALLEL EVAL: {} modes x {} trials = {} total trials ===\n",
+            modes.len(),
+            trials_per_mode,
+            modes.len() as u32 * trials_per_mode
+        );
         let mut event_rx = event_rx;
         Some(tokio::spawn(async move {
             while let Some(event) = event_rx.recv().await {
@@ -221,7 +212,6 @@ async fn run_parallel_eval_mode(
         trials_per_mode,
         project.to_string(),
         false, // keep
-        no_tui,
         config.clone(),
         event_tx,
         cancel_token,
@@ -362,7 +352,6 @@ struct SerializableModeResult {
 ///
 /// * `project` - Path to project directory to evaluate
 /// * `trial_num` - Trial number (1-indexed, used in workspace naming)
-/// * `no_tui` - If true, disable TUI output
 /// * `config` - Application configuration
 /// * `cancel_token` - Token for graceful cancellation
 ///
@@ -374,7 +363,6 @@ async fn run_single_trial(
     project: &str,
     trial_num: u32,
     mode: PromptMode,
-    _no_tui: bool,
     config: &Config,
     cancel_token: CancellationToken,
     progress_callback: Option<ProgressCallback>,
@@ -442,7 +430,6 @@ async fn run_single_trial(
     let (progress_path, plan_tokens) = run_plan_command(
         &prompt,
         false, // not adaptive
-        false, // not tui
         mode,
         false, // no_dsp
         config,
@@ -466,7 +453,6 @@ async fn run_single_trial(
         progress_path.clone(),
         false, // not once
         false, // not dry-run
-        true,  // force no-tui for eval to get clean output
         mode,
         false, // no_dsp
         config,
@@ -529,14 +515,13 @@ async fn run_single_trial(
 /// Run a single trial with a specific prompt mode.
 ///
 /// This is the mode-aware version of run_single_trial for parallel evaluation.
-/// It allows running trials with different prompt modes (basic, gsd, gsd_tdd).
+/// It allows running trials with different prompt modes (basic, gsd).
 ///
 /// # Arguments
 ///
 /// * `project` - Path to project directory to evaluate
 /// * `trial_num` - Trial number (1-indexed, used in workspace naming)
 /// * `mode` - The prompt mode to use for this trial
-/// * `no_tui` - If true, disable TUI output
 /// * `config` - Application configuration
 /// * `cancel_token` - Token for graceful cancellation
 ///
@@ -548,7 +533,6 @@ pub async fn run_single_trial_with_mode(
     project: &str,
     trial_num: u32,
     mode: PromptMode,
-    no_tui: bool,
     config: &Config,
     cancel_token: CancellationToken,
     progress_callback: Option<ProgressCallback>,
@@ -558,7 +542,6 @@ pub async fn run_single_trial_with_mode(
         project,
         trial_num,
         mode,
-        no_tui,
         config,
         cancel_token,
         progress_callback,

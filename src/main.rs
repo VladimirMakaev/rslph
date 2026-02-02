@@ -40,7 +40,6 @@ async fn main() -> color_eyre::Result<()> {
         Commands::Plan {
             plan,
             adaptive,
-            no_tui,
         } => {
             let working_dir = std::env::current_dir()?;
 
@@ -73,14 +72,10 @@ async fn main() -> color_eyre::Result<()> {
             if adaptive {
                 println!("Mode: adaptive (with clarifying questions)");
             }
-            if no_tui {
-                println!("Mode: headless (--no-tui)");
-            }
 
             match run_plan_command(
                 &plan_input,
                 adaptive,
-                !no_tui,
                 config.prompt_mode,
                 cli.no_dsp,
                 &config,
@@ -107,13 +102,12 @@ async fn main() -> color_eyre::Result<()> {
             plan,
             once,
             dry_run,
-            no_tui,
         } => {
             // Set up Ctrl+C handling
             let cancel_token = setup_ctrl_c_handler();
 
             // Determine if TUI will be used - if so, suppress startup messages
-            let use_tui = config.tui_enabled && !no_tui && !dry_run;
+            let use_tui = config.tui_enabled && !dry_run;
 
             if !use_tui {
                 println!("Building: {}", plan.display());
@@ -123,16 +117,12 @@ async fn main() -> color_eyre::Result<()> {
                 if dry_run {
                     println!("Mode: dry run (--dry-run)");
                 }
-                if no_tui {
-                    println!("Mode: headless (--no-tui)");
-                }
             }
 
             match run_build_command(
                 plan,
                 once,
                 dry_run,
-                no_tui,
                 config.prompt_mode,
                 cli.no_dsp,
                 &config,
@@ -158,7 +148,6 @@ async fn main() -> color_eyre::Result<()> {
             trials,
             modes,
             keep,
-            no_tui,
             list,
         } => {
             // Handle --list flag
@@ -193,11 +182,8 @@ async fn main() -> color_eyre::Result<()> {
             if keep {
                 println!("Mode: keep temp directory (--keep)");
             }
-            if no_tui {
-                println!("Mode: headless (--no-tui)");
-            }
 
-            match run_eval_command(project, trials, modes, keep, no_tui, &config, cancel_token)
+            match run_eval_command(project, trials, modes, keep, &config, cancel_token)
                 .await
             {
                 Ok(result) => {

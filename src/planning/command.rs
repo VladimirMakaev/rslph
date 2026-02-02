@@ -29,7 +29,6 @@ use crate::tui::plan_tui::{run_plan_tui, PlanTuiEvent};
 ///
 /// * `input` - User's idea/plan description
 /// * `adaptive` - Whether to use adaptive mode with clarifying questions
-/// * `tui` - Whether to use TUI mode with streaming output
 /// * `mode` - The prompt mode to use (Basic, Gsd, GsdTdd)
 /// * `no_dsp` - If true, append --dangerously-skip-permissions to Claude
 /// * `config` - Application configuration
@@ -44,7 +43,6 @@ use crate::tui::plan_tui::{run_plan_tui, PlanTuiEvent};
 pub async fn run_plan_command(
     input: &str,
     adaptive: bool,
-    tui: bool,
     mode: PromptMode,
     no_dsp: bool,
     config: &Config,
@@ -52,8 +50,8 @@ pub async fn run_plan_command(
     cancel_token: CancellationToken,
     timeout: Duration,
 ) -> color_eyre::Result<(PathBuf, TokenUsage)> {
-    // If TUI mode, run the TUI planning flow
-    if tui {
+    // Always use TUI mode now (unless adaptive which has its own flow)
+    if !adaptive {
         return run_tui_planning(
             input,
             adaptive,
@@ -67,22 +65,8 @@ pub async fn run_plan_command(
         .await;
     }
 
-    // If adaptive mode, run the adaptive planning flow
-    if adaptive {
-        return run_adaptive_planning(
-            input,
-            mode,
-            no_dsp,
-            config,
-            working_dir,
-            cancel_token,
-            timeout,
-        )
-        .await;
-    }
-
-    // Basic mode: direct planning without clarification
-    run_basic_planning(
+    // Adaptive mode: run the adaptive planning flow
+    run_adaptive_planning(
         input,
         mode,
         no_dsp,
@@ -92,141 +76,6 @@ pub async fn run_plan_command(
         timeout,
     )
     .await
-}
-
-/// Run basic (non-adaptive) planning mode.
-async fn run_basic_planning(
-    input: &str,
-    mode: PromptMode,
-    no_dsp: bool,
-    config: &Config,
-    working_dir: &Path,
-    cancel_token: CancellationToken,
-    timeout: Duration,
-) -> color_eyre::Result<(PathBuf, TokenUsage)> {
-    // Step 1: Detect project stack for testing strategy
-    let stack = detect_stack(working_dir);
-
-    // Step 2: Get the planning prompt for the specified mode
-    let system_prompt = get_plan_prompt_for_mode(mode);
-
-    // Step 3: Build user input with stack context
-    let full_input = format!(
-        "## Detected Stack\n{}\n\n## User Request\n{}",
-        stack.to_summary(),
-        input
-    );
-
-    // Step 4: Build Claude CLI args for headless mode
-    let args = vec![
-        "-p".to_string(),              // Print mode (headless)
-        "--verbose".to_string(),       // Required for stream-json with -p
-        "--output-format".to_string(), // Output format
-        "stream-json".to_string(),     // JSONL for structured parsing
-        "--system-prompt".to_string(), // Custom system prompt
-        system_prompt,
-        full_input, // User input as positional arg
-    ];
-
-    // Step 5: Spawn Claude
-    let combined_args = build_claude_args(&config.claude_cmd.base_args, &args, no_dsp);
-
-    eprintln!(
-        "[TRACE] Spawning: {} {:?}",
-        config.claude_cmd.command,
-        combined_args.iter().take(6).collect::<Vec<_>>()
-    );
-
-    let mut runner = ClaudeRunner::spawn(&config.claude_cmd.command, &combined_args, working_dir)
-        .await
-        .map_err(|e| RslphError::Subprocess(format!("Failed to spawn claude: {}", e)))?;
-
-    eprintln!("[TRACE] Spawned subprocess with PID: {:?}", runner.id());
-
-    // Step 6: Run with timeout and collect output, tracing each line
-    let output = run_with_tracing(&mut runner, timeout, cancel_token.clone()).await?;
-
-    // Step 7: Parse JSONL output using StreamResponse
-    let mut stream_response = StreamResponse::new();
-    for line in &output {
-        if let OutputLine::Stdout(s) = line {
-            stream_response.process_line(s);
-        }
-    }
-    let response_text = stream_response.text.clone();
-
-    eprintln!(
-        "[TRACE] Claude output length: {} chars",
-        response_text.len()
-    );
-    if let Some(model) = &stream_response.model {
-        eprintln!("[TRACE] Model: {}", model);
-    }
-    eprintln!(
-        "[TRACE] Tokens: {} in / {} out / {} cache_write / {} cache_read",
-        stream_response.input_tokens,
-        stream_response.output_tokens,
-        stream_response.cache_creation_input_tokens,
-        stream_response.cache_read_input_tokens
-    );
-
-    // Display token summary for user
-    println!(
-        "Tokens used: In: {} | Out: {} | CacheW: {} | CacheR: {}",
-        format_tokens(stream_response.input_tokens),
-        format_tokens(stream_response.output_tokens),
-        format_tokens(stream_response.cache_creation_input_tokens),
-        format_tokens(stream_response.cache_read_input_tokens),
-    );
-
-    // Step 7.5: Check if Claude asked questions (basic mode doesn't support interactive)
-    if stream_response.has_questions() {
-        let questions = stream_response.get_all_questions();
-        eprintln!(
-            "[TRACE] Claude asked {} question(s), but basic mode doesn't support interactive input",
-            questions.len()
-        );
-        display_questions(&questions);
-        println!("\nNote: Basic planning mode does not support interactive question answering.");
-        println!("Please run with --adaptive flag for full interactive planning flow:");
-        println!("  rslph plan --adaptive \"{}\"", input);
-        println!("\nContinuing with available context...\n");
-    }
-
-    // Step 8: Parse response into ProgressFile
-    let mut progress_file = ProgressFile::parse(&response_text)?;
-
-    // Step 8.5: Generate project name if empty
-    if progress_file.name.is_empty() {
-        eprintln!("[TRACE] Progress file has no name, generating one...");
-        let generated_name = generate_project_name(
-            input,
-            no_dsp,
-            config,
-            working_dir,
-            cancel_token.clone(),
-            timeout,
-        )
-        .await?;
-        eprintln!("[TRACE] Generated project name: {}", generated_name);
-        progress_file.name = generated_name;
-    }
-
-    // Step 9: Write to file
-    let output_path = working_dir.join("progress.md");
-    progress_file.write(&output_path)?;
-
-    eprintln!("[TRACE] Wrote progress file to: {}", output_path.display());
-
-    // Step 10: Create TokenUsage from stream_response
-    let tokens = TokenUsage {
-        input_tokens: stream_response.input_tokens,
-        output_tokens: stream_response.output_tokens,
-        cache_creation_input_tokens: stream_response.cache_creation_input_tokens,
-        cache_read_input_tokens: stream_response.cache_read_input_tokens,
-    };
-
-    Ok((output_path, tokens))
 }
 
 /// Run TUI planning mode with streaming output display.
@@ -537,61 +386,6 @@ async fn run_tui_planning(
     };
 
     Ok((output_path, tokens))
-}
-
-/// Run subprocess with tracing to stderr for each line of output.
-async fn run_with_tracing(
-    runner: &mut ClaudeRunner,
-    max_duration: Duration,
-    cancel_token: CancellationToken,
-) -> Result<Vec<OutputLine>, RslphError> {
-    use tokio::time::timeout;
-
-    let collect_with_trace = async {
-        let mut output = Vec::new();
-        loop {
-            tokio::select! {
-                biased;
-
-                _ = cancel_token.cancelled() => {
-                    eprintln!("[TRACE] Cancellation requested");
-                    runner.terminate_gracefully(Duration::from_secs(5)).await
-                        .map_err(|e| RslphError::Subprocess(e.to_string()))?;
-                    return Err(RslphError::Cancelled);
-                }
-
-                line = runner.next_output() => {
-                    match line {
-                        Some(OutputLine::Stdout(s)) => {
-                            eprintln!("[STDOUT] {}", s);
-                            output.push(OutputLine::Stdout(s));
-                        }
-                        Some(OutputLine::Stderr(s)) => {
-                            eprintln!("[STDERR] {}", s);
-                            output.push(OutputLine::Stderr(s));
-                        }
-                        None => {
-                            eprintln!("[TRACE] Subprocess streams closed");
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        Ok(output)
-    };
-
-    match timeout(max_duration, collect_with_trace).await {
-        Ok(result) => result,
-        Err(_elapsed) => {
-            eprintln!("[TRACE] Timeout after {:?}", max_duration);
-            runner
-                .terminate_gracefully(Duration::from_secs(5))
-                .await
-                .map_err(|e| RslphError::Subprocess(e.to_string()))?;
-            Err(RslphError::Timeout(max_duration.as_secs()))
-        }
-    }
 }
 
 /// Run adaptive planning mode with clarifying questions.

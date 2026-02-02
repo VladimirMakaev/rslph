@@ -68,7 +68,6 @@ pub struct TrialResult {
 /// * `trials_per_mode` - Number of trials to run per mode
 /// * `project_name` - Name of the project to evaluate
 /// * `keep` - Whether to keep workspace after completion
-/// * `no_tui` - Whether to disable TUI
 /// * `config` - Application configuration
 /// * `event_tx` - Channel to send progress events
 /// * `cancel_token` - Token for graceful cancellation
@@ -82,7 +81,6 @@ pub async fn run_parallel_evals(
     trials_per_mode: u32,
     project_name: String,
     keep: bool,
-    no_tui: bool,
     config: Config,
     event_tx: mpsc::UnboundedSender<TrialEvent>,
     cancel_token: CancellationToken,
@@ -118,7 +116,6 @@ pub async fn run_parallel_evals(
                     trial_num,
                     &project_name,
                     keep,
-                    no_tui,
                     &config,
                     tx.clone(),
                     cancel,
@@ -151,7 +148,6 @@ async fn run_single_trial_parallel(
     trial_num: u32,
     project_name: &str,
     _keep: bool,
-    no_tui: bool,
     config: &Config,
     event_tx: mpsc::UnboundedSender<TrialEvent>,
     cancel_token: CancellationToken,
@@ -184,7 +180,6 @@ async fn run_single_trial_parallel(
         project_name,
         trial_num,
         mode,
-        no_tui,
         config,
         cancel_token,
         Some(progress_callback),

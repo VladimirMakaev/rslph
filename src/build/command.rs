@@ -30,7 +30,6 @@ pub type ProgressCallback = Arc<dyn Fn(u32, u32) + Send + Sync>;
 /// * `progress_path` - Path to the progress.md file
 /// * `once` - If true, run only one iteration
 /// * `dry_run` - If true, preview what would be done without executing
-/// * `no_tui` - If true, disable TUI and use headless output
 /// * `mode` - The prompt mode to use for this build
 /// * `no_dsp` - If true, append --dangerously-skip-permissions to Claude
 /// * `config` - Application configuration
@@ -46,7 +45,6 @@ pub async fn run_build_command(
     progress_path: PathBuf,
     once: bool,
     dry_run: bool,
-    no_tui: bool,
     mode: PromptMode,
     no_dsp: bool,
     config: &Config,
@@ -57,7 +55,7 @@ pub async fn run_build_command(
     let progress = ProgressFile::load(&progress_path)?;
 
     // Determine if TUI should be used
-    let use_tui = config.tui_enabled && !no_tui && !dry_run;
+    let use_tui = config.tui_enabled && !dry_run;
 
     if !use_tui {
         println!("Build started: {}", progress_path.display());
@@ -623,7 +621,6 @@ mod tests {
             progress_path,
             true, // once
             false,
-            true, // no_tui
             PromptMode::Basic,
             false, // no_dsp
             &config,
@@ -654,7 +651,6 @@ mod tests {
             progress_path,
             false,
             true, // dry_run
-            true, // no_tui
             PromptMode::Basic,
             false, // no_dsp
             &config,
@@ -708,7 +704,6 @@ mod tests {
             progress_path,
             true, // once mode to limit iterations
             false,
-            true, // no_tui
             PromptMode::Basic,
             false, // no_dsp
             &config,
@@ -762,7 +757,6 @@ mod tests {
             progress_path,
             false,
             false,
-            true,
             PromptMode::Basic,
             false, // no_dsp
             &config,
@@ -784,7 +778,6 @@ mod tests {
             PathBuf::from("/nonexistent/progress.md"),
             false,
             false,
-            true, // no_tui
             PromptMode::Basic,
             false, // no_dsp
             &config,
@@ -834,7 +827,6 @@ mod tests {
             progress_path.clone(),
             false,
             true, // dry_run
-            true, // no_tui
             PromptMode::Basic,
             false, // no_dsp
             &config,
@@ -882,7 +874,6 @@ mod tests {
             progress_path,
             true, // once mode
             true, // dry_run
-            true, // no_tui
             PromptMode::Basic,
             false, // no_dsp
             &config,
@@ -997,7 +988,6 @@ mod tests {
             progress_path.clone(),
             true,  // once mode
             false, // not dry-run
-            true,  // no_tui
             PromptMode::Basic,
             false, // no_dsp
             &config,
@@ -1099,7 +1089,6 @@ mod tests {
             progress_path,
             false,
             false,
-            true, // no_tui
             PromptMode::Basic,
             false, // no_dsp
             &config,
@@ -1172,7 +1161,6 @@ mod tests {
             progress_path,
             false,
             false,
-            true, // no_tui
             PromptMode::Basic,
             false, // no_dsp
             &config,
@@ -1237,7 +1225,6 @@ mod tests {
             progress_path.clone(),
             false,
             false,
-            true, // no_tui
             PromptMode::Basic,
             false, // no_dsp
             &config,
@@ -1335,10 +1322,9 @@ mod tests {
 
         // The key test is that the build starts correctly but rejects invalid output
         let result = run_build_command(
-            progress_path.clone(),
+            progress_path,
             true, // once mode to limit execution
             false,
-            true, // no_tui
             PromptMode::Basic,
             false, // no_dsp
             &config,

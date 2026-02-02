@@ -11,8 +11,8 @@ See: .planning/PROJECT.md (updated 2026-02-01)
 
 Phase: 16 - Cleanup
 Plan: 02 of 3
-Status: In Progress (Plan 02 complete)
-Last activity: 2026-02-01 — Completed 16-02 (Remove --no-tui flags)
+Status: In Progress (Plans 01, 02 complete)
+Last activity: 2026-02-02 — Completed 16-01 (Remove gsd_tdd mode)
 
 Progress: [##########] 100% v1.0 | [##########] 100% v1.1 | [##########] 100% v1.2 | [##░░░░░░░░] 20% v1.3
 
@@ -89,6 +89,7 @@ All decisions are archived in milestone roadmap files:
 
 **v1.3 Decisions:**
 
+- **16-01**: Removed gsd_tdd mode entirely, PromptMode enum now has only Basic and Gsd variants
 - **16-02**: TUI behavior controlled by config.tui_enabled and dry_run flag, not CLI --no-tui
 - **16-02**: Tests requiring headless mode marked #[ignore] for restructuring in Plan 16-03
 
@@ -132,8 +133,8 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-02-01
-Stopped at: Completed 16-02-PLAN.md
+Last session: 2026-02-02
+Stopped at: Completed 16-01-PLAN.md
 Resume file: .planning/phases/16-cleanup/16-03-PLAN.md
 
 ### Roadmap Evolution

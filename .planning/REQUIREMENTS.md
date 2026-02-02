@@ -118,8 +118,8 @@ Resume: Task 3
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MODE-01 | Phase 16 (Cleanup) | Pending |
-| TUI-01 | Phase 16 (Cleanup) | Pending |
+| MODE-01 | Phase 16 (Cleanup) | Complete |
+| TUI-01 | Phase 16 (Cleanup) | Complete |
 | MODE-02 | Phase 17 (Basic Mode) | Pending |
 | MODE-03 | Phase 17 (Basic Mode) | Pending |
 | MODE-04 | Phase 17 (Basic Mode) | Pending |

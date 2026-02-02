@@ -37,9 +37,9 @@ Current milestone: v1.3 "Hardening" — Consolidate and harden existing features
 **Plans:** 3 plans
 
 Plans:
-- [ ] 16-01-PLAN.md — Remove gsd_tdd mode from codebase
-- [ ] 16-02-PLAN.md — Remove --no-tui CLI flags and parameters
-- [ ] 16-03-PLAN.md — Restructure E2E tests to use library directly
+- [x] 16-01-PLAN.md — Remove gsd_tdd mode from codebase
+- [x] 16-02-PLAN.md — Remove --no-tui CLI flags and parameters
+- [x] 16-03-PLAN.md — Restructure E2E tests to use library directly
 
 ---
 
@@ -177,7 +177,7 @@ Plans:
 | 14. TUI Visual Parity | v1.2 | 6/6 | Complete | 2026-01-23 |
 | 13.1 Clippy & Crates.io | v1.2 | 1/1 | Complete | 2026-01-30 |
 | 15. Interactive Planning | v1.2 | 7/7 | Complete | 2026-02-01 |
-| 16. Cleanup | v1.3 | 0/3 | Planned | — |
+| 16. Cleanup | v1.3 | 3/3 | Complete | 2026-02-02 |
 | 17. Basic Mode Alignment | v1.3 | 0/? | Pending | — |
 | 18. TUI Enhancement | v1.3 | 0/? | Pending | — |
 | 19. GSD Personas | v1.3 | 0/? | Pending | — |
@@ -238,4 +238,4 @@ See `.planning/milestones/v1.1-ROADMAP.md` for full details.
 
 ---
 
-*Last updated: 2026-02-01 — Phase 16 plans created*
+*Last updated: 2026-02-02 — Phase 16 complete*

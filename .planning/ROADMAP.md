@@ -64,7 +64,10 @@ Plans:
 4. Each completed task triggers a VCS commit before next iteration
 5. Progress file structure matches portableralph: status, tasks, learnings sections
 
-**Plans:** TBD
+**Plans:** 1 plan
+
+Plans:
+- [ ] 17-01-PLAN.md — Update prompts for portableralph alignment and add verification tests
 
 ---
 
@@ -178,7 +181,7 @@ Plans:
 | 13.1 Clippy & Crates.io | v1.2 | 1/1 | Complete | 2026-01-30 |
 | 15. Interactive Planning | v1.2 | 7/7 | Complete | 2026-02-01 |
 | 16. Cleanup | v1.3 | 3/3 | Complete | 2026-02-02 |
-| 17. Basic Mode Alignment | v1.3 | 0/? | Pending | — |
+| 17. Basic Mode Alignment | v1.3 | 0/1 | Pending | — |
 | 18. TUI Enhancement | v1.3 | 0/? | Pending | — |
 | 19. GSD Personas | v1.3 | 0/? | Pending | — |
 | 20. E2E Tests | v1.3 | 0/? | Pending | — |
